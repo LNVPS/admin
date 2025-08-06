@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useApiCall } from "../hooks/useApiCall";
 import { ErrorState } from "./ErrorState";
 import { Card } from "./Card";
@@ -47,6 +47,11 @@ export function PaginatedTable<T>({
   minWidth = "1200px",
 }: PaginatedTableProps<T>) {
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset page to 1 when dependencies change (e.g., filters)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, dependencies);
 
   const {
     data: response,

@@ -1,0 +1,41 @@
+{
+  "name": "lnvps-admin",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@headlessui/react": "^2.2.7",
+    "@heroicons/react": "^2.2.0",
+    "@scure/base": "^1.2.6",
+    "@snort/shared": "^1.0.17",
+    "@snort/system": "^1.6.8",
+    "@snort/system-react": "^1.6.8",
+    "@tanstack/react-query": "^5.84.1",
+    "clsx": "^2.1.1",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-router-dom": "^7.7.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/forms": "^0.5.10",
+    "@tailwindcss/vite": "^4.1.11",
+    "@types/react": "^19.1.9",
+    "@types/react-dom": "^19.1.7",
+    "@typescript-eslint/eslint-plugin": "^8.39.0",
+    "@typescript-eslint/parser": "^8.39.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "eslint": "^9.32.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "prettier": "^3.6.2",
+    "tailwindcss": "^4.1.11",
+    "typescript": "^5.9.2",
+    "vite": "^7.0.6"
+  }
+}

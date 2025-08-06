@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+/* Custom scrollbar for dark theme */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-slate-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-600 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-500;
+}
+
+/* Base styles */
+body {
+  @apply bg-slate-900 text-white;
+}
+
+/* Focus styles */
+:focus-visible {
+  @apply outline-none ring-2 ring-blue-500 ring-offset-2 ring-offset-slate-900;
+}
+
+/* Form elements */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+textarea,
+select {
+  @apply rounded-md border-slate-600 bg-slate-700 text-white placeholder-slate-400 focus:border-blue-500 focus:ring-blue-500;
+}
+
+/* Checkbox and radio */
+input[type="checkbox"],
+input[type="radio"] {
+  @apply rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-blue-500;
+}
+
+/* Button disabled state */
+button:disabled {
+  @apply cursor-not-allowed opacity-50;
+}
+
+/* Transitions */
+.transition-all {
+  @apply transition-transform duration-200 ease-in-out;
+}
+
+/* Loading animation */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Toast notifications */
+.toast {
+  @apply rounded-lg bg-slate-800 p-4 shadow-lg;
+}
+
+.toast-success {
+  @apply bg-green-900/50 text-green-400;
+}
+
+.toast-error {
+  @apply bg-red-900/50 text-red-400;
+}
+
+.toast-warning {
+  @apply bg-yellow-900/50 text-yellow-400;
+}
+
+.toast-info {
+  @apply bg-blue-900/50 text-blue-400;
+}

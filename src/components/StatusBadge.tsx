@@ -10,14 +10,20 @@ interface StatusBadgeProps {
     | "unknown";
   children?: React.ReactNode;
   className?: string;
+  colorOverride?: string;
 }
 
 export function StatusBadge({
   status,
   children,
   className = "",
+  colorOverride,
 }: StatusBadgeProps) {
   const getStatusStyles = (status: StatusBadgeProps["status"]) => {
+    if (colorOverride) {
+      return colorOverride;
+    }
+    
     switch (status) {
       case "enabled":
       case "running":

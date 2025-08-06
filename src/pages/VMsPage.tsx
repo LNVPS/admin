@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { StatusBadge } from "../components/StatusBadge";
@@ -6,7 +7,7 @@ import { Profile } from "../components/Profile";
 import { Button } from "../components/Button";
 import {
   AdminVmInfo,
-  VmState,
+  VmRunningStates,
   AdminRegionInfo,
   AdminHostInfo,
 } from "../lib/api";
@@ -17,6 +18,7 @@ import {
   TrashIcon,
   FunnelIcon,
   XMarkIcon,
+  EyeIcon,
 } from "@heroicons/react/24/outline";
 
 export function VMsPage() {
@@ -35,6 +37,22 @@ export function VMsPage() {
 
   const refreshData = () => {
     setRefreshTrigger((prev) => prev + 1);
+  };
+
+  const getVmStatus = (vm: AdminVmInfo) => {
+    if (!vm?.running_state) {
+      return "unknown";
+    }
+    return vm.running_state.state;
+  };
+
+  const getVmStatusBadgeColor = (vm: AdminVmInfo) => {
+    const status = getVmStatus(vm);
+    if (status === VmRunningStates.RUNNING) return "running";
+    if (status === VmRunningStates.STOPPED) return "stopped";
+    if (status === VmRunningStates.STARTING) return "unknown";
+    if (status === VmRunningStates.DELETING) return "stopped";
+    return "unknown";
   };
 
   useEffect(() => {
@@ -136,7 +154,14 @@ export function VMsPage() {
 
   const renderRow = (vmInfo: AdminVmInfo, index: number) => (
     <tr key={vmInfo.id || index}>
-      <td className="whitespace-nowrap text-white">{vmInfo.id}</td>
+      <td className="whitespace-nowrap">
+        <Link
+          to={`/vms/${vmInfo.id}`}
+          className="text-blue-400 hover:text-blue-300 font-medium"
+        >
+          {vmInfo.id}
+        </Link>
+      </td>
       <td className="text-gray-300">
         <div className="space-y-0.5">
           <div className="font-medium">{vmInfo.image_name}</div>
@@ -145,16 +170,8 @@ export function VMsPage() {
       </td>
       <td>
         <div className="space-y-1">
-          <StatusBadge
-            status={
-              vmInfo.status === VmState.RUNNING
-                ? "running"
-                : vmInfo.status === VmState.STOPPED
-                  ? "stopped"
-                  : "unknown"
-            }
-          >
-            {vmInfo.status}
+          <StatusBadge status={getVmStatusBadgeColor(vmInfo)}>
+            {getVmStatus(vmInfo)}
           </StatusBadge>
           {vmInfo.cpu !== undefined &&
           vmInfo.memory !== undefined &&
@@ -204,7 +221,16 @@ export function VMsPage() {
       </td>
       <td className="text-right">
         <div className="flex justify-end space-x-2">
-          {vmInfo.status === VmState.STOPPED && (
+          <Link to={`/vms/${vmInfo.id}`}>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="p-1 text-blue-400 hover:text-blue-300"
+            >
+              <EyeIcon className="h-4 w-4" />
+            </Button>
+          </Link>
+          {getVmStatus(vmInfo) === VmRunningStates.STOPPED && (
             <Button
               size="sm"
               variant="secondary"
@@ -214,7 +240,7 @@ export function VMsPage() {
               <PlayIcon className="h-4 w-4" />
             </Button>
           )}
-          {vmInfo.status === VmState.RUNNING && (
+          {getVmStatus(vmInfo) === VmRunningStates.RUNNING && (
             <Button
               size="sm"
               variant="secondary"
@@ -250,8 +276,8 @@ export function VMsPage() {
   const calculateStats = (vms: AdminVmInfo[], totalItems: number) => {
     const stats = {
       total: totalItems,
-      running: vms.filter((vm) => vm.status === VmState.RUNNING).length,
-      stopped: vms.filter((vm) => vm.status === VmState.STOPPED).length,
+      running: vms.filter((vm) => getVmStatus(vm) === VmRunningStates.RUNNING).length,
+      stopped: vms.filter((vm) => getVmStatus(vm) === VmRunningStates.STOPPED).length,
     };
 
     const activeFilters = getActiveFilterCount();

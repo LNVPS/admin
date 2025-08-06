@@ -1,8 +1,7 @@
 import {
   BrowserRouter as Router,
   Routes,
-  Route,
-  Navigate,
+  Route
 } from "react-router-dom";
 import { ProtectedLayout } from "./layouts/ProtectedLayout";
 import { SnortContext } from "@snort/system-react";
@@ -12,6 +11,7 @@ import { NostrSystem } from "@snort/system";
 import { LoginPage } from "./pages/LoginPage";
 import { UsersPage } from "./pages/UsersPage";
 import { VMsPage } from "./pages/VMsPage";
+import { VMDetailPage } from "./pages/VMDetailPage";
 import { HostsPage } from "./pages/HostsPage";
 import { RolesPage } from "./pages/RolesPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
@@ -76,6 +76,16 @@ export function App() {
                   requiredPermissions={["virtual_machines::view"]}
                 >
                   <VMsPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="vms/:id"
+              element={
+                <PermissionGuard
+                  requiredPermissions={["virtual_machines::view"]}
+                >
+                  <VMDetailPage />
                 </PermissionGuard>
               }
             />

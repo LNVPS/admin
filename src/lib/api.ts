@@ -23,6 +23,13 @@ export enum VmState {
   FAILED = "failed",
 }
 
+export enum VmRunningStates {
+  RUNNING = "running",
+  STOPPED = "stopped", 
+  STARTING = "starting",
+  DELETING = "deleting",
+}
+
 export enum VmHostKind {
   PROXMOX = "proxmox",
   LIBVIRT = "libvirt",
@@ -64,6 +71,26 @@ export enum AdminUserStatus {
   ACTIVE = "active",
   SUSPENDED = "suspended",
   DELETED = "deleted",
+}
+
+export enum AdminVmHistoryActionType {
+  CREATED = "created",
+  STARTED = "started",
+  STOPPED = "stopped",
+  RESTARTED = "restarted",
+  DELETED = "deleted",
+  EXPIRED = "expired",
+  RENEWED = "renewed",
+  REINSTALLED = "reinstalled",
+  STATE_CHANGED = "state_changed",
+  PAYMENT_RECEIVED = "payment_received",
+  CONFIGURATION_CHANGED = "configuration_changed",
+}
+
+export enum AdminPaymentMethod {
+  LIGHTNING = "lightning",
+  REVOLUT = "revolut",
+  PAYPAL = "paypal",
 }
 
 // Export iso-3166-1 library for country codes
@@ -123,6 +150,18 @@ export interface AdminUserInfo {
   is_admin: boolean;
 }
 
+export interface VmRunningState {
+  timestamp: number;
+  state: VmRunningStates;
+  cpu_usage: number;
+  mem_usage: number;
+  uptime: number;
+  net_in: number;
+  net_out: number;
+  disk_write: number;
+  disk_read: number;
+}
+
 export interface AdminVmInfo {
   id: number;
   created: string;
@@ -141,7 +180,7 @@ export interface AdminVmInfo {
     ip: string;
     range_id: number;
   }[];
-  status: VmState;
+  running_state: VmRunningState | null;
   cpu: number;
   memory: number;
   disk_size: number;
@@ -393,6 +432,30 @@ export interface AdminIpRangeInfo {
   allocation_mode: IpRangeAllocationMode;
   use_full_range: boolean;
   assignment_count: number;
+}
+
+export interface AdminVmHistoryInfo {
+  id: number;
+  vm_id: number;
+  action_type: AdminVmHistoryActionType;
+  timestamp: string;
+  initiated_by_user: number | null;
+  initiated_by_user_pubkey: string | null;
+  initiated_by_user_email: string | null;
+  description: string | null;
+}
+
+export interface AdminVmPaymentInfo {
+  id: string;
+  vm_id: number;
+  created: string;
+  expires: string;
+  amount: number;
+  currency: string;
+  payment_method: AdminPaymentMethod;
+  external_id: string | null;
+  is_paid: boolean;
+  rate: number;
 }
 
 export interface AdminAccessPolicyInfo {
@@ -665,6 +728,33 @@ export class AdminApi {
     await this.handleResponse<ApiResponse<void>>(
       await this.req(`/api/admin/v1/vms/${id}`, "DELETE"),
     );
+  }
+
+  async getVMHistory(vmId: number, params?: { limit?: number; offset?: number }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminVmHistoryInfo>>(
+      await this.req(`/api/admin/v1/vms/${vmId}/history`, "GET", undefined, params),
+    );
+  }
+
+  async getVMHistoryEntry(vmId: number, historyId: number) {
+    const result = await this.handleResponse<ApiResponse<AdminVmHistoryInfo>>(
+      await this.req(`/api/admin/v1/vms/${vmId}/history/${historyId}`, "GET"),
+    );
+    return result.data;
+  }
+
+  async getVMPayments(vmId: number) {
+    const result = await this.handleResponse<ApiResponse<AdminVmPaymentInfo[]>>(
+      await this.req(`/api/admin/v1/vms/${vmId}/payments`, "GET"),
+    );
+    return result.data;
+  }
+
+  async getVMPayment(vmId: number, paymentId: string) {
+    const result = await this.handleResponse<ApiResponse<AdminVmPaymentInfo>>(
+      await this.req(`/api/admin/v1/vms/${vmId}/payments/${paymentId}`, "GET"),
+    );
+    return result.data;
   }
 
   // Role Management

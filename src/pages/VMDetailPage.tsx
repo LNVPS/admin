@@ -175,7 +175,14 @@ export function VMDetailPage() {
         {payment.id.slice(0, 8)}...
       </td>
       <td className="text-white">
-        {formatPaymentAmount(payment.amount, payment.currency)}
+        <div className="space-y-1">
+          <div>{formatPaymentAmount(payment.amount, payment.currency, payment.rate)}</div>
+          {payment.rate && payment.rate !== 100 && (
+            <div className="text-xs text-gray-400">
+              Rate: {payment.rate.toLocaleString()}
+            </div>
+          )}
+        </div>
       </td>
       <td>
         <StatusBadge
@@ -261,12 +268,32 @@ export function VMDetailPage() {
     }
   };
 
-  const formatPaymentAmount = (amount: number, currency: string): string => {
+  const formatPaymentAmount = (amount: number, currency: string, rate?: number): string => {
+    let primaryAmount: string;
+    let baseAmount: number | null = null;
+    
     if (currency.toLowerCase() === "btc") {
-      // Amount is in milli-sats, convert to sats by dividing by 1000
-      return formatSats(Math.floor(amount / 1000));
+      // Amount is in milli-sats, convert to sats for display
+      primaryAmount = formatSats(Math.floor(amount / 1000));
+      // For BTC: convert milli-sats to BTC (divide by 100,000,000,000), then multiply by rate
+      if (rate) {
+        const btcAmount = amount / 100_000_000_000; // Convert milli-sats to BTC
+        baseAmount = btcAmount * rate; // BTC amount * EUR rate = EUR amount
+      }
+    } else {
+      primaryAmount = `${(amount / 100).toFixed(2)} ${currency.toUpperCase()}`;
+      // For fiat currencies, rate converts to EUR
+      if (rate && currency.toLowerCase() !== "eur") {
+        baseAmount = (amount / 100) * rate;
+      }
     }
-    return `${(amount / 100).toFixed(2)} ${currency.toUpperCase()}`;
+
+    // Add base currency (EUR) equivalent if available and not already EUR
+    if (baseAmount !== null) {
+      return `${primaryAmount} (€${baseAmount.toFixed(2)})`;
+    }
+
+    return primaryAmount;
   };
 
   const formatUptime = (seconds: number): string => {

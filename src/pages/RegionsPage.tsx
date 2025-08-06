@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { StatusBadge } from "../components/StatusBadge";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
-import { AdminRegionInfo } from "../lib/api";
+import { AdminRegionInfo, AdminCompanyInfo } from "../lib/api";
 import {
   GlobeAltIcon,
   PlusIcon,
@@ -19,10 +19,29 @@ export function RegionsPage() {
   const [selectedRegion, setSelectedRegion] = useState<AdminRegionInfo | null>(
     null,
   );
+  const [companies, setCompanies] = useState<AdminCompanyInfo[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  useEffect(() => {
+    const loadCompanies = async () => {
+      try {
+        const response = await adminApi.getCompanies({ limit: 100 });
+        setCompanies(response.data);
+      } catch (error) {
+        console.error("Failed to load companies:", error);
+      }
+    };
+    loadCompanies();
+  }, [adminApi]);
 
   const refreshData = () => {
     setRefreshTrigger((prev) => prev + 1);
+  };
+
+  const getCompanyName = (companyId: number | null) => {
+    if (!companyId) return null;
+    const company = companies.find((c) => c.id === companyId);
+    return company ? company.name : `Company ${companyId}`;
   };
 
   const handleEdit = (region: AdminRegionInfo) => {
@@ -61,7 +80,9 @@ export function RegionsPage() {
         <div className="space-y-0.5">
           <div className="font-medium">{region.name}</div>
           {region.company_id && (
-            <div className="text-gray-400">Company: {region.company_id}</div>
+            <div className="text-gray-400">
+              Company: {getCompanyName(region.company_id)}
+            </div>
           )}
         </div>
       </td>
@@ -191,6 +212,7 @@ export function RegionsPage() {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onSuccess={refreshData}
+        companies={companies}
       />
 
       {/* Edit Region Modal */}
@@ -203,6 +225,7 @@ export function RegionsPage() {
           }}
           region={selectedRegion}
           onSuccess={refreshData}
+          companies={companies}
         />
       )}
     </div>
@@ -214,10 +237,12 @@ function CreateRegionModal({
   isOpen,
   onClose,
   onSuccess,
+  companies,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  companies: AdminCompanyInfo[];
 }) {
   const adminApi = useAdminApi();
   const [loading, setLoading] = useState(false);
@@ -266,17 +291,22 @@ function CreateRegionModal({
 
         <div>
           <label className="block text-sm font-medium text-white mb-2">
-            Company ID
+            Company
           </label>
-          <input
-            type="number"
+          <select
             value={formData.company_id}
             onChange={(e) =>
               setFormData({ ...formData, company_id: e.target.value })
             }
             className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
-            placeholder="Leave empty for no company"
-          />
+          >
+            <option value="">No company</option>
+            {companies.map((company) => (
+              <option key={company.id} value={company.id.toString()}>
+                {company.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="flex items-center">
@@ -313,11 +343,13 @@ function EditRegionModal({
   onClose,
   region,
   onSuccess,
+  companies,
 }: {
   isOpen: boolean;
   onClose: () => void;
   region: AdminRegionInfo;
   onSuccess: () => void;
+  companies: AdminCompanyInfo[];
 }) {
   const adminApi = useAdminApi();
   const [loading, setLoading] = useState(false);
@@ -364,17 +396,22 @@ function EditRegionModal({
 
         <div>
           <label className="block text-sm font-medium text-white mb-2">
-            Company ID
+            Company
           </label>
-          <input
-            type="number"
+          <select
             value={formData.company_id}
             onChange={(e) =>
               setFormData({ ...formData, company_id: e.target.value })
             }
             className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
-            placeholder="Leave empty for no company"
-          />
+          >
+            <option value="">No company</option>
+            {companies.map((company) => (
+              <option key={company.id} value={company.id.toString()}>
+                {company.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="flex items-center">

@@ -4,7 +4,7 @@ import { PaginatedTable } from "../components/PaginatedTable";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
 import { StatusBadge } from "../components/StatusBadge";
-import { AdminRouterDetail } from "../lib/api";
+import { AdminRouterDetail, RouterKind } from "../lib/api";
 import {
   ServerIcon,
   PlusIcon,
@@ -226,7 +226,7 @@ function CreateRouterModal({
   const [formData, setFormData] = useState({
     name: "",
     enabled: true,
-    kind: "mikrotik",
+    kind: RouterKind.MIKROTIK,
     url: "",
     token: "",
   });
@@ -250,7 +250,7 @@ function CreateRouterModal({
       setFormData({
         name: "",
         enabled: true,
-        kind: "mikrotik",
+        kind: RouterKind.MIKROTIK,
         url: "",
         token: "",
       });
@@ -284,12 +284,16 @@ function CreateRouterModal({
           </label>
           <select
             value={formData.kind}
-            onChange={(e) => setFormData({ ...formData, kind: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, kind: e.target.value as RouterKind })
+            }
             className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
             required
           >
-            <option value="mikrotik">MikroTik</option>
-            <option value="ovh_additional_ip">OVH Additional IP</option>
+            <option value={RouterKind.MIKROTIK}>MikroTik</option>
+            <option value={RouterKind.OVH_ADDITIONAL_IP}>
+              OVH Additional IP
+            </option>
           </select>
         </div>
 
@@ -438,12 +442,16 @@ function EditRouterModal({
           </label>
           <select
             value={formData.kind}
-            onChange={(e) => setFormData({ ...formData, kind: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, kind: e.target.value as RouterKind })
+            }
             className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
             required
           >
-            <option value="mikrotik">MikroTik</option>
-            <option value="ovh_additional_ip">OVH Additional IP</option>
+            <option value={RouterKind.MIKROTIK}>MikroTik</option>
+            <option value={RouterKind.OVH_ADDITIONAL_IP}>
+              OVH Additional IP
+            </option>
           </select>
         </div>
 

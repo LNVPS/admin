@@ -11,7 +11,7 @@ export function formatBytes(bytes: number, decimals: number = 1): string {
   // Remove unnecessary decimal places if it's a whole number
   const formatted = value % 1 === 0 ? value.toFixed(0) : value.toFixed(dm);
 
-  return formatted + " " + sizes[i];
+  return formatted + "" + sizes[i];
 }
 
 export function bytesToGB(bytes: number): string {

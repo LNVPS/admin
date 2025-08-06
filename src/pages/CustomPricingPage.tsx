@@ -9,8 +9,10 @@ import {
   PlusIcon,
   DocumentDuplicateIcon,
   TrashIcon,
+  PencilIcon,
   ServerIcon,
   GlobeAltIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 
 interface CreatePricingModalProps {
@@ -74,6 +76,20 @@ function CreatePricingModal({
   ) => {
     const newDiskPricing = [...formData.disk_pricing];
     newDiskPricing[index] = { ...newDiskPricing[index], [field]: value };
+    setFormData({ ...formData, disk_pricing: newDiskPricing });
+  };
+
+  const addDiskPricing = () => {
+    const newDiskPricing = [
+      ...formData.disk_pricing,
+      { kind: "hdd", interface: "sata", cost: 0 },
+    ];
+    setFormData({ ...formData, disk_pricing: newDiskPricing });
+  };
+
+  const removeDiskPricing = (index: number) => {
+    if (formData.disk_pricing.length <= 1) return; // Keep at least one row
+    const newDiskPricing = formData.disk_pricing.filter((_, i) => i !== index);
     setFormData({ ...formData, disk_pricing: newDiskPricing });
   };
 
@@ -212,12 +228,23 @@ function CreatePricingModal({
         </div>
 
         <div>
-          <h4 className="text-lg font-medium text-white mb-3">Disk Pricing</h4>
+          <div className="flex justify-between items-center mb-3">
+            <h4 className="text-lg font-medium text-white">Disk Pricing</h4>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={addDiskPricing}
+              className="flex items-center gap-2 text-sm px-3 py-1"
+            >
+              <PlusIcon className="h-4 w-4" />
+              Add Row
+            </Button>
+          </div>
           <div className="space-y-3">
             {formData.disk_pricing.map((disk, index) => (
               <div
                 key={index}
-                className="grid grid-cols-1 md:grid-cols-4 gap-3 p-3 bg-slate-700 rounded-md"
+                className="grid grid-cols-1 md:grid-cols-5 gap-3 p-3 bg-slate-700 rounded-md"
               >
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">
@@ -268,6 +295,17 @@ function CreatePricingModal({
                     className="w-full px-2 py-1 bg-slate-600 border border-slate-500 rounded text-white text-sm"
                   />
                 </div>
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    onClick={() => removeDiskPricing(index)}
+                    className="p-2 text-red-400 hover:text-red-300 rounded disabled:text-gray-600 disabled:cursor-not-allowed"
+                    title="Remove disk pricing row"
+                    disabled={formData.disk_pricing.length <= 1}
+                  >
+                    <XMarkIcon className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -286,9 +324,338 @@ function CreatePricingModal({
   );
 }
 
+interface EditPricingModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  regions: AdminRegionInfo[];
+  pricing: AdminCustomPricingInfo;
+}
+
+function EditPricingModal({
+  isOpen,
+  onClose,
+  onSuccess,
+  regions,
+  pricing,
+}: EditPricingModalProps) {
+  const adminApi = useAdminApi();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    name: pricing.name,
+    region_id: pricing.region_id.toString(),
+    currency: pricing.currency,
+    cpu_cost: pricing.cpu_cost,
+    memory_cost: pricing.memory_cost,
+    ip4_cost: pricing.ip4_cost,
+    ip6_cost: pricing.ip6_cost,
+    disk_pricing: pricing.disk_pricing.map((disk) => ({
+      kind: disk.kind,
+      interface: disk.interface,
+      cost: disk.cost,
+    })),
+  });
+
+  // Reset form data when pricing prop changes
+  useEffect(() => {
+    setFormData({
+      name: pricing.name,
+      region_id: pricing.region_id.toString(),
+      currency: pricing.currency,
+      cpu_cost: pricing.cpu_cost,
+      memory_cost: pricing.memory_cost,
+      ip4_cost: pricing.ip4_cost,
+      ip6_cost: pricing.ip6_cost,
+      disk_pricing: pricing.disk_pricing.map((disk) => ({
+        kind: disk.kind,
+        interface: disk.interface,
+        cost: disk.cost,
+      })),
+    });
+  }, [pricing]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      await adminApi.updateCustomPricing(pricing.id, {
+        name: formData.name,
+        region_id: parseInt(formData.region_id),
+        currency: formData.currency,
+        cpu_cost: formData.cpu_cost,
+        memory_cost: formData.memory_cost,
+        ip4_cost: formData.ip4_cost,
+        ip6_cost: formData.ip6_cost,
+        disk_pricing: formData.disk_pricing,
+      });
+      onSuccess();
+      onClose();
+    } catch (error) {
+      console.error("Failed to update custom pricing:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const updateDiskPricing = (
+    index: number,
+    field: string,
+    value: string | number,
+  ) => {
+    const newDiskPricing = [...formData.disk_pricing];
+    newDiskPricing[index] = { ...newDiskPricing[index], [field]: value };
+    setFormData({ ...formData, disk_pricing: newDiskPricing });
+  };
+
+  const addDiskPricing = () => {
+    const newDiskPricing = [
+      ...formData.disk_pricing,
+      { kind: "hdd", interface: "sata", cost: 0 },
+    ];
+    setFormData({ ...formData, disk_pricing: newDiskPricing });
+  };
+
+  const removeDiskPricing = (index: number) => {
+    if (formData.disk_pricing.length <= 1) return; // Keep at least one row
+    const newDiskPricing = formData.disk_pricing.filter((_, i) => i !== index);
+    setFormData({ ...formData, disk_pricing: newDiskPricing });
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Edit Custom Pricing Model">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Name
+            </label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Region
+            </label>
+            <select
+              value={formData.region_id}
+              onChange={(e) =>
+                setFormData({ ...formData, region_id: e.target.value })
+              }
+              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white"
+              required
+            >
+              <option value="">Select Region</option>
+              {regions.map((region) => (
+                <option key={region.id} value={region.id}>
+                  {region.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Currency
+            </label>
+            <select
+              value={formData.currency}
+              onChange={(e) =>
+                setFormData({ ...formData, currency: e.target.value })
+              }
+              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white"
+            >
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="BTC">BTC</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              CPU Cost (per core/month)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={formData.cpu_cost}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  cpu_cost: parseFloat(e.target.value) || 0,
+                })
+              }
+              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Memory Cost (per GB/month)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={formData.memory_cost}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  memory_cost: parseFloat(e.target.value) || 0,
+                })
+              }
+              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              IPv4 Cost (per IP/month)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={formData.ip4_cost}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  ip4_cost: parseFloat(e.target.value) || 0,
+                })
+              }
+              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              IPv6 Cost (per IP/month)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={formData.ip6_cost}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  ip6_cost: parseFloat(e.target.value) || 0,
+                })
+              }
+              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white"
+            />
+          </div>
+        </div>
+
+        <div>
+          <div className="flex justify-between items-center mb-3">
+            <h4 className="text-lg font-medium text-white">Disk Pricing</h4>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={addDiskPricing}
+              className="flex items-center gap-2 text-sm px-3 py-1"
+            >
+              <PlusIcon className="h-4 w-4" />
+              Add Row
+            </Button>
+          </div>
+          <div className="space-y-3">
+            {formData.disk_pricing.map((disk, index) => (
+              <div
+                key={index}
+                className="grid grid-cols-1 md:grid-cols-5 gap-3 p-3 bg-slate-700 rounded-md"
+              >
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Type
+                  </label>
+                  <select
+                    value={disk.kind}
+                    onChange={(e) =>
+                      updateDiskPricing(index, "kind", e.target.value)
+                    }
+                    className="w-full px-2 py-1 bg-slate-600 border border-slate-500 rounded text-white text-sm"
+                  >
+                    <option value="hdd">HDD</option>
+                    <option value="ssd">SSD</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Interface
+                  </label>
+                  <select
+                    value={disk.interface}
+                    onChange={(e) =>
+                      updateDiskPricing(index, "interface", e.target.value)
+                    }
+                    className="w-full px-2 py-1 bg-slate-600 border border-slate-500 rounded text-white text-sm"
+                  >
+                    <option value="sata">SATA</option>
+                    <option value="scsi">SCSI</option>
+                    <option value="pcie">PCIe</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Cost (per GB/month)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.001"
+                    value={disk.cost}
+                    onChange={(e) =>
+                      updateDiskPricing(
+                        index,
+                        "cost",
+                        parseFloat(e.target.value) || 0,
+                      )
+                    }
+                    className="w-full px-2 py-1 bg-slate-600 border border-slate-500 rounded text-white text-sm"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    onClick={() => removeDiskPricing(index)}
+                    className="p-2 text-red-400 hover:text-red-300 rounded disabled:text-gray-600 disabled:cursor-not-allowed"
+                    title="Remove disk pricing row"
+                    disabled={formData.disk_pricing.length <= 1}
+                  >
+                    <XMarkIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3">
+          <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Updating..." : "Update Pricing Model"}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 export function CustomPricingPage() {
   const adminApi = useAdminApi();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingPricing, setEditingPricing] =
+    useState<AdminCustomPricingInfo | null>(null);
   const [regions, setRegions] = useState<AdminRegionInfo[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -341,6 +708,15 @@ export function CustomPricingPage() {
     } catch (error) {
       console.error("Failed to copy pricing model:", error);
     }
+  };
+
+  const handleEdit = (pricing: AdminCustomPricingInfo) => {
+    setEditingPricing(pricing);
+    setShowEditModal(true);
+  };
+
+  const handleEditSuccess = () => {
+    setRefreshTrigger((prev) => prev + 1);
   };
 
   const renderHeader = () => (
@@ -408,6 +784,13 @@ export function CustomPricingPage() {
       </td>
       <td>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleEdit(pricing)}
+            className="p-1 text-green-400 hover:text-green-300 rounded"
+            title="Edit pricing model"
+          >
+            <PencilIcon className="h-4 w-4" />
+          </button>
           <button
             onClick={() => handleCopy(pricing.id, pricing.name)}
             className="p-1 text-blue-400 hover:text-blue-300 rounded"
@@ -507,6 +890,16 @@ export function CustomPricingPage() {
         onSuccess={handleCreateSuccess}
         regions={regions}
       />
+
+      {editingPricing && (
+        <EditPricingModal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          onSuccess={handleEditSuccess}
+          regions={regions}
+          pricing={editingPricing}
+        />
+      )}
     </div>
   );
 }

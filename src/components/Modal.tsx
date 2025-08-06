@@ -1,5 +1,5 @@
-import React, { Fragment } from "react";
-import { Dialog, Transition } from "@headlessui/react";
+import React from "react";
+import { Dialog, DialogBackdrop, DialogPanel } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { Button } from "./Button";
 
@@ -28,71 +28,40 @@ export function Modal({
   }[size];
 
   return (
-    <Transition show={isOpen} as={Fragment}>
-      <Dialog
-        as="div"
-        className="fixed inset-0 z-50 overflow-y-auto"
-        onClose={onClose}
-      >
-        <div className="min-h-screen px-4 text-center">
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
+    <Dialog open={isOpen} onClose={onClose} className="relative z-50">
+      <DialogBackdrop
+        transition
+        className="fixed inset-0 bg-black/75 transition-opacity data-[closed]:opacity-0 data-[enter]:duration-300 data-[leave]:duration-200 data-[enter]:ease-out data-[leave]:ease-in"
+      />
+
+      <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+        <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+          <DialogPanel
+            transition
+            className={`relative transform overflow-hidden rounded-lg bg-slate-800 px-4 pb-4 pt-5 text-left shadow-xl transition-all data-[closed]:translate-y-4 data-[closed]:opacity-0 data-[enter]:duration-300 data-[leave]:duration-200 data-[enter]:ease-out data-[leave]:ease-in sm:my-8 sm:w-full sm:${maxWidthClass} sm:p-6 data-[closed]:sm:translate-y-0 data-[closed]:sm:scale-95`}
           >
-            <Dialog.Overlay className="fixed inset-0 bg-black/75 transition-opacity" />
-          </Transition.Child>
-
-          {/* This element is to trick the browser into centering the modal contents. */}
-          <span
-            className="inline-block h-screen align-middle"
-            aria-hidden="true"
-          >
-            &#8203;
-          </span>
-
-          <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0 scale-95"
-            enterTo="opacity-100 scale-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100 scale-100"
-            leaveTo="opacity-0 scale-95"
-          >
-            <div
-              className={`inline-block w-full ${maxWidthClass} my-8 overflow-hidden rounded-lg bg-slate-800 p-6 text-left align-middle shadow-xl transition-all`}
-            >
-              <div className="flex items-center justify-between">
-                <Dialog.Title
-                  as="h3"
-                  className="text-lg font-medium leading-6 text-white"
-                >
-                  {title}
-                </Dialog.Title>
-                <button
-                  type="button"
-                  className="rounded-md text-slate-400 hover:text-white focus:outline-none"
-                  onClick={onClose}
-                >
-                  <XMarkIcon className="h-6 w-6" aria-hidden="true" />
-                </button>
-              </div>
-
-              <div className="mt-4">{children}</div>
-
-              {footer && (
-                <div className="mt-6 flex justify-end space-x-3">{footer}</div>
-              )}
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-medium leading-6 text-white">
+                {title}
+              </h3>
+              <button
+                type="button"
+                className="rounded-md text-slate-400 hover:text-white focus:outline-none"
+                onClick={onClose}
+              >
+                <XMarkIcon className="h-6 w-6" aria-hidden="true" />
+              </button>
             </div>
-          </Transition.Child>
+
+            <div className="mt-4">{children}</div>
+
+            {footer && (
+              <div className="mt-6 flex justify-end space-x-3">{footer}</div>
+            )}
+          </DialogPanel>
         </div>
-      </Dialog>
-    </Transition>
+      </div>
+    </Dialog>
   );
 }
 

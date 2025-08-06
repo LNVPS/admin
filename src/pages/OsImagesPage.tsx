@@ -4,7 +4,7 @@ import { PaginatedTable } from "../components/PaginatedTable";
 import { StatusBadge } from "../components/StatusBadge";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
-import { AdminVmOsImageInfo } from "../lib/api";
+import { AdminVmOsImageInfo, ApiOsDistribution } from "../lib/api";
 import {
   CommandLineIcon,
   PlusIcon,
@@ -216,7 +216,7 @@ function CreateOsImageModal({
   const adminApi = useAdminApi();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    distribution: "",
+    distribution: ApiOsDistribution.UBUNTU,
     flavour: "",
     version: "",
     enabled: true,
@@ -242,7 +242,7 @@ function CreateOsImageModal({
       onSuccess();
       onClose();
       setFormData({
-        distribution: "",
+        distribution: ApiOsDistribution.UBUNTU,
         flavour: "",
         version: "",
         enabled: true,
@@ -265,16 +265,28 @@ function CreateOsImageModal({
             <label className="block text-xs font-medium text-white mb-2">
               Distribution *
             </label>
-            <input
-              type="text"
+            <select
               value={formData.distribution}
               onChange={(e) =>
-                setFormData({ ...formData, distribution: e.target.value })
+                setFormData({
+                  ...formData,
+                  distribution: e.target.value as ApiOsDistribution,
+                })
               }
               className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
-              placeholder="e.g., ubuntu, debian, centos"
               required
-            />
+            >
+              <option value={ApiOsDistribution.UBUNTU}>Ubuntu</option>
+              <option value={ApiOsDistribution.DEBIAN}>Debian</option>
+              <option value={ApiOsDistribution.CENTOS}>CentOS</option>
+              <option value={ApiOsDistribution.FEDORA}>Fedora</option>
+              <option value={ApiOsDistribution.FREEBSD}>FreeBSD</option>
+              <option value={ApiOsDistribution.OPENSUSE}>openSUSE</option>
+              <option value={ApiOsDistribution.ARCHLINUX}>Arch Linux</option>
+              <option value={ApiOsDistribution.REDHAT_ENTERPRISE}>
+                Red Hat Enterprise
+              </option>
+            </select>
           </div>
           <div>
             <label className="block text-xs font-medium text-white mb-2">
@@ -437,15 +449,28 @@ function EditOsImageModal({
             <label className="block text-xs font-medium text-white mb-2">
               Distribution *
             </label>
-            <input
-              type="text"
+            <select
               value={formData.distribution}
               onChange={(e) =>
-                setFormData({ ...formData, distribution: e.target.value })
+                setFormData({
+                  ...formData,
+                  distribution: e.target.value as ApiOsDistribution,
+                })
               }
               className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
               required
-            />
+            >
+              <option value={ApiOsDistribution.UBUNTU}>Ubuntu</option>
+              <option value={ApiOsDistribution.DEBIAN}>Debian</option>
+              <option value={ApiOsDistribution.CENTOS}>CentOS</option>
+              <option value={ApiOsDistribution.FEDORA}>Fedora</option>
+              <option value={ApiOsDistribution.FREEBSD}>FreeBSD</option>
+              <option value={ApiOsDistribution.OPENSUSE}>openSUSE</option>
+              <option value={ApiOsDistribution.ARCHLINUX}>Arch Linux</option>
+              <option value={ApiOsDistribution.REDHAT_ENTERPRISE}>
+                Red Hat Enterprise
+              </option>
+            </select>
           </div>
           <div>
             <label className="block text-xs font-medium text-white mb-2">

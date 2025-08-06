@@ -2,6 +2,88 @@ import { EventKind } from "@snort/system";
 import { base64 } from "@scure/base";
 import { LoginState } from "./login";
 import { handleApiError } from "./errorHandler";
+import ISO3166 from "iso-3166-1";
+
+// Enum types from API documentation
+export enum DiskType {
+  HDD = "hdd",
+  SSD = "ssd",
+}
+
+export enum DiskInterface {
+  SATA = "sata",
+  SCSI = "scsi",
+  PCIE = "pcie",
+}
+
+export enum VmState {
+  PENDING = "pending",
+  RUNNING = "running",
+  STOPPED = "stopped",
+  FAILED = "failed",
+}
+
+export enum VmHostKind {
+  PROXMOX = "proxmox",
+  LIBVIRT = "libvirt",
+}
+
+export enum ApiOsDistribution {
+  UBUNTU = "ubuntu",
+  DEBIAN = "debian",
+  CENTOS = "centos",
+  FEDORA = "fedora",
+  FREEBSD = "freebsd",
+  OPENSUSE = "opensuse",
+  ARCHLINUX = "archlinux",
+  REDHAT_ENTERPRISE = "redhatenterprise",
+}
+
+export enum IpRangeAllocationMode {
+  RANDOM = "random",
+  SEQUENTIAL = "sequential",
+  SLAAC_EUI64 = "slaac_eui64",
+}
+
+export enum NetworkAccessPolicyKind {
+  STATIC_ARP = "static_arp",
+}
+
+export enum RouterKind {
+  MIKROTIK = "mikrotik",
+  OVH_ADDITIONAL_IP = "ovh_additional_ip",
+}
+
+export enum AdminUserRole {
+  SUPER_ADMIN = "super_admin",
+  ADMIN = "admin",
+  READ_ONLY = "read_only",
+}
+
+export enum AdminUserStatus {
+  ACTIVE = "active",
+  SUSPENDED = "suspended",
+  DELETED = "deleted",
+}
+
+// Export iso-3166-1 library for country codes
+export { ISO3166 };
+
+// Helper function to get country name from code
+export function getCountryName(countryCode: string): string {
+  const country = ISO3166.whereAlpha3(countryCode);
+  return country?.country || countryCode;
+}
+
+// Helper function to get all countries for dropdown
+export function getAllCountries(): Array<{ code: string; name: string }> {
+  return ISO3166.all()
+    .map((country) => ({
+      code: country.alpha3,
+      name: country.country,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
 
 export interface ApiResponseBase {
   error?: string;
@@ -50,6 +132,8 @@ export interface AdminVmInfo {
   image_name: string;
   template_id: number;
   template_name: string;
+  custom_template_id: number | null;
+  is_standard_template: boolean;
   ssh_key_id: number;
   ssh_key_name: string;
   ip_addresses: {
@@ -57,7 +141,12 @@ export interface AdminVmInfo {
     ip: string;
     range_id: number;
   }[];
-  status: string;
+  status: VmState;
+  cpu: number;
+  memory: number;
+  disk_size: number;
+  disk_type: DiskType;
+  disk_interface: DiskInterface;
   host_id: number;
   user_id: number;
   user_pubkey: string;
@@ -99,7 +188,7 @@ export interface UserRoleInfo {
 export interface AdminHostInfo {
   id: number;
   name: string;
-  kind: string;
+  kind: VmHostKind;
   region: {
     id: number;
     name: string;
@@ -117,10 +206,19 @@ export interface AdminHostInfo {
     id: number;
     name: string;
     size: number;
-    kind: string;
-    interface: string;
+    kind: DiskType;
+    interface: DiskInterface;
     enabled: boolean;
   }[];
+  calculated_load: {
+    overall_load: number; // Overall load percentage (0.0-1.0)
+    cpu_load: number; // CPU load percentage (0.0-1.0)
+    memory_load: number; // Memory load percentage (0.0-1.0)
+    disk_load: number; // Disk load percentage (0.0-1.0)
+    available_cpu: number; // Available CPU cores
+    available_memory: number; // Available memory in bytes
+    active_vms: number; // Number of active VMs on this host
+  };
 }
 
 export interface AdminHostStats {
@@ -163,7 +261,7 @@ export interface RegionDeleteResponse {
 
 export interface AdminVmOsImageInfo {
   id: number;
-  distribution: string;
+  distribution: ApiOsDistribution;
   flavour: string;
   version: string;
   enabled: boolean;
@@ -182,8 +280,8 @@ export interface AdminVmTemplateInfo {
   cpu: number;
   memory: number;
   disk_size: number;
-  disk_type: string; // "hdd" or "ssd"
-  disk_interface: string; // "sata", "scsi", or "pcie"
+  disk_type: DiskType;
+  disk_interface: DiskInterface;
   cost_plan_id: number;
   region_id: number;
   region_name: string | null; // Populated with region name
@@ -206,8 +304,8 @@ export interface AdminCustomPricingInfo {
   ip6_cost: number;
   disk_pricing: {
     id: number;
-    kind: string;
-    interface: string;
+    kind: DiskType;
+    interface: DiskInterface;
     cost: number;
   }[];
   template_count: number;
@@ -218,8 +316,8 @@ export interface AdminCustomTemplateInfo {
   cpu: number;
   memory: number;
   disk_size: number;
-  disk_type: string;
-  disk_interface: string;
+  disk_type: DiskType;
+  disk_interface: DiskInterface;
   pricing_id: number;
   pricing_name: string | null;
   region_id: number;
@@ -236,6 +334,17 @@ export interface AdminCustomTemplateInfo {
   vm_count: number;
 }
 
+export interface AdminCostPlanInfo {
+  id: number;
+  name: string;
+  created: string;
+  amount: number;
+  currency: string;
+  interval_amount: number;
+  interval_type: "day" | "month" | "year";
+  template_count: number;
+}
+
 export interface CustomPricingCalculation {
   currency: string;
   cpu_cost: number;
@@ -248,8 +357,8 @@ export interface CustomPricingCalculation {
     cpu: number;
     memory: number;
     disk_size: number;
-    disk_type: string;
-    disk_interface: string;
+    disk_type: DiskType;
+    disk_interface: DiskInterface;
     ip4_count: number;
     ip6_count: number;
   };
@@ -281,7 +390,7 @@ export interface AdminIpRangeInfo {
   reverse_zone_id: string | null;
   access_policy_id: number | null;
   access_policy_name: string | null;
-  allocation_mode: string;
+  allocation_mode: IpRangeAllocationMode;
   use_full_range: boolean;
   assignment_count: number;
 }
@@ -289,7 +398,7 @@ export interface AdminIpRangeInfo {
 export interface AdminAccessPolicyInfo {
   id: number;
   name: string;
-  kind: string;
+  kind: NetworkAccessPolicyKind;
   router_id: number | null;
   interface: string | null;
 }
@@ -297,7 +406,7 @@ export interface AdminAccessPolicyInfo {
 export interface AdminAccessPolicyDetail {
   id: number;
   name: string;
-  kind: string;
+  kind: NetworkAccessPolicyKind;
   router_id: number | null;
   router_name: string | null;
   interface: string | null;
@@ -308,9 +417,24 @@ export interface AdminRouterDetail {
   id: number;
   name: string;
   enabled: boolean;
-  kind: string;
+  kind: RouterKind;
   url: string;
   access_policy_count: number;
+}
+
+export interface AdminIpRangeInfo {
+  id: number;
+  cidr: string;
+  gateway: string;
+  enabled: boolean;
+  region_id: number;
+  region_name: string | null;
+  reverse_zone_id: string | null;
+  access_policy_id: number | null;
+  access_policy_name: string | null;
+  allocation_mode: IpRangeAllocationMode;
+  use_full_range: boolean;
+  assignment_count: number;
 }
 
 function getConfiguredServerUrl(): string {
@@ -509,6 +633,9 @@ export class AdminApi {
     offset?: number;
     user_id?: number;
     host_id?: number;
+    pubkey?: string;
+    region_id?: number;
+    include_deleted?: boolean;
   }) {
     return await this.handleResponse<PaginatedApiResponse<AdminVmInfo>>(
       await this.req("/api/admin/v1/vms", "GET", undefined, params),
@@ -683,6 +810,26 @@ export class AdminApi {
     return result.data;
   }
 
+  async createHost(data: {
+    name: string;
+    ip: string;
+    api_token: string;
+    region_id: number;
+    kind: string;
+    vlan_id?: number | null;
+    cpu: number;
+    memory: number;
+    enabled?: boolean;
+    load_cpu?: number;
+    load_memory?: number;
+    load_disk?: number;
+  }) {
+    const result = await this.handleResponse<ApiResponse<AdminHostInfo>>(
+      await this.req("/api/admin/v1/hosts", "POST", data),
+    );
+    return result.data;
+  }
+
   // Region Management
   async getRegions(params?: {
     limit?: number;
@@ -827,8 +974,14 @@ export class AdminApi {
     disk_size: number;
     disk_type: string;
     disk_interface: string;
-    cost_plan_id: number;
+    cost_plan_id?: number;
     region_id: number;
+    // Cost plan auto-creation fields (used when cost_plan_id not provided)
+    cost_plan_name?: string;
+    cost_plan_amount?: number;
+    cost_plan_currency?: string;
+    cost_plan_interval_amount?: number;
+    cost_plan_interval_type?: "day" | "month" | "year";
   }) {
     const result = await this.handleResponse<ApiResponse<AdminVmTemplateInfo>>(
       await this.req("/api/admin/v1/vm_templates", "POST", data),
@@ -849,6 +1002,11 @@ export class AdminApi {
       disk_interface: string;
       cost_plan_id: number;
       region_id: number;
+      cost_plan_name: string;
+      cost_plan_amount: number;
+      cost_plan_currency: string;
+      cost_plan_interval_amount: number;
+      cost_plan_interval_type: "day" | "month" | "year";
     }>,
   ) {
     const result = await this.handleResponse<ApiResponse<AdminVmTemplateInfo>>(
@@ -1209,19 +1367,14 @@ export class AdminApi {
     return await this.handleResponse<
       PaginatedApiResponse<AdminAccessPolicyDetail>
     >(
-      await this.req(
-        "/api/admin/v1/access_policies_full",
-        "GET",
-        undefined,
-        params,
-      ),
+      await this.req("/api/admin/v1/access_policies", "GET", undefined, params),
     );
   }
 
   async getAccessPolicy(id: number) {
     const result = await this.handleResponse<
       ApiResponse<AdminAccessPolicyDetail>
-    >(await this.req(`/api/admin/v1/access_policies_full/${id}`, "GET"));
+    >(await this.req(`/api/admin/v1/access_policies/${id}`, "GET"));
     return result.data;
   }
 
@@ -1233,7 +1386,7 @@ export class AdminApi {
   }) {
     const result = await this.handleResponse<
       ApiResponse<AdminAccessPolicyDetail>
-    >(await this.req("/api/admin/v1/access_policies_full", "POST", data));
+    >(await this.req("/api/admin/v1/access_policies", "POST", data));
     return result.data;
   }
 
@@ -1248,19 +1401,13 @@ export class AdminApi {
   ) {
     const result = await this.handleResponse<
       ApiResponse<AdminAccessPolicyDetail>
-    >(
-      await this.req(
-        `/api/admin/v1/access_policies_full/${id}`,
-        "PATCH",
-        updates,
-      ),
-    );
+    >(await this.req(`/api/admin/v1/access_policies/${id}`, "PATCH", updates));
     return result.data;
   }
 
   async deleteAccessPolicy(id: number) {
     await this.handleResponse<ApiResponse<void>>(
-      await this.req(`/api/admin/v1/access_policies_full/${id}`, "DELETE"),
+      await this.req(`/api/admin/v1/access_policies/${id}`, "DELETE"),
     );
   }
 
@@ -1318,6 +1465,55 @@ export class AdminApi {
   async deleteRouter(id: number) {
     await this.handleResponse<ApiResponse<void>>(
       await this.req(`/api/admin/v1/routers/${id}`, "DELETE"),
+    );
+  }
+
+  // Cost Plan Management
+  async getCostPlans(params?: { limit?: number; offset?: number }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminCostPlanInfo>>(
+      await this.req("/api/admin/v1/cost_plans", "GET", undefined, params),
+    );
+  }
+
+  async getCostPlan(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminCostPlanInfo>>(
+      await this.req(`/api/admin/v1/cost_plans/${id}`, "GET"),
+    );
+    return result.data;
+  }
+
+  async createCostPlan(data: {
+    name: string;
+    amount: number;
+    currency: string;
+    interval_amount: number;
+    interval_type: "day" | "month" | "year";
+  }) {
+    const result = await this.handleResponse<ApiResponse<AdminCostPlanInfo>>(
+      await this.req("/api/admin/v1/cost_plans", "POST", data),
+    );
+    return result.data;
+  }
+
+  async updateCostPlan(
+    id: number,
+    updates: Partial<{
+      name: string;
+      amount: number;
+      currency: string;
+      interval_amount: number;
+      interval_type: "day" | "month" | "year";
+    }>,
+  ) {
+    const result = await this.handleResponse<ApiResponse<AdminCostPlanInfo>>(
+      await this.req(`/api/admin/v1/cost_plans/${id}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
+  async deleteCostPlan(id: number) {
+    await this.handleResponse<ApiResponse<void>>(
+      await this.req(`/api/admin/v1/cost_plans/${id}`, "DELETE"),
     );
   }
 }

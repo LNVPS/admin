@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
-import { AdminAccessPolicyDetail } from "../lib/api";
+import { AdminAccessPolicyDetail, AdminRouterDetail } from "../lib/api";
 import {
   KeyIcon,
   PlusIcon,
@@ -224,12 +224,32 @@ function CreateAccessPolicyModal({
 }) {
   const adminApi = useAdminApi();
   const [loading, setLoading] = useState(false);
+  const [routers, setRouters] = useState<AdminRouterDetail[]>([]);
+  const [loadingRouters, setLoadingRouters] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     kind: "static_arp",
     router_id: "",
     interface: "",
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchRouters();
+    }
+  }, [isOpen]);
+
+  const fetchRouters = async () => {
+    setLoadingRouters(true);
+    try {
+      const result = await adminApi.getRouters();
+      setRouters(result.data);
+    } catch (error) {
+      console.error("Failed to fetch routers:", error);
+    } finally {
+      setLoadingRouters(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -290,16 +310,27 @@ function CreateAccessPolicyModal({
 
         <div>
           <label className="block text-xs font-medium text-white mb-2">
-            Router ID (Optional)
+            Router (Optional)
           </label>
-          <input
-            type="number"
+          <select
             value={formData.router_id}
             onChange={(e) =>
               setFormData({ ...formData, router_id: e.target.value })
             }
             className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
-          />
+            disabled={loadingRouters}
+          >
+            <option value="">Select a router...</option>
+            {routers.map((router) => (
+              <option key={router.id} value={router.id.toString()}>
+                {router.name} ({router.kind.replace("_", " ")})
+                {!router.enabled && " - DISABLED"}
+              </option>
+            ))}
+          </select>
+          {loadingRouters && (
+            <p className="text-xs text-gray-400 mt-1">Loading routers...</p>
+          )}
         </div>
 
         <div>
@@ -344,12 +375,32 @@ function EditAccessPolicyModal({
 }) {
   const adminApi = useAdminApi();
   const [loading, setLoading] = useState(false);
+  const [routers, setRouters] = useState<AdminRouterDetail[]>([]);
+  const [loadingRouters, setLoadingRouters] = useState(false);
   const [formData, setFormData] = useState({
     name: policy.name,
     kind: policy.kind,
     router_id: policy.router_id ? policy.router_id.toString() : "",
     interface: policy.interface || "",
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchRouters();
+    }
+  }, [isOpen]);
+
+  const fetchRouters = async () => {
+    setLoadingRouters(true);
+    try {
+      const result = await adminApi.getRouters();
+      setRouters(result.data);
+    } catch (error) {
+      console.error("Failed to fetch routers:", error);
+    } finally {
+      setLoadingRouters(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -404,16 +455,27 @@ function EditAccessPolicyModal({
 
         <div>
           <label className="block text-xs font-medium text-white mb-2">
-            Router ID (Optional)
+            Router (Optional)
           </label>
-          <input
-            type="number"
+          <select
             value={formData.router_id}
             onChange={(e) =>
               setFormData({ ...formData, router_id: e.target.value })
             }
             className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
-          />
+            disabled={loadingRouters}
+          >
+            <option value="">Select a router...</option>
+            {routers.map((router) => (
+              <option key={router.id} value={router.id.toString()}>
+                {router.name} ({router.kind.replace("_", " ")})
+                {!router.enabled && " - DISABLED"}
+              </option>
+            ))}
+          </select>
+          {loadingRouters && (
+            <p className="text-xs text-gray-400 mt-1">Loading routers...</p>
+          )}
         </div>
 
         <div>

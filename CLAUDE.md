@@ -1,2 +1,2 @@
 - Use yarn always
-- API docs are available in ../lnvps/ADMIN_API_ENDPOINTS.md or https://github.com/LNVPS/api/blob/main/ADMIN_API_ENDPOINTS.md
+- API docs are available in ../lnvps/ADMIN_API_ENDPOINTS.md or https://github.com/LNVPS/api/blob/master/ADMIN_API_ENDPOINTS.md

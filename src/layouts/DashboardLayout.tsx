@@ -8,8 +8,6 @@ import {
   ServerIcon,
   KeyIcon,
   ChartBarIcon,
-  Cog6ToothIcon,
-  ClockIcon,
   ArrowRightStartOnRectangleIcon,
   ComputerDesktopIcon,
   ChevronRightIcon,
@@ -21,6 +19,7 @@ import {
   CurrencyDollarIcon,
   BuildingOfficeIcon,
   WifiIcon,
+  DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 
 interface SidebarItem {
@@ -129,9 +128,19 @@ const navigation: SidebarItem[] = [
     icon: BuildingOfficeIcon,
     requiredPermissions: ["company::view"],
   },
-  /*{ name: 'Analytics', to: '/analytics', icon: ChartBarIcon, requiredPermissions: ['analytics::view'] },
-  { name: 'System', to: '/system', icon: Cog6ToothIcon, requiredPermissions: ['system::view'] },
-  { name: 'Audit Log', to: '/audit', icon: ClockIcon, requiredPermissions: ['audit::view'] },*/
+  {
+    name: "Analytics",
+    icon: ChartBarIcon,
+    requiredPermissions: ["analytics::view"],
+    children: [
+      {
+        name: "Sales Report",
+        to: "/reports",
+        icon: DocumentTextIcon,
+        requiredPermissions: ["analytics::view"],
+      },
+    ],
+  },
 ];
 
 export function DashboardLayout() {

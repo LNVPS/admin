@@ -25,6 +25,7 @@ import { CompaniesPage } from "./pages/CompaniesPage";
 import { IpRangesPage } from "./pages/IpRangesPage";
 import { AccessPoliciesPage } from "./pages/AccessPoliciesPage";
 import { RoutersPage } from "./pages/RoutersPage";
+import { ReportsPage } from "./pages/ReportsPage";
 import { PermissionGuard } from "./components/PermissionGuard";
 import { SmartRedirect } from "./components/SmartRedirect";
 
@@ -192,6 +193,14 @@ export function App() {
               element={
                 <PermissionGuard requiredPermissions={["router::view"]}>
                   <RoutersPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="reports"
+              element={
+                <PermissionGuard requiredPermissions={["analytics::view"]}>
+                  <ReportsPage />
                 </PermissionGuard>
               }
             />

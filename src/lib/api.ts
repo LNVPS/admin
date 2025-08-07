@@ -1606,6 +1606,14 @@ export class AdminApi {
       await this.req(`/api/admin/v1/cost_plans/${id}`, "DELETE"),
     );
   }
+
+  // Reports Management
+  async getMonthlySalesReport(year: number, month: number) {
+    const result = await this.handleResponse<ApiResponse<any>>(
+      await this.req(`/api/admin/v1/reports/monthly-sales/${year}/${month}`, "GET"),
+    );
+    return result.data;
+  }
 }
 
 export const adminApi = new AdminApi();

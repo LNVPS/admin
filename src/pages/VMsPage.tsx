@@ -276,8 +276,10 @@ export function VMsPage() {
   const calculateStats = (vms: AdminVmInfo[], totalItems: number) => {
     const stats = {
       total: totalItems,
-      running: vms.filter((vm) => getVmStatus(vm) === VmRunningStates.RUNNING).length,
-      stopped: vms.filter((vm) => getVmStatus(vm) === VmRunningStates.STOPPED).length,
+      running: vms.filter((vm) => getVmStatus(vm) === VmRunningStates.RUNNING)
+        .length,
+      stopped: vms.filter((vm) => getVmStatus(vm) === VmRunningStates.STOPPED)
+        .length,
     };
 
     const activeFilters = getActiveFilterCount();

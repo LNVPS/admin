@@ -77,13 +77,13 @@ export function AuditLogPage() {
   const getResourceIcon = (resource: string) => {
     switch (resource) {
       case "USER":
-        return <UserIcon className="h-5 w-5 text-primary-500" />;
+        return <UserIcon className="h-5 w-5 text-blue-500" />;
       case "VM":
-        return <ServerIcon className="h-5 w-5 text-primary-500" />;
+        return <ServerIcon className="h-5 w-5 text-blue-500" />;
       case "ROLE":
-        return <KeyIcon className="h-5 w-5 text-primary-500" />;
+        return <KeyIcon className="h-5 w-5 text-blue-500" />;
       default:
-        return <ClockIcon className="h-5 w-5 text-primary-500" />;
+        return <ClockIcon className="h-5 w-5 text-blue-500" />;
     }
   };
 
@@ -93,7 +93,7 @@ export function AuditLogPage() {
       key: "timestamp",
       render: (entry: AuditLogEntry) => (
         <div className="flex items-center">
-          <ClockIcon className="mr-2 h-5 w-5 text-dark-400" />
+          <ClockIcon className="mr-2 h-5 w-5 text-gray-400" />
           {new Date(entry.timestamp).toLocaleString()}
         </div>
       ),
@@ -103,7 +103,7 @@ export function AuditLogPage() {
       key: "user",
       render: (entry: AuditLogEntry) => (
         <div className="flex items-center">
-          <UserIcon className="mr-2 h-5 w-5 text-dark-400" />
+          <UserIcon className="mr-2 h-5 w-5 text-gray-400" />
           {entry.user}
         </div>
       ),
@@ -119,7 +119,7 @@ export function AuditLogPage() {
                 ? "bg-green-900/20 text-green-500"
                 : entry.action === "DELETE"
                   ? "bg-red-900/20 text-red-500"
-                  : "bg-primary-900/20 text-primary-500"
+                  : "bg-blue-900/20 text-blue-500"
             }`}
         >
           {entry.action}

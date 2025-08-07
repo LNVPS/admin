@@ -74,7 +74,7 @@ export function AnalyticsPage() {
       key: "activeVMs",
       render: (item: RegionData) => (
         <div className="flex items-center">
-          <ServerIcon className="mr-2 h-5 w-5 text-primary-500" />
+          <ServerIcon className="mr-2 h-5 w-5 text-blue-500" />
           {item.activeVMs}
         </div>
       ),
@@ -84,7 +84,7 @@ export function AnalyticsPage() {
       key: "totalUsers",
       render: (item: RegionData) => (
         <div className="flex items-center">
-          <UsersIcon className="mr-2 h-5 w-5 text-primary-500" />
+          <UsersIcon className="mr-2 h-5 w-5 text-blue-500" />
           {item.totalUsers}
         </div>
       ),
@@ -101,13 +101,13 @@ export function AnalyticsPage() {
       key: "usage",
       render: (item: RegionData) => (
         <div className="flex items-center">
-          <div className="h-2 w-24 rounded-full bg-dark-700">
+          <div className="h-2 w-24 rounded-full bg-gray-700">
             <div
-              className="h-2 rounded-full bg-primary-500"
+              className="h-2 rounded-full bg-blue-500"
               style={{ width: `${item.usage}%` }}
             />
           </div>
-          <span className="ml-2 text-sm text-dark-400">{item.usage}%</span>
+          <span className="ml-2 text-sm text-gray-400">{item.usage}%</span>
         </div>
       ),
     },

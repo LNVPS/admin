@@ -1,8 +1,4 @@
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route
-} from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { ProtectedLayout } from "./layouts/ProtectedLayout";
 import { SnortContext } from "@snort/system-react";
 import { NostrSystem } from "@snort/system";
@@ -25,7 +21,7 @@ import { CompaniesPage } from "./pages/CompaniesPage";
 import { IpRangesPage } from "./pages/IpRangesPage";
 import { AccessPoliciesPage } from "./pages/AccessPoliciesPage";
 import { RoutersPage } from "./pages/RoutersPage";
-import { ReportsPage } from "./pages/ReportsPage";
+import { SalesReportPage } from "./pages/SalesReportPage";
 import { PermissionGuard } from "./components/PermissionGuard";
 import { SmartRedirect } from "./components/SmartRedirect";
 
@@ -197,10 +193,10 @@ export function App() {
               }
             />
             <Route
-              path="reports"
+              path="sales-report"
               element={
                 <PermissionGuard requiredPermissions={["analytics::view"]}>
-                  <ReportsPage />
+                  <SalesReportPage />
                 </PermissionGuard>
               }
             />

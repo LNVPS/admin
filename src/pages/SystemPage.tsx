@@ -172,16 +172,16 @@ export function SystemPage() {
                   type="checkbox"
                   checked={editValue}
                   onChange={(e) => setEditValue(e.target.checked)}
-                  className="h-4 w-4 rounded border-dark-600 bg-dark-700 text-primary-600 focus:ring-primary-500"
+                  className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
                 />
-                <label className="text-sm text-dark-300">Enabled</label>
+                <label className="text-sm text-gray-300">Enabled</label>
               </div>
             ) : Array.isArray(settings[editingKey]) ? (
               <textarea
                 value={editValue.join("\n")}
                 onChange={(e) => setEditValue(e.target.value.split("\n"))}
                 rows={4}
-                className="w-full rounded-md border-dark-600 bg-dark-700 text-white"
+                className="w-full rounded-md border-gray-600 bg-gray-700 text-white"
               />
             ) : (
               <input
@@ -196,7 +196,7 @@ export function SystemPage() {
                       : e.target.value,
                   )
                 }
-                className="w-full rounded-md border-dark-600 bg-dark-700 text-white"
+                className="w-full rounded-md border-gray-600 bg-gray-700 text-white"
               />
             )}
           </div>

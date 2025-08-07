@@ -13,7 +13,7 @@ import {
   AdminVmHistoryInfo,
   AdminVmPaymentInfo,
   AdminVmHistoryActionType,
-  AdminPaymentMethod
+  AdminPaymentMethod,
 } from "../lib/api";
 import { formatBytes } from "../utils/formatBytes";
 import { formatSats } from "../utils/formatSats";
@@ -140,15 +140,10 @@ export function VMDetailPage() {
           {formatActionType(history.action_type)}
         </StatusBadge>
       </td>
-      <td className="text-gray-300 text-sm">
-        {history.description || "-"}
-      </td>
+      <td className="text-gray-300 text-sm">{history.description || "-"}</td>
       <td>
         {history.initiated_by_user_pubkey ? (
-          <Profile
-            pubkey={history.initiated_by_user_pubkey}
-            avatarSize="sm"
-          />
+          <Profile pubkey={history.initiated_by_user_pubkey} avatarSize="sm" />
         ) : (
           <span className="text-gray-400 text-sm">System</span>
         )}
@@ -176,7 +171,13 @@ export function VMDetailPage() {
       </td>
       <td className="text-white">
         <div className="space-y-1">
-          <div>{formatPaymentAmount(payment.amount, payment.currency, payment.rate)}</div>
+          <div>
+            {formatPaymentAmount(
+              payment.amount,
+              payment.currency,
+              payment.rate,
+            )}
+          </div>
           {payment.rate && payment.rate !== 100 && (
             <div className="text-xs text-gray-400">
               Rate: {payment.rate.toLocaleString()}
@@ -185,9 +186,7 @@ export function VMDetailPage() {
         </div>
       </td>
       <td>
-        <StatusBadge
-          status={getPaymentMethodColor(payment.payment_method)}
-        >
+        <StatusBadge status={getPaymentMethodColor(payment.payment_method)}>
           {formatPaymentMethod(payment.payment_method)}
         </StatusBadge>
       </td>
@@ -209,7 +208,9 @@ export function VMDetailPage() {
     </tr>
   );
 
-  const getHistoryColorOverride = (action: AdminVmHistoryActionType): string => {
+  const getHistoryColorOverride = (
+    action: AdminVmHistoryActionType,
+  ): string => {
     switch (action) {
       case AdminVmHistoryActionType.STARTED:
         return "bg-green-900 text-green-300"; // Green for started
@@ -242,7 +243,9 @@ export function VMDetailPage() {
     return action.charAt(0).toUpperCase() + action.slice(1).replace(/_/g, " ");
   };
 
-  const getPaymentMethodColor = (method: AdminPaymentMethod): "running" | "stopped" | "unknown" => {
+  const getPaymentMethodColor = (
+    method: AdminPaymentMethod,
+  ): "running" | "stopped" | "unknown" => {
     switch (method) {
       case AdminPaymentMethod.LIGHTNING:
         return "running";
@@ -268,10 +271,14 @@ export function VMDetailPage() {
     }
   };
 
-  const formatPaymentAmount = (amount: number, currency: string, rate?: number): string => {
+  const formatPaymentAmount = (
+    amount: number,
+    currency: string,
+    rate?: number,
+  ): string => {
     let primaryAmount: string;
     let baseAmount: number | null = null;
-    
+
     if (currency.toLowerCase() === "btc") {
       // Amount is in milli-sats, convert to sats for display
       primaryAmount = formatSats(Math.floor(amount / 1000));
@@ -310,7 +317,9 @@ export function VMDetailPage() {
     }
   };
 
-  const formatTimeUntilExpiry = (expiryDate: string): { text: string; isExpired: boolean; isExpiringSoon: boolean } => {
+  const formatTimeUntilExpiry = (
+    expiryDate: string,
+  ): { text: string; isExpired: boolean; isExpiringSoon: boolean } => {
     const now = new Date();
     const expiry = new Date(expiryDate);
     const diffMs = expiry.getTime() - now.getTime();
@@ -320,29 +329,31 @@ export function VMDetailPage() {
     }
 
     const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const hours = Math.floor(
+      (diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
+    );
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 
     // Consider "expiring soon" if less than 24 hours
-    const isExpiringSoon = diffMs < (24 * 60 * 60 * 1000);
+    const isExpiringSoon = diffMs < 24 * 60 * 60 * 1000;
 
     if (days > 0) {
       return {
         text: `${days}d ${hours}h remaining`,
         isExpired: false,
-        isExpiringSoon: days < 1
+        isExpiringSoon: days < 1,
       };
     } else if (hours > 0) {
       return {
         text: `${hours}h ${minutes}m remaining`,
         isExpired: false,
-        isExpiringSoon: true
+        isExpiringSoon: true,
       };
     } else {
       return {
         text: `${minutes}m remaining`,
         isExpired: false,
-        isExpiringSoon: true
+        isExpiringSoon: true,
       };
     }
   };
@@ -373,10 +384,7 @@ export function VMDetailPage() {
 
   if (error || !vm) {
     return (
-      <ErrorState
-        message={error || "VM not found"}
-        action="load VM details"
-      />
+      <ErrorState message={error || "VM not found"} action="load VM details" />
     );
   }
 
@@ -391,7 +399,9 @@ export function VMDetailPage() {
             <span>•</span>
             <span>{vm.template_name}</span>
             <span>•</span>
-            <span>{vm.cpu}C • {formatBytes(vm.memory)} • {formatBytes(vm.disk_size)}</span>
+            <span>
+              {vm.cpu}C • {formatBytes(vm.memory)} • {formatBytes(vm.disk_size)}
+            </span>
             {vm.region_name && (
               <>
                 <span>•</span>
@@ -472,7 +482,9 @@ export function VMDetailPage() {
             <div className="space-y-1">
               {vm.ip_addresses.length > 0 ? (
                 vm.ip_addresses.map((ip, idx) => (
-                  <div key={idx} className="font-mono text-white text-xs">{ip.ip}</div>
+                  <div key={idx} className="font-mono text-white text-xs">
+                    {ip.ip}
+                  </div>
                 ))
               ) : (
                 <span className="text-gray-500">None</span>
@@ -485,21 +497,34 @@ export function VMDetailPage() {
           </div>
           <div>
             <div className="text-gray-400 mb-1">Created</div>
-            <div className="text-white">{new Date(vm.created).toLocaleDateString()}</div>
+            <div className="text-white">
+              {new Date(vm.created).toLocaleDateString()}
+            </div>
           </div>
           <div>
             <div className="text-gray-400 mb-1">Expires</div>
             <div className="space-y-1">
-              <div className={new Date(vm.expires) < new Date() ? "text-red-400" : "text-white"}>
+              <div
+                className={
+                  new Date(vm.expires) < new Date()
+                    ? "text-red-400"
+                    : "text-white"
+                }
+              >
                 {new Date(vm.expires).toLocaleDateString()}
               </div>
               {(() => {
                 const expiryInfo = formatTimeUntilExpiry(vm.expires);
                 return (
-                  <div className={`text-xs ${expiryInfo.isExpired ? "text-red-400" :
-                    expiryInfo.isExpiringSoon ? "text-yellow-400" :
-                      "text-gray-400"
-                    }`}>
+                  <div
+                    className={`text-xs ${
+                      expiryInfo.isExpired
+                        ? "text-red-400"
+                        : expiryInfo.isExpiringSoon
+                          ? "text-yellow-400"
+                          : "text-gray-400"
+                    }`}
+                  >
                     {expiryInfo.text}
                   </div>
                 );
@@ -513,31 +538,38 @@ export function VMDetailPage() {
       {vm.running_state && (
         <div className="bg-gray-800 rounded-lg p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-semibold text-white">Real-time Metrics</h3>
+            <h3 className="text-lg font-semibold text-white">
+              Real-time Metrics
+            </h3>
             <div className="text-xs text-gray-400">
-              Last updated: {new Date(vm.running_state.timestamp * 1000).toLocaleString()}
+              Last updated:{" "}
+              {new Date(vm.running_state.timestamp * 1000).toLocaleString()}
             </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 text-sm">
             <div>
               <div className="text-gray-400 mb-1">Runtime State</div>
-              <StatusBadge
-                status={vm.running_state.state as any}
-              >
+              <StatusBadge status={vm.running_state.state as any}>
                 {vm.running_state.state}
               </StatusBadge>
             </div>
             <div>
               <div className="text-gray-400 mb-1">CPU Usage</div>
-              <div className="text-white">{(vm.running_state.cpu_usage * 100).toFixed(1)}%</div>
+              <div className="text-white">
+                {(vm.running_state.cpu_usage * 100).toFixed(1)}%
+              </div>
             </div>
             <div>
               <div className="text-gray-400 mb-1">Memory Usage</div>
-              <div className="text-white">{(vm.running_state.mem_usage * 100).toFixed(1)}%</div>
+              <div className="text-white">
+                {(vm.running_state.mem_usage * 100).toFixed(1)}%
+              </div>
             </div>
             <div>
               <div className="text-gray-400 mb-1">Uptime</div>
-              <div className="text-white">{formatUptime(vm.running_state.uptime)}</div>
+              <div className="text-white">
+                {formatUptime(vm.running_state.uptime)}
+              </div>
             </div>
             <div>
               <div className="text-gray-400 mb-1">Network I/O</div>
@@ -582,7 +614,8 @@ export function VMDetailPage() {
           dependencies={[vm.id]}
           calculateStats={(histories, total) => (
             <div className="text-sm text-gray-400">
-              Total history entries: <span className="text-white font-medium">{total}</span>
+              Total history entries:{" "}
+              <span className="text-white font-medium">{total}</span>
             </div>
           )}
         />
@@ -597,7 +630,12 @@ export function VMDetailPage() {
         <PaginatedTable
           apiCall={async () => {
             const payments = await adminApi.getVMPayments(vm.id);
-            return { data: payments, total: payments.length, limit: payments.length, offset: 0 };
+            return {
+              data: payments,
+              total: payments.length,
+              limit: payments.length,
+              offset: 0,
+            };
           }}
           renderHeader={renderPaymentsHeader}
           renderRow={renderPaymentsRow}
@@ -608,16 +646,19 @@ export function VMDetailPage() {
           calculateStats={(payments, total) => (
             <div className="flex gap-4 text-sm text-gray-400">
               <span>
-                Total payments: <span className="text-white font-medium">{total}</span>
+                Total payments:{" "}
+                <span className="text-white font-medium">{total}</span>
               </span>
               <span>
-                Paid: <span className="text-green-400 font-medium">
-                  {payments.filter(p => p.is_paid).length}
+                Paid:{" "}
+                <span className="text-green-400 font-medium">
+                  {payments.filter((p) => p.is_paid).length}
                 </span>
               </span>
               <span>
-                Pending: <span className="text-red-400 font-medium">
-                  {payments.filter(p => !p.is_paid).length}
+                Pending:{" "}
+                <span className="text-red-400 font-medium">
+                  {payments.filter((p) => !p.is_paid).length}
                 </span>
               </span>
             </div>

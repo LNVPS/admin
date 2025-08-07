@@ -23,7 +23,7 @@ export function StatusBadge({
     if (colorOverride) {
       return colorOverride;
     }
-    
+
     switch (status) {
       case "enabled":
       case "running":

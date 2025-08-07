@@ -80,13 +80,13 @@ export function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-dark-900 px-4 py-12 sm:px-6 lg:px-8">
+    <div className="flex min-h-screen items-center justify-center bg-gray-900 px-4 py-12 sm:px-6 lg:px-8">
       <div className="w-full max-w-md">
         <div className="text-center">
           <h2 className="mt-6 text-3xl font-extrabold text-white">
             LNVPS Admin Dashboard
           </h2>
-          <p className="mt-2 text-sm text-dark-400">
+          <p className="mt-2 text-sm text-gray-400">
             Sign in with your Nostr key
           </p>
         </div>
@@ -167,7 +167,7 @@ export function LoginPage() {
             </Button>
           </div>
 
-          <div className="mt-6 text-center text-sm text-dark-400">
+          <div className="mt-6 text-center text-sm text-gray-400">
             <p>
               You need admin permissions to access this dashboard.
               <br />

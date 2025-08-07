@@ -69,6 +69,9 @@ export function CompaniesPage() {
       <td>
         <div className="space-y-0.5">
           <div className="font-medium text-white">{company.name}</div>
+          <div className="text-blue-400 text-sm font-mono">
+            Base Currency: {company.base_currency}
+          </div>
           {company.tax_id && (
             <div className="text-gray-400 text-sm">
               Tax ID: {company.tax_id}
@@ -237,6 +240,7 @@ function CreateCompanyModal({
     state: "",
     country_code: "",
     tax_id: "",
+    base_currency: "USD",
     postcode: "",
     phone: "",
     email: "",
@@ -255,6 +259,7 @@ function CreateCompanyModal({
         state: formData.state || null,
         country_code: formData.country_code || null,
         tax_id: formData.tax_id || null,
+        base_currency: formData.base_currency,
         postcode: formData.postcode || null,
         phone: formData.phone || null,
         email: formData.email || null,
@@ -271,6 +276,7 @@ function CreateCompanyModal({
         state: "",
         country_code: "",
         tax_id: "",
+        base_currency: "USD",
         postcode: "",
         phone: "",
         email: "",
@@ -296,6 +302,29 @@ function CreateCompanyModal({
             className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
             required
           />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-white mb-2">
+            Base Currency *
+          </label>
+          <select
+            value={formData.base_currency}
+            onChange={(e) =>
+              setFormData({ ...formData, base_currency: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            required
+          >
+            <option value="USD">USD - US Dollar</option>
+            <option value="EUR">EUR - Euro</option>
+            <option value="GBP">GBP - British Pound</option>
+            <option value="CAD">CAD - Canadian Dollar</option>
+            <option value="CHF">CHF - Swiss Franc</option>
+            <option value="AUD">AUD - Australian Dollar</option>
+            <option value="JPY">JPY - Japanese Yen</option>
+            <option value="BTC">BTC - Bitcoin</option>
+          </select>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -463,6 +492,7 @@ function EditCompanyModal({
     state: company.state || "",
     country_code: company.country_code || "",
     tax_id: company.tax_id || "",
+    base_currency: company.base_currency || "USD",
     postcode: company.postcode || "",
     phone: company.phone || "",
     email: company.email || "",
@@ -481,6 +511,7 @@ function EditCompanyModal({
         state: formData.state || null,
         country_code: formData.country_code || null,
         tax_id: formData.tax_id || null,
+        base_currency: formData.base_currency,
         postcode: formData.postcode || null,
         phone: formData.phone || null,
         email: formData.email || null,
@@ -510,6 +541,29 @@ function EditCompanyModal({
             className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
             required
           />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-white mb-2">
+            Base Currency *
+          </label>
+          <select
+            value={formData.base_currency}
+            onChange={(e) =>
+              setFormData({ ...formData, base_currency: e.target.value })
+            }
+            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            required
+          >
+            <option value="USD">USD - US Dollar</option>
+            <option value="EUR">EUR - Euro</option>
+            <option value="GBP">GBP - British Pound</option>
+            <option value="CAD">CAD - Canadian Dollar</option>
+            <option value="CHF">CHF - Swiss Franc</option>
+            <option value="AUD">AUD - Australian Dollar</option>
+            <option value="JPY">JPY - Japanese Yen</option>
+            <option value="BTC">BTC - Bitcoin</option>
+          </select>
         </div>
 
         <div className="grid grid-cols-2 gap-4">

@@ -19,7 +19,6 @@ import {
   CurrencyDollarIcon,
   BuildingOfficeIcon,
   WifiIcon,
-  DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 
 interface SidebarItem {
@@ -135,8 +134,8 @@ const navigation: SidebarItem[] = [
     children: [
       {
         name: "Sales Report",
-        to: "/reports",
-        icon: DocumentTextIcon,
+        to: "/sales-report",
+        icon: ChartBarIcon,
         requiredPermissions: ["analytics::view"],
       },
     ],
@@ -218,9 +217,7 @@ export function DashboardLayout() {
         } fixed md:relative z-50 md:z-auto h-screen flex flex-col`}
       >
         <div className="flex h-16 items-center justify-between px-4">
-          <span className="text-xl font-bold text-primary-500">
-            LNVPS Admin
-          </span>
+          <span className="text-xl font-bold text-blue-500">LNVPS Admin</span>
           <button className="md:hidden" onClick={() => setSidebarOpen(false)}>
             <svg
               className="h-6 w-6"
@@ -266,7 +263,7 @@ export function DashboardLayout() {
                             mt-1 flex items-center rounded-lg px-4 py-2 text-sm font-medium transition-colors
                             ${
                               location.pathname === child.to
-                                ? "bg-primary-600 text-white"
+                                ? "bg-blue-600 text-white"
                                 : "text-slate-300 hover:bg-slate-700 hover:text-white"
                             }
                           `}
@@ -286,7 +283,7 @@ export function DashboardLayout() {
                     mt-1 flex items-center rounded-lg px-4 py-2 text-sm font-medium transition-colors
                     ${
                       location.pathname === item.to
-                        ? "bg-primary-600 text-white"
+                        ? "bg-blue-600 text-white"
                         : "text-slate-300 hover:bg-slate-700 hover:text-white"
                     }
                   `}

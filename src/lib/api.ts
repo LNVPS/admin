@@ -25,7 +25,7 @@ export enum VmState {
 
 export enum VmRunningStates {
   RUNNING = "running",
-  STOPPED = "stopped", 
+  STOPPED = "stopped",
   STARTING = "starting",
   DELETING = "deleting",
 }
@@ -413,6 +413,7 @@ export interface AdminCompanyInfo {
   state: string | null;
   country_code: string | null;
   tax_id: string | null;
+  base_currency: string;
   postcode: string | null;
   phone: string | null;
   email: string | null;
@@ -483,6 +484,46 @@ export interface AdminRouterDetail {
   kind: RouterKind;
   url: string;
   access_policy_count: number;
+}
+
+export interface TimeSeriesPeriodSummary {
+  period: string;
+  currency: string;
+  payment_count: number;
+  net_total: number;
+  tax_total: number;
+  base_currency_net: number;
+  base_currency_tax: number;
+}
+
+export interface TimeSeriesPayment {
+  id: string;
+  vm_id: number;
+  created: string;
+  expires: string;
+  amount: number;
+  currency: string;
+  payment_method: AdminPaymentMethod;
+  external_id: string | null;
+  is_paid: boolean;
+  rate: number;
+  time_value: number;
+  tax: number;
+  company_id: number;
+  company_name: string;
+  company_base_currency: string;
+  period: string;
+}
+
+export interface TimeSeriesReportData {
+  start_date: string;
+  end_date: string;
+  interval: string;
+  company_id: number;
+  company_name: string;
+  company_base_currency: string;
+  period_summaries: TimeSeriesPeriodSummary[];
+  payments: TimeSeriesPayment[];
 }
 
 export interface AdminIpRangeInfo {
@@ -730,9 +771,17 @@ export class AdminApi {
     );
   }
 
-  async getVMHistory(vmId: number, params?: { limit?: number; offset?: number }) {
+  async getVMHistory(
+    vmId: number,
+    params?: { limit?: number; offset?: number },
+  ) {
     return await this.handleResponse<PaginatedApiResponse<AdminVmHistoryInfo>>(
-      await this.req(`/api/admin/v1/vms/${vmId}/history`, "GET", undefined, params),
+      await this.req(
+        `/api/admin/v1/vms/${vmId}/history`,
+        "GET",
+        undefined,
+        params,
+      ),
     );
   }
 
@@ -1608,9 +1657,30 @@ export class AdminApi {
   }
 
   // Reports Management
-  async getMonthlySalesReport(year: number, month: number) {
+  async getMonthlySalesReport(year: number, month: number, company_id: number) {
     const result = await this.handleResponse<ApiResponse<any>>(
-      await this.req(`/api/admin/v1/reports/monthly-sales/${year}/${month}`, "GET"),
+      await this.req(
+        `/api/admin/v1/reports/monthly-sales/${year}/${month}/${company_id}`,
+        "GET",
+      ),
+    );
+    return result.data;
+  }
+
+  async getTimeSeriesReport(params: {
+    start_date: string;
+    end_date: string;
+    interval: "daily" | "weekly" | "monthly" | "quarterly" | "yearly";
+    company_id: number;
+    currency?: string;
+  }) {
+    const result = await this.handleResponse<ApiResponse<TimeSeriesReportData>>(
+      await this.req(
+        "/api/admin/v1/reports/time-series",
+        "GET",
+        undefined,
+        params,
+      ),
     );
     return result.data;
   }

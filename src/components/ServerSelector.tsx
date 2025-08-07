@@ -9,8 +9,7 @@ interface ServerConfig {
 }
 
 const DEFAULT_SERVERS: ServerConfig[] = [
-  { name: "Localhost", url: "http://localhost:3000" },
-  { name: "Development", url: "https://dev-api.lnvps.com" },
+  { name: "Localhost", url: "http://localhost:8001" },
   { name: "Production", url: "https://api.lnvps.net" },
 ];
 

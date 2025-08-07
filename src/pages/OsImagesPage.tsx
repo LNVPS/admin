@@ -374,7 +374,7 @@ function CreateOsImageModal({
             onChange={(e) =>
               setFormData({ ...formData, enabled: e.target.checked })
             }
-            className="h-4 w-4 text-primary-600 bg-slate-800 border-slate-600 rounded"
+            className="h-4 w-4 text-blue-600 bg-slate-800 border-slate-600 rounded"
           />
           <label htmlFor="enabled" className="ml-2 text-xs text-white">
             Enable image
@@ -555,7 +555,7 @@ function EditOsImageModal({
             onChange={(e) =>
               setFormData({ ...formData, enabled: e.target.checked })
             }
-            className="h-4 w-4 text-primary-600 bg-slate-800 border-slate-600 rounded"
+            className="h-4 w-4 text-blue-600 bg-slate-800 border-slate-600 rounded"
           />
           <label htmlFor="enabled-edit" className="ml-2 text-xs text-white">
             Enable image

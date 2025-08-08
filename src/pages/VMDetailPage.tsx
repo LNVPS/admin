@@ -110,9 +110,10 @@ export function VMDetailPage() {
   const handleDeleteVM = async () => {
     if (!vm) return;
     if (confirm(`Are you sure you want to delete VM ${vm.id}?`)) {
+      const reason = prompt("Optional: Enter a reason for deletion (e.g., 'Policy violation', 'User requested'):");
       try {
         setActionLoading("delete");
-        await adminApi.deleteVM(vm.id);
+        await adminApi.deleteVM(vm.id, reason || undefined);
         navigate("/vms");
       } catch (error) {
         console.error("Failed to delete VM:", error);
@@ -419,9 +420,6 @@ export function VMDetailPage() {
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <StatusBadge status={getVmStatusBadgeColor()}>
-            {getVmStatus()}
-          </StatusBadge>
           <Button
             variant="secondary"
             onClick={() => loadVM(true)}

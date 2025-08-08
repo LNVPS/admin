@@ -40,6 +40,11 @@ export function VMsPage() {
   };
 
   const getVmStatus = (vm: AdminVmInfo) => {
+    // Check if VM is new (created == expires, indicating no payment received yet)
+    if (vm.created === vm.expires) {
+      return "new";
+    }
+    
     if (!vm?.running_state) {
       return "unknown";
     }
@@ -48,6 +53,7 @@ export function VMsPage() {
 
   const getVmStatusBadgeColor = (vm: AdminVmInfo) => {
     const status = getVmStatus(vm);
+    if (status === "new") return "warning"; // Use light yellow for new VMs
     if (status === VmRunningStates.RUNNING) return "running";
     if (status === VmRunningStates.STOPPED) return "stopped";
     if (status === VmRunningStates.STARTING) return "unknown";
@@ -131,8 +137,9 @@ export function VMsPage() {
 
   const handleDeleteVM = async (vm: AdminVmInfo) => {
     if (confirm(`Are you sure you want to delete VM ${vm.id}?`)) {
+      const reason = prompt("Optional: Enter a reason for deletion (e.g., 'Policy violation', 'User requested'):");
       try {
-        await adminApi.deleteVM(vm.id);
+        await adminApi.deleteVM(vm.id, reason || undefined);
         refreshData();
       } catch (error) {
         console.error("Failed to delete VM:", error);
@@ -153,7 +160,7 @@ export function VMsPage() {
   );
 
   const renderRow = (vmInfo: AdminVmInfo, index: number) => (
-    <tr key={vmInfo.id || index}>
+    <tr key={vmInfo.id || index} className={vmInfo.deleted ? "bg-gray-800/50 opacity-75" : ""}>
       <td className="whitespace-nowrap">
         <Link
           to={`/vms/${vmInfo.id}`}
@@ -165,14 +172,28 @@ export function VMsPage() {
       <td className="text-gray-300">
         <div className="space-y-0.5">
           <div className="font-medium">{vmInfo.image_name}</div>
-          <div className="text-blue-400">{vmInfo.template_name}</div>
+          <div className="text-blue-400">
+            {vmInfo.template_name}
+            {vmInfo.host_name && (
+              <span className="text-gray-400"> · {vmInfo.host_name}</span>
+            )}
+          </div>
         </div>
       </td>
       <td>
         <div className="space-y-1">
-          <StatusBadge status={getVmStatusBadgeColor(vmInfo)}>
-            {getVmStatus(vmInfo)}
-          </StatusBadge>
+          <div className="flex items-center space-x-2">
+            {!vmInfo.deleted && (
+              <StatusBadge status={getVmStatusBadgeColor(vmInfo)}>
+                {getVmStatus(vmInfo).toUpperCase()}
+              </StatusBadge>
+            )}
+            {vmInfo.deleted && (
+              <StatusBadge status="stopped">
+                DELETED
+              </StatusBadge>
+            )}
+          </div>
           {vmInfo.cpu !== undefined &&
           vmInfo.memory !== undefined &&
           vmInfo.disk_size !== undefined ? (
@@ -230,7 +251,7 @@ export function VMsPage() {
               <EyeIcon className="h-4 w-4" />
             </Button>
           </Link>
-          {getVmStatus(vmInfo) === VmRunningStates.STOPPED && (
+          {!vmInfo.deleted && getVmStatus(vmInfo) !== "new" && getVmStatus(vmInfo) === VmRunningStates.STOPPED && (
             <Button
               size="sm"
               variant="secondary"
@@ -240,7 +261,7 @@ export function VMsPage() {
               <PlayIcon className="h-4 w-4" />
             </Button>
           )}
-          {getVmStatus(vmInfo) === VmRunningStates.RUNNING && (
+          {!vmInfo.deleted && getVmStatus(vmInfo) !== "new" && getVmStatus(vmInfo) === VmRunningStates.RUNNING && (
             <Button
               size="sm"
               variant="secondary"
@@ -250,14 +271,16 @@ export function VMsPage() {
               <StopIcon className="h-4 w-4" />
             </Button>
           )}
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => handleDeleteVM(vmInfo)}
-            className="p-1 text-red-400 hover:text-red-300"
-          >
-            <TrashIcon className="h-4 w-4" />
-          </Button>
+          {!vmInfo.deleted && getVmStatus(vmInfo) !== "new" && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => handleDeleteVM(vmInfo)}
+              className="p-1 text-red-400 hover:text-red-300"
+            >
+              <TrashIcon className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </td>
     </tr>
@@ -280,6 +303,8 @@ export function VMsPage() {
         .length,
       stopped: vms.filter((vm) => getVmStatus(vm) === VmRunningStates.STOPPED)
         .length,
+      new: vms.filter((vm) => getVmStatus(vm) === "new").length,
+      deleted: vms.filter((vm) => vm.deleted).length,
     };
 
     const activeFilters = getActiveFilterCount();
@@ -303,6 +328,18 @@ export function VMsPage() {
               Stopped:{" "}
               <span className="text-red-400 font-medium">{stats.stopped}</span>
             </span>
+            {stats.new > 0 && (
+              <span>
+                New:{" "}
+                <span className="text-yellow-400 font-medium">{stats.new}</span>
+              </span>
+            )}
+            {filters.include_deleted && stats.deleted > 0 && (
+              <span>
+                Deleted:{" "}
+                <span className="text-gray-400 font-medium">{stats.deleted}</span>
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center space-x-2">

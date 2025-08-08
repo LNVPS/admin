@@ -765,9 +765,10 @@ export class AdminApi {
     );
   }
 
-  async deleteVM(id: number) {
+  async deleteVM(id: number, reason?: string) {
+    const body = reason ? { reason } : undefined;
     await this.handleResponse<ApiResponse<void>>(
-      await this.req(`/api/admin/v1/vms/${id}`, "DELETE"),
+      await this.req(`/api/admin/v1/vms/${id}`, "DELETE", body),
     );
   }
 

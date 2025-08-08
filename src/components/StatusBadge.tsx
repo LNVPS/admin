@@ -7,7 +7,8 @@ interface StatusBadgeProps {
     | "expired"
     | "active"
     | "inactive"
-    | "unknown";
+    | "unknown"
+    | "warning";
   children?: React.ReactNode;
   className?: string;
   colorOverride?: string;
@@ -36,7 +37,9 @@ export function StatusBadge({
       case "expired":
         return "bg-orange-900 text-orange-300";
       case "unknown":
-        return "bg-yellow-900 text-yellow-300";
+        return "bg-gray-900 text-gray-300";
+      case "warning":
+        return "bg-yellow-200 text-yellow-800";
       default:
         return "bg-gray-900 text-gray-300";
     }
@@ -45,29 +48,31 @@ export function StatusBadge({
   const getStatusText = (status: StatusBadgeProps["status"]) => {
     switch (status) {
       case "enabled":
-        return "Enabled";
+        return "ENABLED";
       case "disabled":
-        return "Disabled";
+        return "DISABLED";
       case "running":
-        return "Running";
+        return "RUNNING";
       case "stopped":
-        return "Stopped";
+        return "STOPPED";
       case "expired":
-        return "Expired";
+        return "EXPIRED";
       case "active":
-        return "Active";
+        return "ACTIVE";
       case "inactive":
-        return "Inactive";
+        return "INACTIVE";
       case "unknown":
-        return "Unknown";
+        return "UNKNOWN";
+      case "warning":
+        return "WARNING";
       default:
-        return status;
+        return status.toUpperCase();
     }
   };
 
   return (
     <span
-      className={`inline-flex px-2 py-1 text-xs font-medium rounded ${getStatusStyles(status)} ${className}`}
+      className={`inline-flex px-2 py-1 text-xs font-semibold rounded ${getStatusStyles(status)} ${className}`}
     >
       {children || getStatusText(status)}
     </span>

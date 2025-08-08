@@ -120,7 +120,7 @@ export function UserDetailsPage() {
             new Date(vm.expires) < new Date()
               ? "text-red-400"
               : new Date(vm.expires).getTime() - new Date().getTime() <
-                  24 * 60 * 60 * 1000
+                24 * 60 * 60 * 1000
                 ? "text-yellow-400"
                 : "text-gray-400"
           }
@@ -356,6 +356,7 @@ export function UserDetailsPage() {
             adminApi.getVMs({
               ...params,
               user_id: user.id,
+              include_deleted: true
             })
           }
           renderHeader={renderVMHeader}

@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { Button } from "../components/Button";
 import { StatusBadge } from "../components/StatusBadge";
 import { Profile } from "../components/Profile";
+import { VmStatusBadge, getVmStatus } from "../components/VmStatusBadge";
 import { ErrorState } from "../components/ErrorState";
 import {
   AdminVmInfo,
-  VmRunningState,
   VmRunningStates,
   AdminVmHistoryInfo,
   AdminVmPaymentInfo,
@@ -110,7 +110,9 @@ export function VMDetailPage() {
   const handleDeleteVM = async () => {
     if (!vm) return;
     if (confirm(`Are you sure you want to delete VM ${vm.id}?`)) {
-      const reason = prompt("Optional: Enter a reason for deletion (e.g., 'Policy violation', 'User requested'):");
+      const reason = prompt(
+        "Optional: Enter a reason for deletion (e.g., 'Policy violation', 'User requested'):",
+      );
       try {
         setActionLoading("delete");
         await adminApi.deleteVM(vm.id, reason || undefined);
@@ -359,22 +361,6 @@ export function VMDetailPage() {
     }
   };
 
-  const getVmStatus = () => {
-    if (!vm?.running_state) {
-      return "unknown";
-    }
-    return vm.running_state.state;
-  };
-
-  const getVmStatusBadgeColor = () => {
-    const status = getVmStatus();
-    if (status === VmRunningStates.RUNNING) return "running";
-    if (status === VmRunningStates.STOPPED) return "stopped";
-    if (status === VmRunningStates.STARTING) return "unknown";
-    if (status === VmRunningStates.DELETING) return "stopped";
-    return "unknown";
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -429,7 +415,7 @@ export function VMDetailPage() {
           >
             <ArrowPathIcon className="h-4 w-4" />
           </Button>
-          {getVmStatus() === VmRunningStates.STOPPED && (
+          {getVmStatus(vm) === VmRunningStates.STOPPED && (
             <Button
               variant="secondary"
               onClick={handleStartVM}
@@ -439,7 +425,7 @@ export function VMDetailPage() {
               <PlayIcon className="h-4 w-4" />
             </Button>
           )}
-          {getVmStatus() === VmRunningStates.RUNNING && (
+          {getVmStatus(vm) === VmRunningStates.RUNNING && (
             <Button
               variant="secondary"
               onClick={handleStopVM}
@@ -547,9 +533,7 @@ export function VMDetailPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 text-sm">
             <div>
               <div className="text-gray-400 mb-1">Runtime State</div>
-              <StatusBadge status={vm.running_state.state as any}>
-                {vm.running_state.state}
-              </StatusBadge>
+              <VmStatusBadge vm={vm} />
             </div>
             <div>
               <div className="text-gray-400 mb-1">CPU Usage</div>

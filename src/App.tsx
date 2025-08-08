@@ -6,6 +6,7 @@ import { NostrSystem } from "@snort/system";
 // Import pages (we'll create these next)
 import { LoginPage } from "./pages/LoginPage";
 import { UsersPage } from "./pages/UsersPage";
+import { UserDetailsPage } from "./pages/UserDetailsPage";
 import { VMsPage } from "./pages/VMsPage";
 import { VMDetailPage } from "./pages/VMDetailPage";
 import { HostsPage } from "./pages/HostsPage";
@@ -63,6 +64,14 @@ export function App() {
               element={
                 <PermissionGuard requiredPermissions={["users::view"]}>
                   <UsersPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="users/:id"
+              element={
+                <PermissionGuard requiredPermissions={["users::view"]}>
+                  <UserDetailsPage />
                 </PermissionGuard>
               }
             />

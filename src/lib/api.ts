@@ -742,7 +742,7 @@ export class AdminApi {
     include_deleted?: boolean;
   }) {
     return await this.handleResponse<PaginatedApiResponse<AdminVmInfo>>(
-      await this.req("/api/admin/v1/vms", "GET", undefined, params),
+      await this.req("/api/admin/v1/vms", "GET", undefined, params as any),
     );
   }
 

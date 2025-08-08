@@ -5,7 +5,13 @@ import { PaginatedTable } from "../components/PaginatedTable";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
 import { AdminRoleInfo, PaginatedApiResponse } from "../lib/api";
-import { PlusIcon, PencilIcon, TrashIcon, FunnelIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import {
+  PlusIcon,
+  PencilIcon,
+  TrashIcon,
+  FunnelIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
 
 export function RolesPage() {
   const adminApi = useAdminApi();
@@ -13,16 +19,20 @@ export function RolesPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedRole, setSelectedRole] = useState<AdminRoleInfo | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  
+
   // Filter states
   const [resourceFilter, setResourceFilter] = useState("");
   const [actionFilter, setActionFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
   // Load all roles once and cache them
-  const { data: rolesResponse, loading: rolesLoading, error: rolesError } = useApiCall(
+  const {
+    data: rolesResponse,
+    loading: rolesLoading,
+    error: rolesError,
+  } = useApiCall(
     () => adminApi.getRoles({ limit: 1000, offset: 0 }),
-    [refreshTrigger]
+    [refreshTrigger],
   );
 
   const allRoles = rolesResponse?.data || [];
@@ -34,7 +44,7 @@ export function RolesPage() {
   // Extract unique resources and actions from available permissions
   const getUniqueResources = () => {
     const resources = new Set<string>();
-    AVAILABLE_PERMISSIONS.forEach(permission => {
+    AVAILABLE_PERMISSIONS.forEach((permission) => {
       const [resource] = permission.split("::");
       if (resource) resources.add(resource);
     });
@@ -43,7 +53,7 @@ export function RolesPage() {
 
   const getUniqueActions = () => {
     const actions = new Set<string>();
-    AVAILABLE_PERMISSIONS.forEach(permission => {
+    AVAILABLE_PERMISSIONS.forEach((permission) => {
       const [, action] = permission.split("::");
       if (action) actions.add(action);
     });
@@ -56,12 +66,12 @@ export function RolesPage() {
       return allRoles;
     }
 
-    return allRoles.filter(role => {
+    return allRoles.filter((role) => {
       if (!role.permissions || role.permissions.length === 0) {
         return false;
       }
 
-      return role.permissions.some(permission => {
+      return role.permissions.some((permission) => {
         const [resource, action] = permission.split("::");
         const matchesResource = !resourceFilter || resource === resourceFilter;
         const matchesAction = !actionFilter || action === actionFilter;
@@ -71,20 +81,26 @@ export function RolesPage() {
   }, [allRoles, resourceFilter, actionFilter]);
 
   // Create a wrapper API function that returns filtered results
-  const filteredApiCall = useCallback(async (params: { limit: number; offset: number }): Promise<PaginatedApiResponse<AdminRoleInfo>> => {
-    // Apply pagination to filtered results
-    const startIndex = params.offset;
-    const endIndex = startIndex + params.limit;
-    const paginatedData = filteredRoles.slice(startIndex, endIndex);
+  const filteredApiCall = useCallback(
+    async (params: {
+      limit: number;
+      offset: number;
+    }): Promise<PaginatedApiResponse<AdminRoleInfo>> => {
+      // Apply pagination to filtered results
+      const startIndex = params.offset;
+      const endIndex = startIndex + params.limit;
+      const paginatedData = filteredRoles.slice(startIndex, endIndex);
 
-    return {
-      data: paginatedData,
-      total: filteredRoles.length,
-      count: paginatedData.length,
-      limit: params.limit,
-      offset: params.offset
-    };
-  }, [filteredRoles]);
+      return {
+        data: paginatedData,
+        total: filteredRoles.length,
+        count: paginatedData.length,
+        limit: params.limit,
+        offset: params.offset,
+      };
+    },
+    [filteredRoles],
+  );
 
   const clearFilters = () => {
     setResourceFilter("");
@@ -214,7 +230,9 @@ export function RolesPage() {
             <Button
               variant="secondary"
               onClick={() => setShowFilters(!showFilters)}
-              className={hasActiveFilters ? "text-blue-400 border-blue-400" : ""}
+              className={
+                hasActiveFilters ? "text-blue-400 border-blue-400" : ""
+              }
             >
               <FunnelIcon className="h-4 w-4 mr-2" />
               Filters
@@ -235,7 +253,9 @@ export function RolesPage() {
         {showFilters && (
           <div className="bg-slate-800 border border-slate-600 rounded-lg p-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-white">Filter Roles by Permissions</h3>
+              <h3 className="text-sm font-medium text-white">
+                Filter Roles by Permissions
+              </h3>
               {hasActiveFilters && (
                 <Button
                   size="sm"
@@ -332,7 +352,9 @@ export function RolesPage() {
       <div className="flex min-h-[400px] items-center justify-center">
         <div className="text-center">
           <p className="text-red-400 mb-4">Failed to load roles</p>
-          <Button onClick={() => setRefreshTrigger(prev => prev + 1)}>Retry</Button>
+          <Button onClick={() => setRefreshTrigger((prev) => prev + 1)}>
+            Retry
+          </Button>
         </div>
       </div>
     );
@@ -353,7 +375,9 @@ export function RolesPage() {
         renderEmptyState={() => (
           <div className="text-center py-8">
             <p className="text-gray-400">
-              {hasActiveFilters ? "No roles match the selected filters" : "No roles found"}
+              {hasActiveFilters
+                ? "No roles match the selected filters"
+                : "No roles found"}
             </p>
           </div>
         )}

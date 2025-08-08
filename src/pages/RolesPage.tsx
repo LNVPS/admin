@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useAdminApi } from "../hooks/useAdminApi";
+import { useApiCall } from "../hooks/useApiCall";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
-import { AdminRoleInfo } from "../lib/api";
-import { PlusIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { AdminRoleInfo, PaginatedApiResponse } from "../lib/api";
+import { PlusIcon, PencilIcon, TrashIcon, FunnelIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
 export function RolesPage() {
   const adminApi = useAdminApi();
@@ -12,10 +13,85 @@ export function RolesPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedRole, setSelectedRole] = useState<AdminRoleInfo | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  
+  // Filter states
+  const [resourceFilter, setResourceFilter] = useState("");
+  const [actionFilter, setActionFilter] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Load all roles once and cache them
+  const { data: rolesResponse, loading: rolesLoading, error: rolesError } = useApiCall(
+    () => adminApi.getRoles({ limit: 1000, offset: 0 }),
+    [refreshTrigger]
+  );
+
+  const allRoles = rolesResponse?.data || [];
 
   const refreshData = () => {
     setRefreshTrigger((prev) => prev + 1);
   };
+
+  // Extract unique resources and actions from available permissions
+  const getUniqueResources = () => {
+    const resources = new Set<string>();
+    AVAILABLE_PERMISSIONS.forEach(permission => {
+      const [resource] = permission.split("::");
+      if (resource) resources.add(resource);
+    });
+    return Array.from(resources).sort();
+  };
+
+  const getUniqueActions = () => {
+    const actions = new Set<string>();
+    AVAILABLE_PERMISSIONS.forEach(permission => {
+      const [, action] = permission.split("::");
+      if (action) actions.add(action);
+    });
+    return Array.from(actions).sort();
+  };
+
+  // Memoized filtered roles to avoid recalculating on every render
+  const filteredRoles = useMemo(() => {
+    if (!resourceFilter && !actionFilter) {
+      return allRoles;
+    }
+
+    return allRoles.filter(role => {
+      if (!role.permissions || role.permissions.length === 0) {
+        return false;
+      }
+
+      return role.permissions.some(permission => {
+        const [resource, action] = permission.split("::");
+        const matchesResource = !resourceFilter || resource === resourceFilter;
+        const matchesAction = !actionFilter || action === actionFilter;
+        return matchesResource && matchesAction;
+      });
+    });
+  }, [allRoles, resourceFilter, actionFilter]);
+
+  // Create a wrapper API function that returns filtered results
+  const filteredApiCall = useCallback(async (params: { limit: number; offset: number }): Promise<PaginatedApiResponse<AdminRoleInfo>> => {
+    // Apply pagination to filtered results
+    const startIndex = params.offset;
+    const endIndex = startIndex + params.limit;
+    const paginatedData = filteredRoles.slice(startIndex, endIndex);
+
+    return {
+      data: paginatedData,
+      total: filteredRoles.length,
+      count: paginatedData.length,
+      limit: params.limit,
+      offset: params.offset
+    };
+  }, [filteredRoles]);
+
+  const clearFilters = () => {
+    setResourceFilter("");
+    setActionFilter("");
+  };
+
+  const hasActiveFilters = resourceFilter || actionFilter;
 
   const handleEdit = (role: AdminRoleInfo) => {
     setSelectedRole(role);
@@ -111,48 +187,176 @@ export function RolesPage() {
     };
 
     return (
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Roles</h1>
-          <div className="mt-2 flex gap-4 text-sm text-gray-400">
-            <span>
-              Total:{" "}
-              <span className="text-white font-medium">{stats.total}</span>
-            </span>
-            <span>
-              System:{" "}
-              <span className="text-blue-400 font-medium">
-                {stats.systemRoles}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Roles</h1>
+            <div className="mt-2 flex gap-4 text-sm text-gray-400">
+              <span>
+                Total:{" "}
+                <span className="text-white font-medium">{stats.total}</span>
               </span>
-            </span>
-            <span>
-              Custom:{" "}
-              <span className="text-green-400 font-medium">
-                {stats.customRoles}
+              <span>
+                System:{" "}
+                <span className="text-blue-400 font-medium">
+                  {stats.systemRoles}
+                </span>
               </span>
-            </span>
+              <span>
+                Custom:{" "}
+                <span className="text-green-400 font-medium">
+                  {stats.customRoles}
+                </span>
+              </span>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => setShowFilters(!showFilters)}
+              className={hasActiveFilters ? "text-blue-400 border-blue-400" : ""}
+            >
+              <FunnelIcon className="h-4 w-4 mr-2" />
+              Filters
+              {hasActiveFilters && (
+                <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-600 rounded-full">
+                  {(resourceFilter ? 1 : 0) + (actionFilter ? 1 : 0)}
+                </span>
+              )}
+            </Button>
+            <Button onClick={() => setShowCreateModal(true)}>
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Add Role
+            </Button>
           </div>
         </div>
-        <Button onClick={() => setShowCreateModal(true)}>
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Add Role
-        </Button>
+
+        {/* Filter Panel */}
+        {showFilters && (
+          <div className="bg-slate-800 border border-slate-600 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium text-white">Filter Roles by Permissions</h3>
+              {hasActiveFilters && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={clearFilters}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <XMarkIcon className="h-4 w-4 mr-1" />
+                  Clear
+                </Button>
+              )}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-300 mb-2">
+                  Resource
+                </label>
+                <select
+                  value={resourceFilter}
+                  onChange={(e) => setResourceFilter(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white text-sm"
+                >
+                  <option value="">All resources</option>
+                  {getUniqueResources().map((resource) => (
+                    <option key={resource} value={resource}>
+                      {resource}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-300 mb-2">
+                  Action
+                </label>
+                <select
+                  value={actionFilter}
+                  onChange={(e) => setActionFilter(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white text-sm"
+                >
+                  <option value="">All actions</option>
+                  {getUniqueActions().map((action) => (
+                    <option key={action} value={action}>
+                      {action}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {hasActiveFilters && (
+              <div className="mt-3 pt-3 border-t border-slate-600">
+                <div className="flex flex-wrap gap-2">
+                  {resourceFilter && (
+                    <div className="inline-flex items-center px-2 py-1 bg-blue-600 text-blue-100 text-xs rounded-full">
+                      Resource: {resourceFilter}
+                      <button
+                        onClick={() => setResourceFilter("")}
+                        className="ml-1 hover:text-white"
+                      >
+                        <XMarkIcon className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+                  {actionFilter && (
+                    <div className="inline-flex items-center px-2 py-1 bg-green-600 text-green-100 text-xs rounded-full">
+                      Action: {actionFilter}
+                      <button
+                        onClick={() => setActionFilter("")}
+                        className="ml-1 hover:text-white"
+                      >
+                        <XMarkIcon className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   };
 
+  // Handle initial loading and error states
+  if (rolesLoading) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="text-white">Loading roles...</div>
+      </div>
+    );
+  }
+
+  if (rolesError) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-400 mb-4">Failed to load roles</p>
+          <Button onClick={() => setRefreshTrigger(prev => prev + 1)}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PaginatedTable
-        apiCall={(params) => adminApi.getRoles(params)}
+        apiCall={filteredApiCall}
         renderHeader={renderHeader}
         renderRow={renderRow}
         calculateStats={calculateStats}
         itemsPerPage={25}
         errorAction="view roles"
-        loadingMessage="Loading roles..."
-        dependencies={[refreshTrigger]}
+        loadingMessage="Applying filters..."
+        dependencies={[resourceFilter, actionFilter]}
         minWidth="1000px"
+        renderEmptyState={() => (
+          <div className="text-center py-8">
+            <p className="text-gray-400">
+              {hasActiveFilters ? "No roles match the selected filters" : "No roles found"}
+            </p>
+          </div>
+        )}
       />
 
       {/* Create Role Modal */}

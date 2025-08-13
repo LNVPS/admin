@@ -482,8 +482,9 @@ export function VMDetailPage() {
           <div>
             <div className="text-gray-400 mb-1">Created</div>
             <div className="text-white">
-              {new Date(vm.created).toLocaleDateString()}
+              {new Date(vm.created).toLocaleString()}
             </div>
+            {vm.auto_renewal_enabled === true && <StatusBadge status="running" className="mt-1">Auto-Renew</StatusBadge>}
           </div>
           <div>
             <div className="text-gray-400 mb-1">Expires</div>
@@ -495,19 +496,18 @@ export function VMDetailPage() {
                     : "text-white"
                 }
               >
-                {new Date(vm.expires).toLocaleDateString()}
+                {new Date(vm.expires).toLocaleString()}
               </div>
               {(() => {
                 const expiryInfo = formatTimeUntilExpiry(vm.expires);
                 return (
                   <div
-                    className={`text-xs ${
-                      expiryInfo.isExpired
-                        ? "text-red-400"
-                        : expiryInfo.isExpiringSoon
-                          ? "text-yellow-400"
-                          : "text-gray-400"
-                    }`}
+                    className={`text-xs ${expiryInfo.isExpired
+                      ? "text-red-400"
+                      : expiryInfo.isExpiringSoon
+                        ? "text-yellow-400"
+                        : "text-gray-400"
+                      }`}
                   >
                     {expiryInfo.text}
                   </div>

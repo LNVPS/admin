@@ -148,6 +148,7 @@ export interface AdminUserInfo {
   vm_count: number;
   last_login: string | null;
   is_admin: boolean;
+  has_nwc: boolean;
 }
 
 export interface VmRunningState {
@@ -181,6 +182,7 @@ export interface AdminVmInfo {
     range_id: number;
   }[];
   running_state: VmRunningState | null;
+  auto_renewal_enabled: boolean;
   cpu: number;
   memory: number;
   disk_size: number;

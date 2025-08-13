@@ -284,6 +284,12 @@ export function UserDetailsPage() {
                   {user.contact_email ? "Enabled" : "Disabled"}
                 </StatusBadge>
               </div>
+              <div>
+                <div className="text-gray-400">NWC</div>
+                <StatusBadge status={user.has_nwc ? "running" : "stopped"}>
+                  {user.has_nwc ? "Yes" : "No"}
+                </StatusBadge>
+              </div>
             </div>
           </div>
         </div>

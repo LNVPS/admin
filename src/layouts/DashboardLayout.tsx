@@ -19,6 +19,7 @@ import {
   CurrencyDollarIcon,
   BuildingOfficeIcon,
   WifiIcon,
+  UserGroupIcon,
 } from "@heroicons/react/24/outline";
 
 interface SidebarItem {
@@ -136,6 +137,12 @@ const navigation: SidebarItem[] = [
         name: "Sales Report",
         to: "/sales-report",
         icon: ChartBarIcon,
+        requiredPermissions: ["analytics::view"],
+      },
+      {
+        name: "Referrals Report",
+        to: "/referrals-report",
+        icon: UserGroupIcon,
         requiredPermissions: ["analytics::view"],
       },
     ],

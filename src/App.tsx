@@ -23,6 +23,7 @@ import { IpRangesPage } from "./pages/IpRangesPage";
 import { AccessPoliciesPage } from "./pages/AccessPoliciesPage";
 import { RoutersPage } from "./pages/RoutersPage";
 import { SalesReportPage } from "./pages/SalesReportPage";
+import { ReferralsReportPage } from "./pages/ReferralsReportPage";
 import { PermissionGuard } from "./components/PermissionGuard";
 import { SmartRedirect } from "./components/SmartRedirect";
 
@@ -206,6 +207,14 @@ export function App() {
               element={
                 <PermissionGuard requiredPermissions={["analytics::view"]}>
                   <SalesReportPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="referrals-report"
+              element={
+                <PermissionGuard requiredPermissions={["analytics::view"]}>
+                  <ReferralsReportPage />
                 </PermissionGuard>
               }
             />

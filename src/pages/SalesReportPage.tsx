@@ -24,7 +24,6 @@ import {
 } from "@heroicons/react/24/outline";
 import {
   TimeSeriesReportData,
-  TimeSeriesPeriodSummary,
   AdminCompanyInfo,
 } from "../lib/api";
 
@@ -95,7 +94,6 @@ export function SalesReportPage() {
       const params = {
         start_date: startDate,
         end_date: endDate,
-        interval,
         company_id: companyId,
         ...(currency && { currency }),
       };
@@ -140,82 +138,42 @@ export function SalesReportPage() {
     }).format(mainAmount);
   };
 
-  const summaryColumns = [
-    { header: "Period", key: "period" },
-    { header: "Currency", key: "currency" },
-    {
-      header: "Payments",
-      key: "payment_count",
-      render: (item: TimeSeriesPeriodSummary) => (
-        <span className="text-blue-400">
-          {item.payment_count.toLocaleString()}
-        </span>
-      ),
-    },
-    {
-      header: "Net Total",
-      key: "net_total",
-      render: (item: TimeSeriesPeriodSummary) => (
-        <span className="text-green-400">
-          {formatCurrency(item.net_total, item.currency)}
-        </span>
-      ),
-    },
-    {
-      header: "Tax Total",
-      key: "tax_total",
-      render: (item: TimeSeriesPeriodSummary) => (
-        <span className="text-yellow-400">
-          {formatCurrency(item.tax_total, item.currency)}
-        </span>
-      ),
-    },
-    {
-      header: "Gross Total",
-      key: "gross_total",
-      render: (item: TimeSeriesPeriodSummary) => (
-        <span className="text-blue-400 font-semibold">
-          {formatCurrency(item.net_total + item.tax_total, item.currency)}
-        </span>
-      ),
-    },
-    {
-      header: `Base Net (${reportData?.company_base_currency || "Base"})`,
-      key: "base_currency_net",
-      render: (item: TimeSeriesPeriodSummary) => (
-        <div className="text-green-400 font-semibold">
-          {formatCurrency(
-            item.base_currency_net,
-            reportData?.company_base_currency || "USD",
-          )}
-        </div>
-      ),
-    },
-    {
-      header: `Base Tax (${reportData?.company_base_currency || "Base"})`,
-      key: "base_currency_tax",
-      render: (item: TimeSeriesPeriodSummary) => (
-        <div className="text-yellow-400 font-semibold">
-          {formatCurrency(
-            item.base_currency_tax,
-            reportData?.company_base_currency || "USD",
-          )}
-        </div>
-      ),
-    },
-  ];
 
   const calculateTotalsByPeriod = () => {
     if (!reportData) return [];
 
     const periodTotals = new Map();
-    const baseCurrency = reportData.company_base_currency;
+    const baseCurrency = reportData.payments[0]?.company_base_currency || "USD";
 
-    reportData.period_summaries.forEach((summary) => {
-      const key = summary.period;
-      if (!periodTotals.has(key)) {
-        periodTotals.set(key, {
-          period: key,
+    reportData.payments.forEach((payment) => {
+      // Generate period key based on interval and created date
+      let period = "";
+      const date = new Date(payment.created);
+
+      switch (interval) {
+        case "daily":
+          period = date.toISOString().split('T')[0];
+          break;
+        case "weekly":
+          const monday = new Date(date);
+          monday.setDate(date.getDate() - date.getDay() + 1);
+          period = monday.toISOString().split('T')[0];
+          break;
+        case "monthly":
+          period = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          break;
+        case "quarterly":
+          const quarter = Math.floor(date.getMonth() / 3) + 1;
+          period = `${date.getFullYear()}-Q${quarter}`;
+          break;
+        case "yearly":
+          period = date.getFullYear().toString();
+          break;
+      }
+
+      if (!periodTotals.has(period)) {
+        periodTotals.set(period, {
+          period,
           payment_count: 0,
           currency: baseCurrency,
           net_total_base: 0,
@@ -224,23 +182,21 @@ export function SalesReportPage() {
         });
       }
 
-      const total = periodTotals.get(key);
-      total.payment_count += summary.payment_count;
+      const total = periodTotals.get(period);
+      total.payment_count += 1;
 
-      // Use the base_currency_net and base_currency_tax from the API (already in base currency smallest unit)
-      const baseNetAmount =
-        baseCurrency === "BTC"
-          ? summary.base_currency_net / 1e11 // Convert from milli-satoshis to Bitcoin
-          : summary.base_currency_net / 100; // Convert from cents to main currency unit
+      // Convert payment amounts to base currency
+      const netAmount = payment.currency === "BTC"
+        ? (payment.amount / 1e11) * payment.rate
+        : (payment.amount / 100) * payment.rate;
 
-      const baseTaxAmount =
-        baseCurrency === "BTC"
-          ? summary.base_currency_tax / 1e11 // Convert from milli-satoshis to Bitcoin
-          : summary.base_currency_tax / 100; // Convert from cents to main currency unit
+      const taxAmount = payment.currency === "BTC"
+        ? (payment.tax / 1e11) * payment.rate
+        : (payment.tax / 100) * payment.rate;
 
-      total.net_total_base += baseNetAmount;
-      total.tax_total_base += baseTaxAmount;
-      total.gross_total_base += baseNetAmount + baseTaxAmount;
+      total.net_total_base += netAmount;
+      total.tax_total_base += taxAmount;
+      total.gross_total_base += netAmount + taxAmount;
     });
 
     return Array.from(periodTotals.values())
@@ -262,11 +218,10 @@ export function SalesReportPage() {
   const generateSalesReportFormat = () => {
     if (!reportData) return null;
 
+    const baseCurrency = reportData.payments[0]?.company_base_currency || "USD";
+
     // Calculate exchange rates from the payment data
     const exchangeRates: Record<string, number> = {};
-    const baseCurrency = reportData.company_base_currency;
-
-    // Find unique currencies and their rates
     reportData.payments.forEach((payment) => {
       if (
         payment.currency !== baseCurrency &&
@@ -276,7 +231,22 @@ export function SalesReportPage() {
       }
     });
 
-    // Group period summaries by currency and create items
+    // Group payments by currency and create items
+    const currencyTotals: Record<string, { net: number; tax: number }> = {};
+
+    reportData.payments.forEach((payment) => {
+      if (!currencyTotals[payment.currency]) {
+        currencyTotals[payment.currency] = { net: 0, tax: 0 };
+      }
+
+      // Convert from smallest units to main currency units
+      const netAmount = payment.currency === "BTC" ? payment.amount / 1e11 : payment.amount / 100;
+      const taxAmount = payment.currency === "BTC" ? payment.tax / 1e11 : payment.tax / 100;
+
+      currencyTotals[payment.currency].net += netAmount;
+      currencyTotals[payment.currency].tax += taxAmount;
+    });
+
     const items: Array<{
       description: string;
       currency: string;
@@ -285,42 +255,30 @@ export function SalesReportPage() {
       tax?: number;
     }> = [];
 
-    // Process each period summary to create sales report items
-    reportData.period_summaries.forEach((summary) => {
-      // Convert from smallest units to main currency units
-      let mainNetAmount, mainTaxAmount;
-
-      if (summary.currency === "BTC") {
-        mainNetAmount = summary.net_total / 1e11; // Convert from milli-satoshis
-        mainTaxAmount = summary.tax_total / 1e11;
-      } else {
-        mainNetAmount = summary.net_total / 100; // Convert from cents
-        mainTaxAmount = summary.tax_total / 100;
-      }
-
+    Object.entries(currencyTotals).forEach(([currency, totals]) => {
       // Add sales item (net amount)
-      if (mainNetAmount > 0) {
+      if (totals.net > 0) {
         items.push({
           description: "LNVPS Sales",
-          currency: summary.currency,
+          currency: currency,
           qty: 1,
-          rate: mainNetAmount,
+          rate: totals.net,
         });
       }
 
       // Add tax item if there's tax
-      if (mainTaxAmount > 0) {
+      if (totals.tax > 0) {
         items.push({
           description: "Tax Collected",
-          currency: summary.currency,
+          currency: currency,
           qty: 1,
-          rate: mainTaxAmount,
+          rate: totals.tax,
         });
       }
     });
 
     return {
-      date: reportData.end_date,
+      date: endDate,
       exchange_rate: exchangeRates,
       items: items,
     };
@@ -390,6 +348,15 @@ export function SalesReportPage() {
     document.body.removeChild(link);
   };
 
+  const formatRate = (rate: number, currency: string) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 8,
+    }).format(rate);
+  };
+
   const overviewColumns = [
     { header: "Period", key: "period" },
     {
@@ -403,43 +370,49 @@ export function SalesReportPage() {
     },
     { header: "Currency", key: "currency" },
     {
-      header: `Net (${reportData?.company_base_currency || "Base"})`,
+      header: `Net (${reportData?.payments[0]?.company_base_currency || "Base"})`,
       key: "net_total_base",
-      render: (item: any) => (
-        <span className="text-green-400">
-          {formatCurrency(
-            item.net_total_base *
-              (reportData?.company_base_currency === "BTC" ? 1e11 : 100),
-            reportData?.company_base_currency || "USD",
-          )}
-        </span>
-      ),
+      render: (item: any) => {
+        const baseCurrency = reportData?.payments[0]?.company_base_currency || "USD";
+        return (
+          <span className="text-green-400">
+            {formatCurrency(
+              item.net_total_base * (baseCurrency === "BTC" ? 1e11 : 100),
+              baseCurrency,
+            )}
+          </span>
+        );
+      },
     },
     {
-      header: `Tax (${reportData?.company_base_currency || "Base"})`,
+      header: `Tax (${reportData?.payments[0]?.company_base_currency || "Base"})`,
       key: "tax_total_base",
-      render: (item: any) => (
-        <span className="text-yellow-400">
-          {formatCurrency(
-            item.tax_total_base *
-              (reportData?.company_base_currency === "BTC" ? 1e11 : 100),
-            reportData?.company_base_currency || "USD",
-          )}
-        </span>
-      ),
+      render: (item: any) => {
+        const baseCurrency = reportData?.payments[0]?.company_base_currency || "USD";
+        return (
+          <span className="text-yellow-400">
+            {formatCurrency(
+              item.tax_total_base * (baseCurrency === "BTC" ? 1e11 : 100),
+              baseCurrency,
+            )}
+          </span>
+        );
+      },
     },
     {
-      header: `Total (${reportData?.company_base_currency || "Base"})`,
+      header: `Total (${reportData?.payments[0]?.company_base_currency || "Base"})`,
       key: "gross_total_base",
-      render: (item: any) => (
-        <span className="text-blue-400 font-semibold">
-          {formatCurrency(
-            item.gross_total_base *
-              (reportData?.company_base_currency === "BTC" ? 1e11 : 100),
-            reportData?.company_base_currency || "USD",
-          )}
-        </span>
-      ),
+      render: (item: any) => {
+        const baseCurrency = reportData?.payments[0]?.company_base_currency || "USD";
+        return (
+          <span className="text-blue-400 font-semibold">
+            {formatCurrency(
+              item.gross_total_base * (baseCurrency === "BTC" ? 1e11 : 100),
+              baseCurrency,
+            )}
+          </span>
+        );
+      },
     },
   ];
 
@@ -631,10 +604,10 @@ export function SalesReportPage() {
                 <div>
                   <p className="text-gray-400 text-sm">Company</p>
                   <p className="text-white font-semibold">
-                    {reportData.company_name}
+                    {companies.find(c => c.id === companyId)?.name || "Unknown"}
                   </p>
                   <p className="text-blue-400 text-sm">
-                    Base: {reportData.company_base_currency}
+                    Base: {reportData.payments[0]?.company_base_currency || "USD"}
                   </p>
                 </div>
                 <ChartBarIcon className="h-8 w-8 text-blue-500" />
@@ -646,9 +619,9 @@ export function SalesReportPage() {
                 <div>
                   <p className="text-gray-400 text-sm">Total Periods</p>
                   <p className="text-white font-semibold">
-                    {reportData.period_summaries.length}
+                    {calculateTotalsByPeriod().length}
                   </p>
-                  <p className="text-blue-400 text-sm">{reportData.interval}</p>
+                  <p className="text-blue-400 text-sm">{interval}</p>
                 </div>
                 <CalendarIcon className="h-8 w-8 text-green-500" />
               </div>
@@ -659,9 +632,7 @@ export function SalesReportPage() {
                 <div>
                   <p className="text-gray-400 text-sm">Total Payments</p>
                   <p className="text-white font-semibold">
-                    {reportData.period_summaries
-                      .reduce((sum, p) => sum + p.payment_count, 0)
-                      .toLocaleString()}
+                    {reportData.payments.length.toLocaleString()}
                   </p>
                   <p className="text-blue-400 text-sm">Individual records</p>
                 </div>
@@ -674,17 +645,20 @@ export function SalesReportPage() {
                 <div>
                   <p className="text-gray-400 text-sm">Total Amount</p>
                   <p className="text-white font-semibold">
-                    {formatCurrency(
-                      reportData.period_summaries.reduce(
-                        (sum, p) =>
-                          sum + p.base_currency_net + p.base_currency_tax,
+                    {(() => {
+                      const baseCurrency = reportData.payments[0]?.company_base_currency || "USD";
+                      const total = calculateTotalsByPeriod().reduce(
+                        (sum, p) => sum + p.gross_total_base,
                         0,
-                      ),
-                      reportData.company_base_currency,
-                    )}
+                      );
+                      return formatCurrency(
+                        total * (baseCurrency === "BTC" ? 1e11 : 100),
+                        baseCurrency,
+                      );
+                    })()}
                   </p>
                   <p className="text-blue-400 text-sm">
-                    {reportData.company_base_currency} Base
+                    {reportData.payments[0]?.company_base_currency || "USD"} Base
                   </p>
                 </div>
                 <CurrencyDollarIcon className="h-8 w-8 text-purple-500" />
@@ -693,7 +667,7 @@ export function SalesReportPage() {
           </div>
 
           {/* Revenue Chart */}
-          <Card title={`Revenue Trend (${reportData.company_base_currency})`}>
+          <Card title={`Revenue Trend (${reportData.payments[0]?.company_base_currency || "USD"})`}>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={prepareChartData()}>
@@ -703,12 +677,13 @@ export function SalesReportPage() {
                     stroke="#9CA3AF"
                     fontSize={12}
                     tickFormatter={(value) => {
-                      if (reportData.company_base_currency === "BTC") {
+                      const baseCurrency = reportData.payments[0]?.company_base_currency || "USD";
+                      if (baseCurrency === "BTC") {
                         return value.toFixed(4);
                       }
                       return new Intl.NumberFormat("en-US", {
                         style: "currency",
-                        currency: reportData.company_base_currency,
+                        currency: baseCurrency,
                         minimumFractionDigits: 0,
                         maximumFractionDigits: 0,
                       }).format(value);
@@ -721,16 +696,16 @@ export function SalesReportPage() {
                       borderRadius: "6px",
                       color: "#F9FAFB",
                     }}
-                    formatter={(value: number) => [
-                      formatCurrency(
-                        value *
-                          (reportData.company_base_currency === "BTC"
-                            ? 1e11
-                            : 100),
-                        reportData.company_base_currency,
-                      ),
-                      "Total Revenue",
-                    ]}
+                    formatter={(value: number) => {
+                      const baseCurrency = reportData.payments[0]?.company_base_currency || "USD";
+                      return [
+                        formatCurrency(
+                          value * (baseCurrency === "BTC" ? 1e11 : 100),
+                          baseCurrency,
+                        ),
+                        "Total Revenue",
+                      ];
+                    }}
                   />
                   <Line
                     type="monotone"
@@ -747,18 +722,42 @@ export function SalesReportPage() {
 
           {/* Period Overview */}
           <Card
-            title={`Period Overview (${reportData.company_base_currency} Base Currency)`}
+            title={`Period Overview (${reportData.payments[0]?.company_base_currency || "USD"} Base Currency)`}
           >
             <Table columns={overviewColumns} data={calculateTotalsByPeriod()} />
           </Card>
 
-          {/* Detailed Period Summaries */}
-          <Card title="Detailed Period Summaries by Currency">
+          {/* Individual Payments */}
+          <Card title="Individual Payments">
             <Table
-              columns={summaryColumns}
-              data={reportData.period_summaries.map((item) => ({
+              columns={[
+                { header: "VM ID", key: "vm_id" },
+                { header: "Created", key: "created", render: (item: any) => new Date(item.created).toLocaleDateString() },
+                { header: "Currency", key: "currency" },
+                {
+                  header: "Amount",
+                  key: "amount",
+                  render: (item: any) => (
+                    <span className="text-green-400">
+                      {formatCurrency(item.amount, item.currency)}
+                    </span>
+                  ),
+                },
+                {
+                  header: "Tax",
+                  key: "tax",
+                  render: (item: any) => (
+                    <span className="text-yellow-400">
+                      {formatCurrency(item.tax, item.currency)}
+                    </span>
+                  ),
+                },
+                { header: "Payment Method", key: "payment_method" },
+                { header: "Rate", key: "rate", render: (item: any) => formatRate(item.rate, item.company_base_currency) },
+              ]}
+              data={reportData.payments.map((item, index) => ({
                 ...item,
-                id: `${item.period}-${item.currency}`,
+                id: index,
               }))}
             />
           </Card>

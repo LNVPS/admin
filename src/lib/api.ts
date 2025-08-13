@@ -520,12 +520,31 @@ export interface TimeSeriesPayment {
 export interface TimeSeriesReportData {
   start_date: string;
   end_date: string;
-  interval: string;
-  company_id: number;
-  company_name: string;
-  company_base_currency: string;
-  period_summaries: TimeSeriesPeriodSummary[];
   payments: TimeSeriesPayment[];
+}
+
+export interface ReferralPeriodSummary {
+  period: string;
+  ref_code: string;
+  currency: string;
+  referral_count: number;
+  total_amount: number;
+}
+
+export interface ReferralRecord {
+  vm_id: number;
+  ref_code: string;
+  created: string;
+  amount: number;
+  currency: string;
+  rate: number;
+  base_currency: string;
+}
+
+export interface ReferralUsageTimeSeriesReportData {
+  start_date: string;
+  end_date: string;
+  referrals: ReferralRecord[];
 }
 
 export interface AdminIpRangeInfo {
@@ -1673,13 +1692,29 @@ export class AdminApi {
   async getTimeSeriesReport(params: {
     start_date: string;
     end_date: string;
-    interval: "daily" | "weekly" | "monthly" | "quarterly" | "yearly";
     company_id: number;
     currency?: string;
   }) {
     const result = await this.handleResponse<ApiResponse<TimeSeriesReportData>>(
       await this.req(
         "/api/admin/v1/reports/time-series",
+        "GET",
+        undefined,
+        params,
+      ),
+    );
+    return result.data;
+  }
+
+  async getReferralUsageTimeSeriesReport(params: {
+    start_date: string;
+    end_date: string;
+    company_id: number;
+    ref_code?: string;
+  }) {
+    const result = await this.handleResponse<ApiResponse<ReferralUsageTimeSeriesReportData>>(
+      await this.req(
+        "/api/admin/v1/reports/referral-usage/time-series",
         "GET",
         undefined,
         params,

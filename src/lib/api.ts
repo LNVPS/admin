@@ -799,6 +799,13 @@ export class AdminApi {
     );
   }
 
+  async extendVM(id: number, days: number, reason?: string) {
+    const body = { days, ...(reason && { reason }) };
+    await this.handleResponse<ApiResponse<void>>(
+      await this.req(`/api/admin/v1/vms/${id}/extend`, "PUT", body),
+    );
+  }
+
   async getVMHistory(
     vmId: number,
     params?: { limit?: number; offset?: number },

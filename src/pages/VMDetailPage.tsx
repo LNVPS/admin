@@ -26,6 +26,7 @@ import {
   CreditCardIcon,
   CheckCircleIcon,
   XCircleIcon,
+  PlusIcon,
 } from "@heroicons/react/24/outline";
 
 export function VMDetailPage() {
@@ -37,6 +38,7 @@ export function VMDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
 
   const vmId = id ? parseInt(id, 10) : null;
 
@@ -87,6 +89,7 @@ export function VMDetailPage() {
       setActionLoading("start");
       await adminApi.startVM(vm.id);
       await loadVM(true);
+      setHistoryRefreshKey(prev => prev + 1);
     } catch (error) {
       console.error("Failed to start VM:", error);
     } finally {
@@ -100,6 +103,7 @@ export function VMDetailPage() {
       setActionLoading("stop");
       await adminApi.stopVM(vm.id);
       await loadVM(true);
+      setHistoryRefreshKey(prev => prev + 1);
     } catch (error) {
       console.error("Failed to stop VM:", error);
     } finally {
@@ -121,6 +125,36 @@ export function VMDetailPage() {
         console.error("Failed to delete VM:", error);
         setActionLoading(null);
       }
+    }
+  };
+
+  const handleExtendVM = async () => {
+    if (!vm) return;
+    const daysInput = prompt(
+      "Enter the number of days to extend the VM (1-365):",
+      "30"
+    );
+    if (!daysInput) return;
+    
+    const days = parseInt(daysInput, 10);
+    if (isNaN(days) || days < 1 || days > 365) {
+      alert("Please enter a valid number of days between 1 and 365.");
+      return;
+    }
+    
+    const reason = prompt(
+      "Optional: Enter a reason for extending the VM:",
+    );
+    
+    try {
+      setActionLoading("extend");
+      await adminApi.extendVM(vm.id, days, reason || undefined);
+      await loadVM(true);
+      setHistoryRefreshKey(prev => prev + 1);
+    } catch (error) {
+      console.error("Failed to extend VM:", error);
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -371,7 +405,7 @@ export function VMDetailPage() {
 
   if (error || !vm) {
     return (
-      <ErrorState message={error || "VM not found"} action="load VM details" />
+      <ErrorState error={new Error(error || "VM not found")} action="load VM details" />
     );
   }
 
@@ -435,6 +469,15 @@ export function VMDetailPage() {
               <StopIcon className="h-4 w-4" />
             </Button>
           )}
+          <Button
+            variant="secondary"
+            onClick={handleExtendVM}
+            disabled={actionLoading === "extend"}
+            className="text-blue-400 hover:text-blue-300 p-2"
+            title="Extend VM expiry"
+          >
+            <PlusIcon className="h-4 w-4" />
+          </Button>
           <Button
             variant="secondary"
             onClick={handleDeleteVM}
@@ -598,7 +641,7 @@ export function VMDetailPage() {
           itemsPerPage={10}
           errorAction="load VM history"
           loadingMessage="Loading VM history..."
-          dependencies={[vm.id]}
+          dependencies={[vm.id, historyRefreshKey]}
           calculateStats={(histories, total) => (
             <div className="text-sm text-gray-400">
               Total history entries:{" "}

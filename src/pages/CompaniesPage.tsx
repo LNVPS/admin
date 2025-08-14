@@ -299,7 +299,7 @@ function CreateCompanyModal({
             type="text"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
             required
           />
         </div>
@@ -313,7 +313,7 @@ function CreateCompanyModal({
             onChange={(e) =>
               setFormData({ ...formData, base_currency: e.target.value })
             }
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
             required
           >
             <option value="USD">USD - US Dollar</option>
@@ -338,7 +338,7 @@ function CreateCompanyModal({
               onChange={(e) =>
                 setFormData({ ...formData, address_1: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
             />
           </div>
           <div>
@@ -351,7 +351,7 @@ function CreateCompanyModal({
               onChange={(e) =>
                 setFormData({ ...formData, address_2: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
             />
           </div>
         </div>
@@ -367,7 +367,7 @@ function CreateCompanyModal({
               onChange={(e) =>
                 setFormData({ ...formData, city: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
             />
           </div>
           <div>
@@ -380,7 +380,7 @@ function CreateCompanyModal({
               onChange={(e) =>
                 setFormData({ ...formData, state: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
             />
           </div>
           <div>
@@ -393,7 +393,7 @@ function CreateCompanyModal({
               onChange={(e) =>
                 setFormData({ ...formData, postcode: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
             />
           </div>
         </div>
@@ -409,7 +409,7 @@ function CreateCompanyModal({
               onChange={(e) =>
                 setFormData({ ...formData, country_code: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               placeholder="e.g., US, CA, GB"
             />
           </div>
@@ -423,7 +423,7 @@ function CreateCompanyModal({
               onChange={(e) =>
                 setFormData({ ...formData, tax_id: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
             />
           </div>
         </div>
@@ -439,7 +439,7 @@ function CreateCompanyModal({
               onChange={(e) =>
                 setFormData({ ...formData, phone: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
             />
           </div>
           <div>
@@ -452,7 +452,7 @@ function CreateCompanyModal({
               onChange={(e) =>
                 setFormData({ ...formData, email: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
             />
           </div>
         </div>
@@ -538,7 +538,7 @@ function EditCompanyModal({
             type="text"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
             required
           />
         </div>
@@ -552,7 +552,7 @@ function EditCompanyModal({
             onChange={(e) =>
               setFormData({ ...formData, base_currency: e.target.value })
             }
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
             required
           >
             <option value="USD">USD - US Dollar</option>
@@ -577,7 +577,7 @@ function EditCompanyModal({
               onChange={(e) =>
                 setFormData({ ...formData, address_1: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
             />
           </div>
           <div>
@@ -590,7 +590,7 @@ function EditCompanyModal({
               onChange={(e) =>
                 setFormData({ ...formData, address_2: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
             />
           </div>
         </div>
@@ -606,7 +606,7 @@ function EditCompanyModal({
               onChange={(e) =>
                 setFormData({ ...formData, city: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
             />
           </div>
           <div>
@@ -619,7 +619,7 @@ function EditCompanyModal({
               onChange={(e) =>
                 setFormData({ ...formData, state: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
             />
           </div>
           <div>
@@ -632,7 +632,7 @@ function EditCompanyModal({
               onChange={(e) =>
                 setFormData({ ...formData, postcode: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
             />
           </div>
         </div>
@@ -648,7 +648,7 @@ function EditCompanyModal({
               onChange={(e) =>
                 setFormData({ ...formData, country_code: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               placeholder="e.g., US, CA, GB"
             />
           </div>
@@ -662,7 +662,7 @@ function EditCompanyModal({
               onChange={(e) =>
                 setFormData({ ...formData, tax_id: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
             />
           </div>
         </div>
@@ -678,7 +678,7 @@ function EditCompanyModal({
               onChange={(e) =>
                 setFormData({ ...formData, phone: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
             />
           </div>
           <div>
@@ -691,7 +691,7 @@ function EditCompanyModal({
               onChange={(e) =>
                 setFormData({ ...formData, email: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
             />
           </div>
         </div>

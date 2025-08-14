@@ -9,7 +9,7 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl";
 }
 
 export function Modal({
@@ -20,26 +20,34 @@ export function Modal({
   footer,
   size = "md",
 }: ModalProps) {
-  const maxWidthClass = {
-    sm: "max-w-sm",
-    md: "max-w-md",
-    lg: "max-w-lg",
-    xl: "max-w-xl",
+  const sizeClasses = {
+    sm: "sm:max-w-sm",
+    md: "sm:max-w-md",
+    lg: "sm:max-w-lg",
+    xl: "sm:max-w-xl",
+    "2xl": "sm:max-w-2xl",
+    "3xl": "sm:max-w-[70dvw]",
   }[size];
+
+  const baseClasses = [
+    // Layout & styling
+    "relative overflow-hidden rounded-lg bg-slate-800",
+    "px-4 pb-4 pt-5 text-left shadow-xl",
+
+    // Responsive
+    "sm:my-8 sm:w-full sm:p-6",
+
+    // Size
+    sizeClasses,
+  ].join(" ");
 
   return (
     <Dialog open={isOpen} onClose={onClose} className="relative z-50">
-      <DialogBackdrop
-        transition
-        className="fixed inset-0 bg-black/75 transition-opacity data-[closed]:opacity-0 data-[enter]:duration-300 data-[leave]:duration-200 data-[enter]:ease-out data-[leave]:ease-in"
-      />
+      <DialogBackdrop className="fixed inset-0 bg-black/75" />
 
       <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
         <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-          <DialogPanel
-            transition
-            className={`relative transform overflow-hidden rounded-lg bg-slate-800 px-4 pb-4 pt-5 text-left shadow-xl transition-all data-[closed]:translate-y-4 data-[closed]:opacity-0 data-[enter]:duration-300 data-[leave]:duration-200 data-[enter]:ease-out data-[leave]:ease-in sm:my-8 sm:w-full sm:${maxWidthClass} sm:p-6 data-[closed]:sm:translate-y-0 data-[closed]:sm:scale-95`}
-          >
+          <DialogPanel className={baseClasses}>
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-medium leading-6 text-white">
                 {title}

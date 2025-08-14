@@ -22,10 +22,7 @@ import {
   DocumentDuplicateIcon,
   ArrowDownTrayIcon,
 } from "@heroicons/react/24/outline";
-import {
-  TimeSeriesReportData,
-  AdminCompanyInfo,
-} from "../lib/api";
+import { TimeSeriesReportData, AdminCompanyInfo } from "../lib/api";
 
 const INTERVALS = [
   { value: "daily", label: "Daily" },
@@ -138,7 +135,6 @@ export function SalesReportPage() {
     }).format(mainAmount);
   };
 
-
   const calculateTotalsByPeriod = () => {
     if (!reportData) return [];
 
@@ -152,15 +148,15 @@ export function SalesReportPage() {
 
       switch (interval) {
         case "daily":
-          period = date.toISOString().split('T')[0];
+          period = date.toISOString().split("T")[0];
           break;
         case "weekly":
           const monday = new Date(date);
           monday.setDate(date.getDate() - date.getDay() + 1);
-          period = monday.toISOString().split('T')[0];
+          period = monday.toISOString().split("T")[0];
           break;
         case "monthly":
-          period = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          period = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
           break;
         case "quarterly":
           const quarter = Math.floor(date.getMonth() / 3) + 1;
@@ -186,13 +182,15 @@ export function SalesReportPage() {
       total.payment_count += 1;
 
       // Convert payment amounts to base currency
-      const netAmount = payment.currency === "BTC"
-        ? (payment.amount / 1e11) * payment.rate
-        : (payment.amount / 100) * payment.rate;
+      const netAmount =
+        payment.currency === "BTC"
+          ? (payment.amount / 1e11) * payment.rate
+          : (payment.amount / 100) * payment.rate;
 
-      const taxAmount = payment.currency === "BTC"
-        ? (payment.tax / 1e11) * payment.rate
-        : (payment.tax / 100) * payment.rate;
+      const taxAmount =
+        payment.currency === "BTC"
+          ? (payment.tax / 1e11) * payment.rate
+          : (payment.tax / 100) * payment.rate;
 
       total.net_total_base += netAmount;
       total.tax_total_base += taxAmount;
@@ -240,8 +238,12 @@ export function SalesReportPage() {
       }
 
       // Convert from smallest units to main currency units
-      const netAmount = payment.currency === "BTC" ? payment.amount / 1e11 : payment.amount / 100;
-      const taxAmount = payment.currency === "BTC" ? payment.tax / 1e11 : payment.tax / 100;
+      const netAmount =
+        payment.currency === "BTC"
+          ? payment.amount / 1e11
+          : payment.amount / 100;
+      const taxAmount =
+        payment.currency === "BTC" ? payment.tax / 1e11 : payment.tax / 100;
 
       currencyTotals[payment.currency].net += netAmount;
       currencyTotals[payment.currency].tax += taxAmount;
@@ -373,7 +375,8 @@ export function SalesReportPage() {
       header: `Net (${reportData?.payments[0]?.company_base_currency || "Base"})`,
       key: "net_total_base",
       render: (item: any) => {
-        const baseCurrency = reportData?.payments[0]?.company_base_currency || "USD";
+        const baseCurrency =
+          reportData?.payments[0]?.company_base_currency || "USD";
         return (
           <span className="text-green-400">
             {formatCurrency(
@@ -388,7 +391,8 @@ export function SalesReportPage() {
       header: `Tax (${reportData?.payments[0]?.company_base_currency || "Base"})`,
       key: "tax_total_base",
       render: (item: any) => {
-        const baseCurrency = reportData?.payments[0]?.company_base_currency || "USD";
+        const baseCurrency =
+          reportData?.payments[0]?.company_base_currency || "USD";
         return (
           <span className="text-yellow-400">
             {formatCurrency(
@@ -403,7 +407,8 @@ export function SalesReportPage() {
       header: `Total (${reportData?.payments[0]?.company_base_currency || "Base"})`,
       key: "gross_total_base",
       render: (item: any) => {
-        const baseCurrency = reportData?.payments[0]?.company_base_currency || "USD";
+        const baseCurrency =
+          reportData?.payments[0]?.company_base_currency || "USD";
         return (
           <span className="text-blue-400 font-semibold">
             {formatCurrency(
@@ -604,10 +609,12 @@ export function SalesReportPage() {
                 <div>
                   <p className="text-gray-400 text-sm">Company</p>
                   <p className="text-white font-semibold">
-                    {companies.find(c => c.id === companyId)?.name || "Unknown"}
+                    {companies.find((c) => c.id === companyId)?.name ||
+                      "Unknown"}
                   </p>
                   <p className="text-blue-400 text-sm">
-                    Base: {reportData.payments[0]?.company_base_currency || "USD"}
+                    Base:{" "}
+                    {reportData.payments[0]?.company_base_currency || "USD"}
                   </p>
                 </div>
                 <ChartBarIcon className="h-8 w-8 text-blue-500" />
@@ -646,7 +653,8 @@ export function SalesReportPage() {
                   <p className="text-gray-400 text-sm">Total Amount</p>
                   <p className="text-white font-semibold">
                     {(() => {
-                      const baseCurrency = reportData.payments[0]?.company_base_currency || "USD";
+                      const baseCurrency =
+                        reportData.payments[0]?.company_base_currency || "USD";
                       const total = calculateTotalsByPeriod().reduce(
                         (sum, p) => sum + p.gross_total_base,
                         0,
@@ -658,7 +666,8 @@ export function SalesReportPage() {
                     })()}
                   </p>
                   <p className="text-blue-400 text-sm">
-                    {reportData.payments[0]?.company_base_currency || "USD"} Base
+                    {reportData.payments[0]?.company_base_currency || "USD"}{" "}
+                    Base
                   </p>
                 </div>
                 <CurrencyDollarIcon className="h-8 w-8 text-purple-500" />
@@ -667,7 +676,9 @@ export function SalesReportPage() {
           </div>
 
           {/* Revenue Chart */}
-          <Card title={`Revenue Trend (${reportData.payments[0]?.company_base_currency || "USD"})`}>
+          <Card
+            title={`Revenue Trend (${reportData.payments[0]?.company_base_currency || "USD"})`}
+          >
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={prepareChartData()}>
@@ -677,7 +688,8 @@ export function SalesReportPage() {
                     stroke="#9CA3AF"
                     fontSize={12}
                     tickFormatter={(value) => {
-                      const baseCurrency = reportData.payments[0]?.company_base_currency || "USD";
+                      const baseCurrency =
+                        reportData.payments[0]?.company_base_currency || "USD";
                       if (baseCurrency === "BTC") {
                         return value.toFixed(4);
                       }
@@ -697,7 +709,8 @@ export function SalesReportPage() {
                       color: "#F9FAFB",
                     }}
                     formatter={(value: number) => {
-                      const baseCurrency = reportData.payments[0]?.company_base_currency || "USD";
+                      const baseCurrency =
+                        reportData.payments[0]?.company_base_currency || "USD";
                       return [
                         formatCurrency(
                           value * (baseCurrency === "BTC" ? 1e11 : 100),
@@ -732,7 +745,12 @@ export function SalesReportPage() {
             <Table
               columns={[
                 { header: "VM ID", key: "vm_id" },
-                { header: "Created", key: "created", render: (item: any) => new Date(item.created).toLocaleDateString() },
+                {
+                  header: "Created",
+                  key: "created",
+                  render: (item: any) =>
+                    new Date(item.created).toLocaleDateString(),
+                },
                 { header: "Currency", key: "currency" },
                 {
                   header: "Amount",
@@ -753,7 +771,12 @@ export function SalesReportPage() {
                   ),
                 },
                 { header: "Payment Method", key: "payment_method" },
-                { header: "Rate", key: "rate", render: (item: any) => formatRate(item.rate, item.company_base_currency) },
+                {
+                  header: "Rate",
+                  key: "rate",
+                  render: (item: any) =>
+                    formatRate(item.rate, item.company_base_currency),
+                },
               ]}
               data={reportData.payments.map((item, index) => ({
                 ...item,

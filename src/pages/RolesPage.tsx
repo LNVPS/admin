@@ -511,7 +511,7 @@ function CreateRoleModal({
             type="text"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
             required
           />
         </div>
@@ -525,7 +525,7 @@ function CreateRoleModal({
             onChange={(e) =>
               setFormData({ ...formData, description: e.target.value })
             }
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
             rows={3}
           />
         </div>
@@ -543,7 +543,7 @@ function CreateRoleModal({
                     id={`create-${permission}`}
                     checked={formData.permissions.includes(permission)}
                     onChange={() => togglePermission(permission)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded bg-slate-800 border-slate-600"
+                    className=""
                   />
                   <label
                     htmlFor={`create-${permission}`}
@@ -629,7 +629,7 @@ function EditRoleModal({
             type="text"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
             required
           />
         </div>
@@ -643,7 +643,7 @@ function EditRoleModal({
             onChange={(e) =>
               setFormData({ ...formData, description: e.target.value })
             }
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
             rows={3}
           />
         </div>
@@ -661,7 +661,7 @@ function EditRoleModal({
                     id={`edit-${permission}`}
                     checked={formData.permissions.includes(permission)}
                     onChange={() => togglePermission(permission)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded bg-slate-800 border-slate-600"
+                    className=""
                   />
                   <label
                     htmlFor={`edit-${permission}`}

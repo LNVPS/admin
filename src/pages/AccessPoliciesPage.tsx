@@ -290,7 +290,7 @@ function CreateAccessPolicyModal({
             type="text"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
             required
           />
         </div>
@@ -302,7 +302,7 @@ function CreateAccessPolicyModal({
           <select
             value={formData.kind}
             onChange={(e) => setFormData({ ...formData, kind: e.target.value })}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
           >
             <option value="static_arp">Static ARP</option>
           </select>
@@ -317,7 +317,7 @@ function CreateAccessPolicyModal({
             onChange={(e) =>
               setFormData({ ...formData, router_id: e.target.value })
             }
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
             disabled={loadingRouters}
           >
             <option value="">Select a router...</option>
@@ -343,7 +343,7 @@ function CreateAccessPolicyModal({
             onChange={(e) =>
               setFormData({ ...formData, interface: e.target.value })
             }
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
             placeholder="e.g., eth0, wlan0"
           />
         </div>
@@ -435,7 +435,7 @@ function EditAccessPolicyModal({
             type="text"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
             required
           />
         </div>
@@ -447,7 +447,7 @@ function EditAccessPolicyModal({
           <select
             value={formData.kind}
             onChange={(e) => setFormData({ ...formData, kind: e.target.value })}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
           >
             <option value="static_arp">Static ARP</option>
           </select>
@@ -462,7 +462,7 @@ function EditAccessPolicyModal({
             onChange={(e) =>
               setFormData({ ...formData, router_id: e.target.value })
             }
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
             disabled={loadingRouters}
           >
             <option value="">Select a router...</option>
@@ -488,7 +488,7 @@ function EditAccessPolicyModal({
             onChange={(e) =>
               setFormData({ ...formData, interface: e.target.value })
             }
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
             placeholder="e.g., eth0, wlan0"
           />
         </div>

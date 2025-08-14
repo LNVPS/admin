@@ -283,7 +283,7 @@ function CreateRegionModal({
             type="text"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
             placeholder="e.g., US-East, EU-West"
             required
           />
@@ -298,7 +298,7 @@ function CreateRegionModal({
             onChange={(e) =>
               setFormData({ ...formData, company_id: e.target.value })
             }
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
           >
             <option value="">No company</option>
             {companies.map((company) => (
@@ -389,7 +389,7 @@ function EditRegionModal({
             type="text"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
             required
           />
         </div>
@@ -403,7 +403,7 @@ function EditRegionModal({
             onChange={(e) =>
               setFormData({ ...formData, company_id: e.target.value })
             }
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
           >
             <option value="">No company</option>
             {companies.map((company) => (

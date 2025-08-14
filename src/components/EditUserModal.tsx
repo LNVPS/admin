@@ -120,7 +120,7 @@ export function EditUserModal({
               name="email"
               value={formData.email}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               placeholder="user@example.com"
             />
           </div>
@@ -132,7 +132,7 @@ export function EditUserModal({
               name="country_code"
               value={formData.country_code}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
             >
               <option value="">Select a country...</option>
               {getAllCountries().map((country) => (
@@ -152,7 +152,7 @@ export function EditUserModal({
               name="contact_email"
               checked={formData.contact_email}
               onChange={handleInputChange}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded bg-slate-800 border-slate-600"
+              className=""
             />
             <label htmlFor="contact_email" className="ml-2 text-xs text-white">
               Contact via Email
@@ -165,7 +165,7 @@ export function EditUserModal({
               name="contact_nip17"
               checked={formData.contact_nip17}
               onChange={handleInputChange}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded bg-slate-800 border-slate-600"
+              className=""
             />
             <label htmlFor="contact_nip17" className="ml-2 text-xs text-white">
               Contact via Nostr (NIP-17)
@@ -187,7 +187,7 @@ export function EditUserModal({
                 name="billing_name"
                 value={formData.billing_name}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+                className=""
                 placeholder="Full name"
               />
             </div>
@@ -200,7 +200,7 @@ export function EditUserModal({
                 name="billing_tax_id"
                 value={formData.billing_tax_id}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+                className=""
                 placeholder="Tax ID"
               />
             </div>
@@ -215,7 +215,7 @@ export function EditUserModal({
                 name="billing_address_1"
                 value={formData.billing_address_1}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+                className=""
                 placeholder="Address line 1"
               />
             </div>
@@ -228,7 +228,7 @@ export function EditUserModal({
                 name="billing_address_2"
                 value={formData.billing_address_2}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+                className=""
                 placeholder="Address line 2"
               />
             </div>
@@ -243,7 +243,7 @@ export function EditUserModal({
                 name="billing_city"
                 value={formData.billing_city}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+                className=""
                 placeholder="City"
               />
             </div>
@@ -256,7 +256,7 @@ export function EditUserModal({
                 name="billing_state"
                 value={formData.billing_state}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+                className=""
                 placeholder="State"
               />
             </div>
@@ -269,7 +269,7 @@ export function EditUserModal({
                 name="billing_postcode"
                 value={formData.billing_postcode}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+                className=""
                 placeholder="Postcode"
               />
             </div>

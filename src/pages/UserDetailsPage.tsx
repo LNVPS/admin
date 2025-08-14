@@ -120,7 +120,7 @@ export function UserDetailsPage() {
             new Date(vm.expires) < new Date()
               ? "text-red-400"
               : new Date(vm.expires).getTime() - new Date().getTime() <
-                24 * 60 * 60 * 1000
+                  24 * 60 * 60 * 1000
                 ? "text-yellow-400"
                 : "text-gray-400"
           }
@@ -362,7 +362,7 @@ export function UserDetailsPage() {
             adminApi.getVMs({
               ...params,
               user_id: user.id,
-              include_deleted: true
+              include_deleted: true,
             })
           }
           renderHeader={renderVMHeader}
@@ -591,7 +591,7 @@ function AddRoleModal({
                     e.target.value ? parseInt(e.target.value, 10) : null,
                   )
                 }
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+                className=""
                 required
               >
                 <option value="">Select a role...</option>

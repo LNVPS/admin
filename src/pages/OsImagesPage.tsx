@@ -273,7 +273,7 @@ function CreateOsImageModal({
                   distribution: e.target.value as ApiOsDistribution,
                 })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               required
             >
               <option value={ApiOsDistribution.UBUNTU}>Ubuntu</option>
@@ -298,7 +298,7 @@ function CreateOsImageModal({
               onChange={(e) =>
                 setFormData({ ...formData, flavour: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               placeholder="e.g., server, desktop"
               required
             />
@@ -316,7 +316,7 @@ function CreateOsImageModal({
               onChange={(e) =>
                 setFormData({ ...formData, version: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               placeholder="e.g., 22.04, 11, 8"
               required
             />
@@ -331,7 +331,7 @@ function CreateOsImageModal({
               onChange={(e) =>
                 setFormData({ ...formData, release_date: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               required
             />
           </div>
@@ -345,7 +345,7 @@ function CreateOsImageModal({
             type="url"
             value={formData.url}
             onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
             placeholder="https://example.com/path/to/image.img"
             required
           />
@@ -361,7 +361,7 @@ function CreateOsImageModal({
             onChange={(e) =>
               setFormData({ ...formData, default_username: e.target.value })
             }
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
             placeholder="e.g., ubuntu, root, admin"
           />
         </div>
@@ -457,7 +457,7 @@ function EditOsImageModal({
                   distribution: e.target.value as ApiOsDistribution,
                 })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               required
             >
               <option value={ApiOsDistribution.UBUNTU}>Ubuntu</option>
@@ -482,7 +482,7 @@ function EditOsImageModal({
               onChange={(e) =>
                 setFormData({ ...formData, flavour: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               required
             />
           </div>
@@ -499,7 +499,7 @@ function EditOsImageModal({
               onChange={(e) =>
                 setFormData({ ...formData, version: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               required
             />
           </div>
@@ -513,7 +513,7 @@ function EditOsImageModal({
               onChange={(e) =>
                 setFormData({ ...formData, release_date: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               required
             />
           </div>
@@ -527,7 +527,7 @@ function EditOsImageModal({
             type="url"
             value={formData.url}
             onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
             required
           />
         </div>
@@ -542,7 +542,7 @@ function EditOsImageModal({
             onChange={(e) =>
               setFormData({ ...formData, default_username: e.target.value })
             }
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
             placeholder="e.g., ubuntu, root, admin"
           />
         </div>

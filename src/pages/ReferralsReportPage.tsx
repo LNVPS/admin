@@ -35,11 +35,9 @@ const INTERVALS = [
   { value: "yearly", label: "Yearly" },
 ] as const;
 
-
 export function ReferralsReportPage() {
-  const [reportData, setReportData] = useState<ReferralUsageTimeSeriesReportData | null>(
-    null,
-  );
+  const [reportData, setReportData] =
+    useState<ReferralUsageTimeSeriesReportData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [companies, setCompanies] = useState<AdminCompanyInfo[]>([]);
@@ -154,19 +152,19 @@ export function ReferralsReportPage() {
       // Generate period key based on interval and created date
       let period = "";
       const date = new Date(referral.created);
-      
+
       switch (interval) {
         case "daily":
-          period = date.toISOString().split('T')[0]; // YYYY-MM-DD
+          period = date.toISOString().split("T")[0]; // YYYY-MM-DD
           break;
         case "weekly":
           // Get Monday of the week
           const monday = new Date(date);
           monday.setDate(date.getDate() - date.getDay() + 1);
-          period = monday.toISOString().split('T')[0];
+          period = monday.toISOString().split("T")[0];
           break;
         case "monthly":
-          period = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          period = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
           break;
         case "quarterly":
           const quarter = Math.floor(date.getMonth() / 3) + 1;
@@ -178,7 +176,7 @@ export function ReferralsReportPage() {
       }
 
       const key = `${period}-${referral.ref_code}-${referral.currency}`;
-      
+
       if (!summaries.has(key)) {
         summaries.set(key, {
           period,
@@ -194,8 +192,10 @@ export function ReferralsReportPage() {
       summary.total_amount += referral.amount;
     });
 
-    return Array.from(summaries.values()).sort((a, b) => 
-      a.period.localeCompare(b.period) || a.ref_code.localeCompare(b.ref_code)
+    return Array.from(summaries.values()).sort(
+      (a, b) =>
+        a.period.localeCompare(b.period) ||
+        a.ref_code.localeCompare(b.ref_code),
     );
   };
 
@@ -223,7 +223,6 @@ export function ReferralsReportPage() {
     },
   ];
 
-
   const prepareChartData = () => {
     if (!reportData) return [];
 
@@ -233,22 +232,22 @@ export function ReferralsReportPage() {
     // Collect all unique ref codes and build period data
     reportData.referrals.forEach((referral) => {
       refCodes.add(referral.ref_code);
-      
+
       // Generate period key based on interval and created date
       let period = "";
       const date = new Date(referral.created);
-      
+
       switch (interval) {
         case "daily":
-          period = date.toISOString().split('T')[0];
+          period = date.toISOString().split("T")[0];
           break;
         case "weekly":
           const monday = new Date(date);
           monday.setDate(date.getDate() - date.getDay() + 1);
-          period = monday.toISOString().split('T')[0];
+          period = monday.toISOString().split("T")[0];
           break;
         case "monthly":
-          period = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          period = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
           break;
         case "quarterly":
           const quarter = Math.floor(date.getMonth() / 3) + 1;
@@ -265,12 +264,13 @@ export function ReferralsReportPage() {
       }
 
       const total = periodTotals.get(period);
-      
+
       // Convert to base currency using the provided rate
-      const baseCurrencyAmount = referral.currency === "BTC" 
-        ? (referral.amount / 1e11) * referral.rate
-        : (referral.amount / 100) * referral.rate;
-      
+      const baseCurrencyAmount =
+        referral.currency === "BTC"
+          ? (referral.amount / 1e11) * referral.rate
+          : (referral.amount / 100) * referral.rate;
+
       if (!total[referral.ref_code]) {
         total[referral.ref_code] = 0;
       }
@@ -286,8 +286,9 @@ export function ReferralsReportPage() {
       });
     });
 
-    return Array.from(periodTotals.values())
-      .sort((a, b) => a.period.localeCompare(b.period));
+    return Array.from(periodTotals.values()).sort((a, b) =>
+      a.period.localeCompare(b.period),
+    );
   };
 
   const exportReferralsToCSV = () => {
@@ -338,7 +339,6 @@ export function ReferralsReportPage() {
     document.body.removeChild(link);
   };
 
-
   const referralsTableColumns = [
     { header: "VM ID", key: "vm_id" },
     { header: "Referral Code", key: "ref_code" },
@@ -374,11 +374,10 @@ export function ReferralsReportPage() {
       render: (item: ReferralRecord) => (
         <span className="text-blue-400">
           {formatCurrency(
-            (item.currency === "BTC"
+            item.currency === "BTC"
               ? (item.amount / 1e11) * item.rate * 100
-              : (item.amount / 100) * item.rate * 100
-            ),
-            item.base_currency
+              : (item.amount / 100) * item.rate * 100,
+            item.base_currency,
           )}
         </span>
       ),
@@ -520,9 +519,7 @@ export function ReferralsReportPage() {
         <Card>
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-            <span className="ml-3 text-gray-300">
-              Loading referral data...
-            </span>
+            <span className="ml-3 text-gray-300">Loading referral data...</span>
           </div>
         </Card>
       )}
@@ -560,13 +557,22 @@ export function ReferralsReportPage() {
                   <p className="text-white font-semibold">
                     {formatCurrency(
                       reportData.referrals.reduce(
-                        (sum, r) => sum + ((r.currency === "BTC" ? r.amount / 1e11 : r.amount / 100) * r.rate * 100),
+                        (sum, r) =>
+                          sum +
+                          (r.currency === "BTC"
+                            ? r.amount / 1e11
+                            : r.amount / 100) *
+                            r.rate *
+                            100,
                         0,
                       ),
                       reportData.referrals[0]?.base_currency || "USD",
                     )}
                   </p>
-                  <p className="text-blue-400 text-sm">{reportData.referrals[0]?.base_currency || "USD"} Base Currency</p>
+                  <p className="text-blue-400 text-sm">
+                    {reportData.referrals[0]?.base_currency || "USD"} Base
+                    Currency
+                  </p>
                 </div>
                 <CalendarIcon className="h-8 w-8 text-green-500" />
               </div>
@@ -579,7 +585,9 @@ export function ReferralsReportPage() {
                   <p className="text-white font-semibold">
                     {reportData.referrals.length.toLocaleString()}
                   </p>
-                  <p className="text-blue-400 text-sm">Successful conversions</p>
+                  <p className="text-blue-400 text-sm">
+                    Successful conversions
+                  </p>
                 </div>
                 <UserGroupIcon className="h-8 w-8 text-yellow-500" />
               </div>
@@ -590,7 +598,7 @@ export function ReferralsReportPage() {
                 <div>
                   <p className="text-gray-400 text-sm">Unique Ref Codes</p>
                   <p className="text-white font-semibold">
-                    {new Set(reportData.referrals.map(r => r.ref_code)).size}
+                    {new Set(reportData.referrals.map((r) => r.ref_code)).size}
                   </p>
                   <p className="text-blue-400 text-sm">Different codes used</p>
                 </div>
@@ -600,7 +608,9 @@ export function ReferralsReportPage() {
           </div>
 
           {/* Referrals Chart */}
-          <Card title={`Referral Amount by Ref Code (${reportData.referrals[0]?.base_currency || "USD"})`}>
+          <Card
+            title={`Referral Amount by Ref Code (${reportData.referrals[0]?.base_currency || "USD"})`}
+          >
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={prepareChartData()}>
@@ -623,32 +633,35 @@ export function ReferralsReportPage() {
                       name,
                     ]}
                   />
-                  {reportData && Array.from(new Set(reportData.referrals.map(r => r.ref_code))).map((refCode, index) => {
-                    const colors = [
-                      "#3B82F6", // blue
-                      "#EF4444", // red
-                      "#10B981", // green
-                      "#F59E0B", // yellow
-                      "#8B5CF6", // purple
-                      "#EC4899", // pink
-                      "#14B8A6", // teal
-                      "#F97316", // orange
-                    ];
-                    const color = colors[index % colors.length];
+                  {reportData &&
+                    Array.from(
+                      new Set(reportData.referrals.map((r) => r.ref_code)),
+                    ).map((refCode, index) => {
+                      const colors = [
+                        "#3B82F6", // blue
+                        "#EF4444", // red
+                        "#10B981", // green
+                        "#F59E0B", // yellow
+                        "#8B5CF6", // purple
+                        "#EC4899", // pink
+                        "#14B8A6", // teal
+                        "#F97316", // orange
+                      ];
+                      const color = colors[index % colors.length];
 
-                    return (
-                      <Line
-                        key={refCode}
-                        type="monotone"
-                        dataKey={refCode}
-                        stroke={color}
-                        strokeWidth={2}
-                        dot={{ fill: color, strokeWidth: 2, r: 4 }}
-                        activeDot={{ r: 6, stroke: color, strokeWidth: 2 }}
-                        name={refCode}
-                      />
-                    );
-                  })}
+                      return (
+                        <Line
+                          key={refCode}
+                          type="monotone"
+                          dataKey={refCode}
+                          stroke={color}
+                          strokeWidth={2}
+                          dot={{ fill: color, strokeWidth: 2, r: 4 }}
+                          activeDot={{ r: 6, stroke: color, strokeWidth: 2 }}
+                          name={refCode}
+                        />
+                      );
+                    })}
                 </LineChart>
               </ResponsiveContainer>
             </div>

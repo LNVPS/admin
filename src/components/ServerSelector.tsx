@@ -174,7 +174,7 @@ export function ServerSelector() {
                 value={customUrl}
                 onChange={(e) => setCustomUrl(e.target.value)}
                 placeholder="https://your-api-server.com"
-                className="flex-1 px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white placeholder-gray-400 text-sm"
+                className="flex-1"
                 onKeyDown={(e) => e.key === "Enter" && handleAddCustomServer()}
               />
               <Button

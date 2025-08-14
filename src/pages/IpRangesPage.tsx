@@ -338,7 +338,7 @@ function CreateIpRangeModal({
               onChange={(e) =>
                 setFormData({ ...formData, cidr: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white font-mono"
+              className="font-mono"
               placeholder="192.168.1.0/24"
               required
             />
@@ -353,7 +353,7 @@ function CreateIpRangeModal({
               onChange={(e) =>
                 setFormData({ ...formData, gateway: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white font-mono"
+              className="font-mono"
               placeholder="192.168.1.1"
               required
             />
@@ -370,7 +370,7 @@ function CreateIpRangeModal({
               onChange={(e) =>
                 setFormData({ ...formData, region_id: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               disabled={loadingData}
               required
             >
@@ -394,7 +394,7 @@ function CreateIpRangeModal({
               onChange={(e) =>
                 setFormData({ ...formData, access_policy_id: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               disabled={loadingData}
             >
               <option value="">Select access policy...</option>
@@ -420,7 +420,7 @@ function CreateIpRangeModal({
                   allocation_mode: e.target.value as IpRangeAllocationMode,
                 })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
             >
               <option value={IpRangeAllocationMode.SEQUENTIAL}>
                 Sequential
@@ -441,7 +441,7 @@ function CreateIpRangeModal({
               onChange={(e) =>
                 setFormData({ ...formData, reverse_zone_id: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               placeholder="Reverse DNS zone ID"
             />
           </div>
@@ -456,7 +456,7 @@ function CreateIpRangeModal({
               onChange={(e) =>
                 setFormData({ ...formData, enabled: e.target.checked })
               }
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded bg-slate-800 border-slate-600"
+              className=""
             />
             <label htmlFor="enabled" className="ml-2 text-xs text-white">
               Enabled
@@ -470,7 +470,7 @@ function CreateIpRangeModal({
               onChange={(e) =>
                 setFormData({ ...formData, use_full_range: e.target.checked })
               }
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded bg-slate-800 border-slate-600"
+              className=""
             />
             <label htmlFor="use_full_range" className="ml-2 text-xs text-white">
               Use Full Range
@@ -587,7 +587,7 @@ function EditIpRangeModal({
               onChange={(e) =>
                 setFormData({ ...formData, cidr: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white font-mono"
+              className="font-mono"
               placeholder="192.168.1.0/24"
               required
             />
@@ -602,7 +602,7 @@ function EditIpRangeModal({
               onChange={(e) =>
                 setFormData({ ...formData, gateway: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white font-mono"
+              className="font-mono"
               placeholder="192.168.1.1"
               required
             />
@@ -619,7 +619,7 @@ function EditIpRangeModal({
               onChange={(e) =>
                 setFormData({ ...formData, region_id: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               disabled={loadingData}
               required
             >
@@ -643,7 +643,7 @@ function EditIpRangeModal({
               onChange={(e) =>
                 setFormData({ ...formData, access_policy_id: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               disabled={loadingData}
             >
               <option value="">Select access policy...</option>
@@ -669,7 +669,7 @@ function EditIpRangeModal({
                   allocation_mode: e.target.value as IpRangeAllocationMode,
                 })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
             >
               <option value={IpRangeAllocationMode.SEQUENTIAL}>
                 Sequential
@@ -690,7 +690,7 @@ function EditIpRangeModal({
               onChange={(e) =>
                 setFormData({ ...formData, reverse_zone_id: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               placeholder="Reverse DNS zone ID"
             />
           </div>
@@ -705,7 +705,7 @@ function EditIpRangeModal({
               onChange={(e) =>
                 setFormData({ ...formData, enabled: e.target.checked })
               }
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded bg-slate-800 border-slate-600"
+              className=""
             />
             <label htmlFor="enabled-edit" className="ml-2 text-xs text-white">
               Enabled
@@ -719,7 +719,7 @@ function EditIpRangeModal({
               onChange={(e) =>
                 setFormData({ ...formData, use_full_range: e.target.checked })
               }
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded bg-slate-800 border-slate-600"
+              className=""
             />
             <label
               htmlFor="use_full_range-edit"

@@ -32,15 +32,16 @@ body {
 input[type="text"],
 input[type="email"],
 input[type="password"],
+input[type="number"],
 textarea,
 select {
-  @apply rounded-md border-slate-600 bg-slate-700 text-white placeholder-slate-400 focus:border-blue-500 focus:ring-blue-500;
+  @apply w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none;
 }
 
 /* Checkbox and radio */
 input[type="checkbox"],
 input[type="radio"] {
-  @apply rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-blue-500;
+  @apply h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded bg-slate-800 border-slate-600;
 }
 
 /* Button disabled state */

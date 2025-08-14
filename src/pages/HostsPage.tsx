@@ -7,12 +7,14 @@ import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
 import { AdminHostInfo, AdminRegionInfo } from "../lib/api";
 import { formatBytes } from "../utils/formatBytes";
-import { PencilIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { PencilIcon, PlusIcon, CogIcon } from "@heroicons/react/24/outline";
+import { HostDiskEditor } from "../components/HostDiskEditor";
 
 export function HostsPage() {
   const adminApi = useAdminApi();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showDiskEditor, setShowDiskEditor] = useState(false);
   const [selectedHost, setSelectedHost] = useState<AdminHostInfo | null>(null);
   const [regions, setRegions] = useState<AdminRegionInfo[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -38,6 +40,11 @@ export function HostsPage() {
 
   const handleCreate = () => {
     setShowCreateModal(true);
+  };
+
+  const handleManageDisks = (host: AdminHostInfo) => {
+    setSelectedHost(host);
+    setShowDiskEditor(true);
   };
 
   const renderHeader = () => (
@@ -95,25 +102,38 @@ export function HostsPage() {
         </div>
       </td>
       <td className="text-gray-300">
-        <div className="space-y-0.5">
-          {host.disks.map((disk, idx) => (
-            <div
-              key={idx}
-              className="text-gray-400 flex items-center gap-1 flex-wrap"
-            >
-              <span className="font-mono text-purple-400">{disk.name}</span>
-              <span className="text-gray-500">{formatBytes(disk.size)}</span>
-              <span className="text-gray-500">{disk.kind.toUpperCase()}</span>
-              <span className="text-gray-500">
-                {disk.interface.toUpperCase()}
-              </span>
-              {!disk.enabled && (
-                <span className="inline-flex px-1 py-0.5 rounded text-red-300 bg-red-900">
-                  Disabled
+        <div className="space-y-2">
+          <div className="space-y-0.5">
+            {host.disks.map((disk, idx) => (
+              <div
+                key={idx}
+                className="text-gray-400 flex items-center gap-1 flex-wrap"
+              >
+                <span className="font-mono text-purple-400">{disk.name}</span>
+                <span className="text-gray-500">{formatBytes(disk.size)}</span>
+                <span className="text-gray-500">{disk.kind.toUpperCase()}</span>
+                <span className="text-gray-500">
+                  {disk.interface.toUpperCase()}
                 </span>
-              )}
-            </div>
-          ))}
+                {!disk.enabled && (
+                  <span className="inline-flex px-1 py-0.5 rounded text-red-300 bg-red-900">
+                    Disabled
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+          <div>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => handleManageDisks(host)}
+              className="px-3 py-1 text-xs"
+            >
+              <CogIcon className="h-3 w-3 mr-1" />
+              Manage Disks ({host.disks.length})
+            </Button>
+          </div>
         </div>
       </td>
       <td className="text-gray-300">
@@ -259,6 +279,19 @@ export function HostsPage() {
           regions={regions}
         />
       )}
+
+      {/* Host Disk Editor Modal */}
+      {selectedHost && (
+        <HostDiskEditor
+          isOpen={showDiskEditor}
+          onClose={() => {
+            setShowDiskEditor(false);
+            setSelectedHost(null);
+          }}
+          host={selectedHost}
+          onSuccess={refreshData}
+        />
+      )}
     </div>
   );
 }
@@ -354,7 +387,7 @@ function CreateHostModal({
               onChange={(e) =>
                 setFormData({ ...formData, name: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               placeholder="Host name"
               required
             />
@@ -367,7 +400,7 @@ function CreateHostModal({
               type="text"
               value={formData.ip}
               onChange={(e) => setFormData({ ...formData, ip: e.target.value })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               placeholder="192.168.1.100"
               required
             />
@@ -384,7 +417,7 @@ function CreateHostModal({
               onChange={(e) =>
                 setFormData({ ...formData, region_id: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               required
             >
               <option value="">Select Region</option>
@@ -404,7 +437,7 @@ function CreateHostModal({
               onChange={(e) =>
                 setFormData({ ...formData, kind: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               required
             >
               <option value="proxmox">Proxmox</option>
@@ -423,7 +456,7 @@ function CreateHostModal({
             onChange={(e) =>
               setFormData({ ...formData, api_token: e.target.value })
             }
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
             placeholder="API token for host communication"
             required
           />
@@ -441,7 +474,7 @@ function CreateHostModal({
               onChange={(e) =>
                 setFormData({ ...formData, cpu: parseInt(e.target.value) || 0 })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               required
             />
           </div>
@@ -463,7 +496,7 @@ function CreateHostModal({
                   memory: (parseInt(e.target.value) || 0) * 1024 * 1024 * 1024,
                 })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               required
             />
           </div>
@@ -477,7 +510,7 @@ function CreateHostModal({
               onChange={(e) =>
                 setFormData({ ...formData, vlan_id: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               placeholder="Optional"
             />
           </div>
@@ -502,7 +535,7 @@ function CreateHostModal({
                     load_cpu: (parseFloat(e.target.value) || 0) / 100,
                   })
                 }
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+                className=""
               />
             </div>
             <div>
@@ -521,7 +554,7 @@ function CreateHostModal({
                     load_memory: (parseFloat(e.target.value) || 0) / 100,
                   })
                 }
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+                className=""
               />
             </div>
             <div>
@@ -540,7 +573,7 @@ function CreateHostModal({
                     load_disk: (parseFloat(e.target.value) || 0) / 100,
                   })
                 }
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+                className=""
               />
             </div>
           </div>
@@ -554,7 +587,7 @@ function CreateHostModal({
             onChange={(e) =>
               setFormData({ ...formData, enabled: e.target.checked })
             }
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded bg-slate-800 border-slate-600"
+            className=""
           />
           <label htmlFor="enabled-create" className="ml-2 text-xs text-white">
             Host Enabled
@@ -649,7 +682,7 @@ function EditHostModal({
               onChange={(e) =>
                 setFormData({ ...formData, name: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               placeholder="Host name"
               required
             />
@@ -662,7 +695,7 @@ function EditHostModal({
               type="text"
               value={formData.ip}
               onChange={(e) => setFormData({ ...formData, ip: e.target.value })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               placeholder="192.168.1.100"
               required
             />
@@ -679,7 +712,7 @@ function EditHostModal({
               onChange={(e) =>
                 setFormData({ ...formData, region_id: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               required
             >
               <option value="">Select Region</option>
@@ -699,7 +732,7 @@ function EditHostModal({
               onChange={(e) =>
                 setFormData({ ...formData, kind: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               required
             >
               <option value="proxmox">Proxmox</option>
@@ -719,7 +752,7 @@ function EditHostModal({
               onChange={(e) =>
                 setFormData({ ...formData, api_token: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               placeholder="Leave empty to keep current token"
             />
             <p className="text-xs text-gray-400 mt-1">
@@ -736,7 +769,7 @@ function EditHostModal({
               onChange={(e) =>
                 setFormData({ ...formData, vlan_id: e.target.value })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+              className=""
               placeholder="Optional"
             />
           </div>
@@ -761,7 +794,7 @@ function EditHostModal({
                     load_cpu: (parseFloat(e.target.value) || 0) / 100,
                   })
                 }
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+                className=""
               />
             </div>
             <div>
@@ -780,7 +813,7 @@ function EditHostModal({
                     load_memory: (parseFloat(e.target.value) || 0) / 100,
                   })
                 }
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+                className=""
               />
             </div>
             <div>
@@ -799,7 +832,7 @@ function EditHostModal({
                     load_disk: (parseFloat(e.target.value) || 0) / 100,
                   })
                 }
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+                className=""
               />
             </div>
           </div>
@@ -813,7 +846,7 @@ function EditHostModal({
             onChange={(e) =>
               setFormData({ ...formData, enabled: e.target.checked })
             }
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded bg-slate-800 border-slate-600"
+            className=""
           />
           <label htmlFor="enabled-edit" className="ml-2 text-xs text-white">
             Host Enabled

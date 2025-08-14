@@ -343,11 +343,17 @@ export interface AdminCustomPricingInfo {
   memory_cost: number;
   ip4_cost: number;
   ip6_cost: number;
+  min_cpu?: number;
+  max_cpu?: number;
+  min_memory?: number;
+  max_memory?: number;
   disk_pricing: {
     id: number;
     kind: DiskType;
     interface: DiskInterface;
     cost: number;
+    min_disk_size?: number;
+    max_disk_size?: number;
   }[];
   template_count: number;
 }
@@ -958,6 +964,10 @@ export class AdminApi {
     hostId: number,
     diskId: number,
     updates: {
+      name?: string;
+      size?: number;
+      kind?: string;
+      interface?: string;
       enabled?: boolean;
     },
   ) {
@@ -967,6 +977,22 @@ export class AdminApi {
         "PATCH",
         updates,
       ),
+    );
+    return result.data;
+  }
+
+  async createHostDisk(
+    hostId: number,
+    data: {
+      name: string;
+      size: number;
+      kind: string;
+      interface: string;
+      enabled?: boolean;
+    },
+  ) {
+    const result = await this.handleResponse<ApiResponse<AdminHostDisk>>(
+      await this.req(`/api/admin/v1/hosts/${hostId}/disks`, "POST", data),
     );
     return result.data;
   }
@@ -1229,10 +1255,16 @@ export class AdminApi {
     memory_cost: number;
     ip4_cost: number;
     ip6_cost: number;
+    min_cpu?: number;
+    max_cpu?: number;
+    min_memory?: number;
+    max_memory?: number;
     disk_pricing: {
       kind: string;
       interface: string;
       cost: number;
+      min_disk_size?: number;
+      max_disk_size?: number;
     }[];
   }) {
     const result = await this.handleResponse<
@@ -1253,10 +1285,16 @@ export class AdminApi {
       memory_cost: number;
       ip4_cost: number;
       ip6_cost: number;
+      min_cpu: number;
+      max_cpu: number;
+      min_memory: number;
+      max_memory: number;
       disk_pricing: {
         kind: string;
         interface: string;
         cost: number;
+        min_disk_size: number;
+        max_disk_size: number;
       }[];
     }>,
   ) {
@@ -1712,7 +1750,9 @@ export class AdminApi {
     company_id: number;
     ref_code?: string;
   }) {
-    const result = await this.handleResponse<ApiResponse<ReferralUsageTimeSeriesReportData>>(
+    const result = await this.handleResponse<
+      ApiResponse<ReferralUsageTimeSeriesReportData>
+    >(
       await this.req(
         "/api/admin/v1/reports/referral-usage/time-series",
         "GET",

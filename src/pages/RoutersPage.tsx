@@ -273,7 +273,7 @@ function CreateRouterModal({
             type="text"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
             required
           />
         </div>
@@ -287,7 +287,7 @@ function CreateRouterModal({
             onChange={(e) =>
               setFormData({ ...formData, kind: e.target.value as RouterKind })
             }
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
             required
           >
             <option value={RouterKind.MIKROTIK}>MikroTik</option>
@@ -305,7 +305,7 @@ function CreateRouterModal({
             type="url"
             value={formData.url}
             onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white font-mono"
+            className="font-mono"
             placeholder="https://router.example.com/api"
             required
           />
@@ -322,7 +322,7 @@ function CreateRouterModal({
               onChange={(e) =>
                 setFormData({ ...formData, token: e.target.value })
               }
-              className="w-full px-3 py-2 pr-10 bg-slate-800 border border-slate-600 rounded text-white font-mono"
+              className="font-mono"
               required
             />
             <button
@@ -347,7 +347,7 @@ function CreateRouterModal({
             onChange={(e) =>
               setFormData({ ...formData, enabled: e.target.checked })
             }
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded bg-slate-800 border-slate-600"
+            className=""
           />
           <label
             htmlFor="enabled"
@@ -431,7 +431,7 @@ function EditRouterModal({
             type="text"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
             required
           />
         </div>
@@ -445,7 +445,7 @@ function EditRouterModal({
             onChange={(e) =>
               setFormData({ ...formData, kind: e.target.value as RouterKind })
             }
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white"
+            className=""
             required
           >
             <option value={RouterKind.MIKROTIK}>MikroTik</option>
@@ -463,7 +463,7 @@ function EditRouterModal({
             type="url"
             value={formData.url}
             onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white font-mono"
+            className="font-mono"
             required
           />
         </div>
@@ -479,7 +479,7 @@ function EditRouterModal({
               onChange={(e) =>
                 setFormData({ ...formData, token: e.target.value })
               }
-              className="w-full px-3 py-2 pr-10 bg-slate-800 border border-slate-600 rounded text-white font-mono"
+              className="font-mono"
               placeholder="Leave empty to keep current token"
             />
             <button
@@ -507,7 +507,7 @@ function EditRouterModal({
             onChange={(e) =>
               setFormData({ ...formData, enabled: e.target.checked })
             }
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded bg-slate-800 border-slate-600"
+            className=""
           />
           <label
             htmlFor="enabled-edit"

@@ -109,10 +109,7 @@ export function IpRangesPage() {
         <span className="font-medium">{ipRange.assignment_count}</span>
       </td>
       <td>
-        <StatusBadge
-          status={ipRange.enabled ? "active" : "inactive"}
-          variant={ipRange.enabled ? "success" : "warning"}
-        />
+        <StatusBadge status={ipRange.enabled ? "active" : "inactive"} />
       </td>
       <td className="text-right">
         <div className="flex justify-end space-x-2">

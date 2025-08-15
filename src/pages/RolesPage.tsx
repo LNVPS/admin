@@ -94,7 +94,6 @@ export function RolesPage() {
       return {
         data: paginatedData,
         total: filteredRoles.length,
-        count: paginatedData.length,
         limit: params.limit,
         offset: params.offset,
       };

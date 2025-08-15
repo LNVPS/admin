@@ -26,6 +26,7 @@ import {
   ReferralRecord,
   AdminCompanyInfo,
 } from "../lib/api";
+import { formatCurrency } from "../utils/currency";
 
 const INTERVALS = [
   { value: "daily", label: "Daily" },
@@ -116,32 +117,6 @@ export function ReferralsReportPage() {
       loadReferralData();
     }
   }, [companyId]);
-
-  const formatCurrency = (amount: number, currency: string) => {
-    // Convert from smallest unit (cents, milli-satoshis) to main unit
-    const mainAmount = currency === "BTC" ? amount / 1e11 : amount / 100;
-
-    if (currency === "BTC") {
-      // For Bitcoin, show full 8 decimal places without currency formatting
-      return mainAmount.toFixed(8) + " BTC";
-    }
-
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(mainAmount);
-  };
-
-  const formatRate = (rate: number, currency: string) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 8,
-    }).format(rate);
-  };
 
   const generatePeriodSummaries = () => {
     if (!reportData) return [];
@@ -358,13 +333,12 @@ export function ReferralsReportPage() {
         </span>
       ),
     },
-    { header: "Currency", key: "currency" },
     {
       header: "Rate",
       key: "rate",
       render: (item: ReferralRecord) => (
         <span className="text-gray-300">
-          {formatRate(item.rate, item.base_currency)}
+          {formatCurrency(item.rate, item.base_currency)}
         </span>
       ),
     },
@@ -374,9 +348,7 @@ export function ReferralsReportPage() {
       render: (item: ReferralRecord) => (
         <span className="text-blue-400">
           {formatCurrency(
-            item.currency === "BTC"
-              ? (item.amount / 1e11) * item.rate * 100
-              : (item.amount / 100) * item.rate * 100,
+            item.amount * (item.rate / (item.currency === "BTC" ? 1e9 : 100)),
             item.base_currency,
           )}
         </span>
@@ -559,11 +531,8 @@ export function ReferralsReportPage() {
                       reportData.referrals.reduce(
                         (sum, r) =>
                           sum +
-                          (r.currency === "BTC"
-                            ? r.amount / 1e11
-                            : r.amount / 100) *
-                            r.rate *
-                            100,
+                          r.amount *
+                            (r.rate / (r.currency === "BTC" ? 1e9 : 100)),
                         0,
                       ),
                       reportData.referrals[0]?.base_currency || "USD",

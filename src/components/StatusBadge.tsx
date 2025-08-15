@@ -65,8 +65,6 @@ export function StatusBadge({
         return "UNKNOWN";
       case "warning":
         return "WARNING";
-      default:
-        return status.toUpperCase();
     }
   };
 

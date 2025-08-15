@@ -343,17 +343,17 @@ export interface AdminCustomPricingInfo {
   memory_cost: number;
   ip4_cost: number;
   ip6_cost: number;
-  min_cpu?: number;
-  max_cpu?: number;
-  min_memory?: number;
-  max_memory?: number;
+  min_cpu: number;
+  max_cpu: number;
+  min_memory: number;
+  max_memory: number;
   disk_pricing: {
     id: number;
     kind: DiskType;
     interface: DiskInterface;
     cost: number;
-    min_disk_size?: number;
-    max_disk_size?: number;
+    min_disk_size: number;
+    max_disk_size: number;
   }[];
   template_count: number;
 }
@@ -465,6 +465,7 @@ export interface AdminVmPaymentInfo {
   external_id: string | null;
   is_paid: boolean;
   rate: number;
+  base_currency: string;
 }
 
 export interface AdminAccessPolicyInfo {
@@ -1262,16 +1263,16 @@ export class AdminApi {
     memory_cost: number;
     ip4_cost: number;
     ip6_cost: number;
-    min_cpu?: number;
-    max_cpu?: number;
-    min_memory?: number;
-    max_memory?: number;
+    min_cpu: number;
+    max_cpu: number;
+    min_memory: number;
+    max_memory: number;
     disk_pricing: {
       kind: string;
       interface: string;
       cost: number;
-      min_disk_size?: number;
-      max_disk_size?: number;
+      min_disk_size: number;
+      max_disk_size: number;
     }[];
   }) {
     const result = await this.handleResponse<

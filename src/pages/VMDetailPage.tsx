@@ -16,7 +16,7 @@ import {
   AdminPaymentMethod,
 } from "../lib/api";
 import { formatBytes } from "../utils/formatBytes";
-import { formatSats } from "../utils/formatSats";
+import { formatCurrency } from "../utils/currency";
 import {
   PlayIcon,
   StopIcon,
@@ -89,7 +89,7 @@ export function VMDetailPage() {
       setActionLoading("start");
       await adminApi.startVM(vm.id);
       await loadVM(true);
-      setHistoryRefreshKey(prev => prev + 1);
+      setHistoryRefreshKey((prev) => prev + 1);
     } catch (error) {
       console.error("Failed to start VM:", error);
     } finally {
@@ -103,7 +103,7 @@ export function VMDetailPage() {
       setActionLoading("stop");
       await adminApi.stopVM(vm.id);
       await loadVM(true);
-      setHistoryRefreshKey(prev => prev + 1);
+      setHistoryRefreshKey((prev) => prev + 1);
     } catch (error) {
       console.error("Failed to stop VM:", error);
     } finally {
@@ -132,25 +132,23 @@ export function VMDetailPage() {
     if (!vm) return;
     const daysInput = prompt(
       "Enter the number of days to extend the VM (1-365):",
-      "30"
+      "30",
     );
     if (!daysInput) return;
-    
+
     const days = parseInt(daysInput, 10);
     if (isNaN(days) || days < 1 || days > 365) {
       alert("Please enter a valid number of days between 1 and 365.");
       return;
     }
-    
-    const reason = prompt(
-      "Optional: Enter a reason for extending the VM:",
-    );
-    
+
+    const reason = prompt("Optional: Enter a reason for extending the VM:");
+
     try {
       setActionLoading("extend");
       await adminApi.extendVM(vm.id, days, reason || undefined);
       await loadVM(true);
-      setHistoryRefreshKey(prev => prev + 1);
+      setHistoryRefreshKey((prev) => prev + 1);
     } catch (error) {
       console.error("Failed to extend VM:", error);
     } finally {
@@ -213,6 +211,7 @@ export function VMDetailPage() {
               payment.amount,
               payment.currency,
               payment.rate,
+              payment.base_currency || "EUR",
             )}
           </div>
           {payment.rate && payment.rate !== 100 && (
@@ -311,30 +310,13 @@ export function VMDetailPage() {
   const formatPaymentAmount = (
     amount: number,
     currency: string,
-    rate?: number,
+    rate: number,
+    base_currency: string,
   ): string => {
-    let primaryAmount: string;
-    let baseAmount: number | null = null;
+    const primaryAmount = formatCurrency(amount, currency);
 
-    if (currency.toLowerCase() === "btc") {
-      // Amount is in milli-sats, convert to sats for display
-      primaryAmount = formatSats(Math.floor(amount / 1000));
-      // For BTC: convert milli-sats to BTC (divide by 100,000,000,000), then multiply by rate
-      if (rate) {
-        const btcAmount = amount / 100_000_000_000; // Convert milli-sats to BTC
-        baseAmount = btcAmount * rate; // BTC amount * EUR rate = EUR amount
-      }
-    } else {
-      primaryAmount = `${(amount / 100).toFixed(2)} ${currency.toUpperCase()}`;
-      // For fiat currencies, rate converts to EUR
-      if (rate && currency.toLowerCase() !== "eur") {
-        baseAmount = (amount / 100) * rate;
-      }
-    }
-
-    // Add base currency (EUR) equivalent if available and not already EUR
-    if (baseAmount !== null) {
-      return `${primaryAmount} (€${baseAmount.toFixed(2)})`;
+    if (rate && currency !== base_currency) {
+      return `${primaryAmount} (${formatCurrency(amount * (rate / (currency === "BTC" ? 1e9 : 100)), base_currency)})`;
     }
 
     return primaryAmount;
@@ -405,7 +387,10 @@ export function VMDetailPage() {
 
   if (error || !vm) {
     return (
-      <ErrorState error={new Error(error || "VM not found")} action="load VM details" />
+      <ErrorState
+        error={new Error(error || "VM not found")}
+        action="load VM details"
+      />
     );
   }
 
@@ -549,13 +534,12 @@ export function VMDetailPage() {
                 const expiryInfo = formatTimeUntilExpiry(vm.expires);
                 return (
                   <div
-                    className={`text-xs ${
-                      expiryInfo.isExpired
-                        ? "text-red-400"
-                        : expiryInfo.isExpiringSoon
-                          ? "text-yellow-400"
-                          : "text-gray-400"
-                    }`}
+                    className={`text-xs ${expiryInfo.isExpired
+                      ? "text-red-400"
+                      : expiryInfo.isExpiringSoon
+                        ? "text-yellow-400"
+                        : "text-gray-400"
+                      }`}
                   >
                     {expiryInfo.text}
                   </div>

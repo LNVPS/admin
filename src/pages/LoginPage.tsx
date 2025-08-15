@@ -150,28 +150,30 @@ export function LoginPage() {
             </p>
           </div>
 
-          {import.meta.env.VITE_GUEST_LOGIN && <>
-            <div className="flex gap-4 items-center my-6">
-              <div className="h-[1px] bg-gray-600 w-full"></div>
-              <div className="text-sm text-gray-400">OR</div>
-              <div className="h-[1px] bg-gray-600 w-full"></div>
-            </div>
+          {import.meta.env.VITE_GUEST_LOGIN && (
+            <>
+              <div className="flex gap-4 items-center my-6">
+                <div className="h-[1px] bg-gray-600 w-full"></div>
+                <div className="text-sm text-gray-400">OR</div>
+                <div className="h-[1px] bg-gray-600 w-full"></div>
+              </div>
 
-            {/* Guest Login */}
-            <div className="mb-6">
-              <Button
-                variant="secondary"
-                onClick={handleGuestLogin}
-                isLoading={isLoading}
-                className="w-full"
-              >
-                Guest Login
-              </Button>
-              <p className="mt-2 text-xs text-center text-gray-400">
-                Login with a temporary guest account for testing
-              </p>
-            </div>
-          </>}
+              {/* Guest Login */}
+              <div className="mb-6">
+                <Button
+                  variant="secondary"
+                  onClick={handleGuestLogin}
+                  isLoading={isLoading}
+                  className="w-full"
+                >
+                  Guest Login
+                </Button>
+                <p className="mt-2 text-xs text-center text-gray-400">
+                  Login with a temporary guest account for testing
+                </p>
+              </div>
+            </>
+          )}
           <div className="flex gap-4 items-center my-6">
             <div className="h-[1px] bg-gray-600 w-full"></div>
             <div className="text-sm text-gray-400">OR</div>

@@ -15,7 +15,6 @@ import { formatBytes } from "../utils/formatBytes";
 import {
   PlayIcon,
   StopIcon,
-  TrashIcon,
   FunnelIcon,
   XMarkIcon,
   EyeIcon,
@@ -110,20 +109,6 @@ export function VMsPage() {
       refreshData();
     } catch (error) {
       console.error("Failed to stop VM:", error);
-    }
-  };
-
-  const handleDeleteVM = async (vm: AdminVmInfo) => {
-    if (confirm(`Are you sure you want to delete VM ${vm.id}?`)) {
-      const reason = prompt(
-        "Optional: Enter a reason for deletion (e.g., 'Policy violation', 'User requested'):",
-      );
-      try {
-        await adminApi.deleteVM(vm.id, reason || undefined);
-        refreshData();
-      } catch (error) {
-        console.error("Failed to delete VM:", error);
-      }
     }
   };
 
@@ -249,16 +234,6 @@ export function VMsPage() {
                 <StopIcon className="h-4 w-4" />
               </Button>
             )}
-          {!vmInfo.deleted && getVmStatus(vmInfo) !== "new" && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => handleDeleteVM(vmInfo)}
-              className="p-1 text-red-400 hover:text-red-300"
-            >
-              <TrashIcon className="h-4 w-4" />
-            </Button>
-          )}
         </div>
       </td>
     </tr>

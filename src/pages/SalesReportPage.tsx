@@ -23,6 +23,7 @@ import {
   ArrowDownTrayIcon,
 } from "@heroicons/react/24/outline";
 import { TimeSeriesReportData, AdminCompanyInfo } from "../lib/api";
+import { formatCurrency } from "../utils/currency";
 
 const INTERVALS = [
   { value: "daily", label: "Daily" },
@@ -118,28 +119,12 @@ export function SalesReportPage() {
     }
   }, [companyId]);
 
-  const formatCurrency = (amount: number, currency: string) => {
-    // Convert from smallest unit (cents, satoshis) to main unit
-    const mainAmount = currency === "BTC" ? amount / 1e11 : amount / 100;
-
-    if (currency === "BTC") {
-      // For Bitcoin, show full 8 decimal places without currency formatting
-      return mainAmount.toFixed(8) + " BTC";
-    }
-
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(mainAmount);
-  };
+  const baseCurrency = reportData?.payments[0]?.company_base_currency || "USD";
 
   const calculateTotalsByPeriod = () => {
     if (!reportData) return [];
 
     const periodTotals = new Map();
-    const baseCurrency = reportData.payments[0]?.company_base_currency || "USD";
 
     reportData.payments.forEach((payment) => {
       // Generate period key based on interval and created date
@@ -350,15 +335,6 @@ export function SalesReportPage() {
     document.body.removeChild(link);
   };
 
-  const formatRate = (rate: number, currency: string) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 8,
-    }).format(rate);
-  };
-
   const overviewColumns = [
     { header: "Period", key: "period" },
     {
@@ -372,49 +348,34 @@ export function SalesReportPage() {
     },
     { header: "Currency", key: "currency" },
     {
-      header: `Net (${reportData?.payments[0]?.company_base_currency || "Base"})`,
+      header: `Net (${baseCurrency})`,
       key: "net_total_base",
       render: (item: any) => {
-        const baseCurrency =
-          reportData?.payments[0]?.company_base_currency || "USD";
         return (
           <span className="text-green-400">
-            {formatCurrency(
-              item.net_total_base * (baseCurrency === "BTC" ? 1e11 : 100),
-              baseCurrency,
-            )}
+            {formatCurrency(item.net_total_base, baseCurrency)}
           </span>
         );
       },
     },
     {
-      header: `Tax (${reportData?.payments[0]?.company_base_currency || "Base"})`,
+      header: `Tax (${baseCurrency})`,
       key: "tax_total_base",
       render: (item: any) => {
-        const baseCurrency =
-          reportData?.payments[0]?.company_base_currency || "USD";
         return (
           <span className="text-yellow-400">
-            {formatCurrency(
-              item.tax_total_base * (baseCurrency === "BTC" ? 1e11 : 100),
-              baseCurrency,
-            )}
+            {formatCurrency(item.tax_total_base, baseCurrency)}
           </span>
         );
       },
     },
     {
-      header: `Total (${reportData?.payments[0]?.company_base_currency || "Base"})`,
+      header: `Total (${baseCurrency})`,
       key: "gross_total_base",
       render: (item: any) => {
-        const baseCurrency =
-          reportData?.payments[0]?.company_base_currency || "USD";
         return (
           <span className="text-blue-400 font-semibold">
-            {formatCurrency(
-              item.gross_total_base * (baseCurrency === "BTC" ? 1e11 : 100),
-              baseCurrency,
-            )}
+            {formatCurrency(item.gross_total_base, baseCurrency)}
           </span>
         );
       },
@@ -688,17 +649,7 @@ export function SalesReportPage() {
                     stroke="#9CA3AF"
                     fontSize={12}
                     tickFormatter={(value) => {
-                      const baseCurrency =
-                        reportData.payments[0]?.company_base_currency || "USD";
-                      if (baseCurrency === "BTC") {
-                        return value.toFixed(4);
-                      }
-                      return new Intl.NumberFormat("en-US", {
-                        style: "currency",
-                        currency: baseCurrency,
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0,
-                      }).format(value);
+                      return formatCurrency(value, baseCurrency);
                     }}
                   />
                   <Tooltip
@@ -709,13 +660,8 @@ export function SalesReportPage() {
                       color: "#F9FAFB",
                     }}
                     formatter={(value: number) => {
-                      const baseCurrency =
-                        reportData.payments[0]?.company_base_currency || "USD";
                       return [
-                        formatCurrency(
-                          value * (baseCurrency === "BTC" ? 1e11 : 100),
-                          baseCurrency,
-                        ),
+                        formatCurrency(value, baseCurrency),
                         "Total Revenue",
                       ];
                     }}
@@ -774,8 +720,14 @@ export function SalesReportPage() {
                 {
                   header: "Rate",
                   key: "rate",
-                  render: (item: any) =>
-                    formatRate(item.rate, item.company_base_currency),
+                  render: (item: any) => {
+                    if (item.rate === 1) return "";
+                    return formatCurrency(
+                      item.rate * (item.company_base_currency === "BTC" ? 1e9 : 100),
+                      item.company_base_currency,
+                      0,
+                    );
+                  },
                 },
               ]}
               data={reportData.payments.map((item, index) => ({

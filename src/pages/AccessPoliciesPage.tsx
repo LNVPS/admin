@@ -3,7 +3,11 @@ import { useAdminApi } from "../hooks/useAdminApi";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
-import { AdminAccessPolicyDetail, AdminRouterDetail } from "../lib/api";
+import {
+  AdminAccessPolicyDetail,
+  AdminRouterDetail,
+  NetworkAccessPolicyKind,
+} from "../lib/api";
 import {
   KeyIcon,
   PlusIcon,
@@ -446,7 +450,12 @@ function EditAccessPolicyModal({
           </label>
           <select
             value={formData.kind}
-            onChange={(e) => setFormData({ ...formData, kind: e.target.value })}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                kind: e.target.value as NetworkAccessPolicyKind,
+              })
+            }
             className=""
           >
             <option value="static_arp">Static ARP</option>

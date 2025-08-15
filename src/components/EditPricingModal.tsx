@@ -30,16 +30,16 @@ export function EditPricingModal({
     memory_cost: pricing.memory_cost,
     ip4_cost: pricing.ip4_cost,
     ip6_cost: pricing.ip6_cost,
-    min_cpu: pricing.min_cpu || 1,
-    max_cpu: pricing.max_cpu || 64,
-    min_memory: pricing.min_memory || 1024 * 1024 * 1024, // 1GB in bytes
-    max_memory: pricing.max_memory || 128 * 1024 * 1024 * 1024, // 128GB in bytes
+    min_cpu: pricing.min_cpu,
+    max_cpu: pricing.max_cpu,
+    min_memory: pricing.min_memory,
+    max_memory: pricing.max_memory,
     disk_pricing: pricing.disk_pricing.map((disk) => ({
       kind: disk.kind as string,
       interface: disk.interface as string,
       cost: disk.cost,
-      min_disk_size: disk.min_disk_size || 10 * 1024 * 1024 * 1024, // 10GB in bytes
-      max_disk_size: disk.max_disk_size || 10 * 1024 * 1024 * 1024 * 1024, // 10TB in bytes
+      min_disk_size: disk.min_disk_size,
+      max_disk_size: disk.max_disk_size,
     })),
   });
 
@@ -53,16 +53,16 @@ export function EditPricingModal({
       memory_cost: pricing.memory_cost,
       ip4_cost: pricing.ip4_cost,
       ip6_cost: pricing.ip6_cost,
-      min_cpu: pricing.min_cpu || 1,
-      max_cpu: pricing.max_cpu || 64,
-      min_memory: pricing.min_memory || 1024 * 1024 * 1024, // 1GB in bytes
-      max_memory: pricing.max_memory || 128 * 1024 * 1024 * 1024, // 128GB in bytes
+      min_cpu: pricing.min_cpu,
+      max_cpu: pricing.max_cpu,
+      min_memory: pricing.min_memory,
+      max_memory: pricing.max_memory,
       disk_pricing: pricing.disk_pricing.map((disk) => ({
         kind: disk.kind as string,
         interface: disk.interface as string,
         cost: disk.cost,
-        min_disk_size: disk.min_disk_size || 10 * 1024 * 1024 * 1024, // 10GB in bytes
-        max_disk_size: disk.max_disk_size || 10 * 1024 * 1024 * 1024 * 1024, // 10TB in bytes
+        min_disk_size: disk.min_disk_size,
+        max_disk_size: disk.max_disk_size,
       })),
     });
   }, [pricing]);

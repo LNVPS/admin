@@ -6,6 +6,7 @@ import { Button } from "../components/Button";
 import { CreatePricingModal } from "../components/CreatePricingModal";
 import { EditPricingModal } from "../components/EditPricingModal";
 import { AdminCustomPricingInfo } from "../lib/api";
+import { formatBytes } from "../utils/formatBytes";
 import {
   PlusIcon,
   DocumentDuplicateIcon,
@@ -14,6 +15,7 @@ import {
   ServerIcon,
   GlobeAltIcon,
 } from "@heroicons/react/24/outline";
+import { formatCurrency } from "../utils/currency";
 
 export function CustomPricingPage() {
   const adminApi = useAdminApi();
@@ -22,15 +24,6 @@ export function CustomPricingPage() {
   const [editingPricing, setEditingPricing] =
     useState<AdminCustomPricingInfo | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-
-  const formatCurrency = (amount: number, currency: string) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: currency === "BTC" ? 6 : 2,
-    }).format(amount);
-  };
 
   const handleCreateSuccess = () => {
     setRefreshTrigger((prev) => prev + 1);
@@ -78,6 +71,7 @@ export function CustomPricingPage() {
       <th className="w-12">ID</th>
       <th>Name & Region</th>
       <th>Resource Costs</th>
+      <th>Constraints</th>
       <th>Disk Costs</th>
       <th>Templates</th>
       <th>Status</th>
@@ -100,13 +94,25 @@ export function CustomPricingPage() {
       <td className="text-gray-300">
         <div className="space-y-0.5 text-sm">
           <div>
-            CPU: {formatCurrency(pricing.cpu_cost, pricing.currency)}/core
+            CPU: {formatCurrency(pricing.cpu_cost, pricing.currency, 0, 5)}/core
           </div>
           <div>
-            RAM: {formatCurrency(pricing.memory_cost, pricing.currency)}/GB
+            RAM: {formatCurrency(pricing.memory_cost, pricing.currency, 0, 5)}
+            /GB
           </div>
           <div>
-            IPv4: {formatCurrency(pricing.ip4_cost, pricing.currency)}/IP
+            IPv4: {formatCurrency(pricing.ip4_cost, pricing.currency, 0, 5)}/IP
+          </div>
+        </div>
+      </td>
+      <td className="text-gray-300">
+        <div className="space-y-0.5 text-sm">
+          <div>
+            CPU: {pricing.min_cpu}-{pricing.max_cpu} cores
+          </div>
+          <div>
+            RAM: {formatBytes(pricing.min_memory)}-
+            {formatBytes(pricing.max_memory)}
           </div>
         </div>
       </td>
@@ -114,8 +120,14 @@ export function CustomPricingPage() {
         <div className="space-y-0.5 text-sm">
           {pricing.disk_pricing.map((disk, idx) => (
             <div key={idx}>
-              {disk.kind.toUpperCase()} {disk.interface.toUpperCase()}:{" "}
-              {formatCurrency(disk.cost, pricing.currency)}/GB
+              <div>
+                {disk.kind.toUpperCase()} {disk.interface.toUpperCase()}:{" "}
+                {formatCurrency(disk.cost, pricing.currency, 0, 5)}/GB
+              </div>
+              <div className="text-xs text-gray-400">
+                {formatBytes(disk.min_disk_size)}-
+                {formatBytes(disk.max_disk_size)}
+              </div>
             </div>
           ))}
         </div>

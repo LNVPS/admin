@@ -52,12 +52,12 @@ class LoginStore extends ExternalStore<LoginSession | undefined> {
     this.#save();
   }
 
-  loginPrivateKey(key: string) {
+  loginPrivateKey(key: string | Uint8Array) {
     const s = new PrivateKeySigner(key);
     this.#session = {
       type: "nsec",
       publicKey: s.getPubKey(),
-      privateKey: key,
+      privateKey: s.privateKey,
     };
     this.#save();
   }

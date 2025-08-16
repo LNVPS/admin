@@ -106,7 +106,7 @@ export function CustomPricingPage() {
             IPv4: {formatCurrency(pricing.ip4_cost * mul, pricing.currency, undefined, maxDigits)}/IP
           </div>
           <div>
-            IPv4: {formatCurrency(pricing.ip6_cost * mul, pricing.currency, undefined, maxDigits)}/IP
+            IPv6: {formatCurrency(pricing.ip6_cost * mul, pricing.currency, undefined, maxDigits)}/IP
           </div>
         </div>
       </td>

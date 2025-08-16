@@ -167,15 +167,9 @@ export function SalesReportPage() {
       total.payment_count += 1;
 
       // Convert payment amounts to base currency
-      const netAmount =
-        payment.currency === "BTC"
-          ? (payment.amount / 1e11) * payment.rate
-          : (payment.amount / 100) * payment.rate;
-
-      const taxAmount =
-        payment.currency === "BTC"
-          ? (payment.tax / 1e11) * payment.rate
-          : (payment.tax / 100) * payment.rate;
+      const mul = payment.currency === "BTC" ? 1e9 : 100;
+      const netAmount = payment.amount * (payment.rate / mul);
+      const taxAmount = payment.tax * (payment.rate / mul);
 
       total.net_total_base += netAmount;
       total.tax_total_base += taxAmount;
@@ -222,16 +216,8 @@ export function SalesReportPage() {
         currencyTotals[payment.currency] = { net: 0, tax: 0 };
       }
 
-      // Convert from smallest units to main currency units
-      const netAmount =
-        payment.currency === "BTC"
-          ? payment.amount / 1e11
-          : payment.amount / 100;
-      const taxAmount =
-        payment.currency === "BTC" ? payment.tax / 1e11 : payment.tax / 100;
-
-      currencyTotals[payment.currency].net += netAmount;
-      currencyTotals[payment.currency].tax += taxAmount;
+      currencyTotals[payment.currency].net += payment.amount;
+      currencyTotals[payment.currency].tax += payment.tax;
     });
 
     const items: Array<{
@@ -620,10 +606,7 @@ export function SalesReportPage() {
                         (sum, p) => sum + p.gross_total_base,
                         0,
                       );
-                      return formatCurrency(
-                        total * (baseCurrency === "BTC" ? 1e11 : 100),
-                        baseCurrency,
-                      );
+                      return formatCurrency(total, baseCurrency,);
                     })()}
                   </p>
                   <p className="text-blue-400 text-sm">

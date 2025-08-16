@@ -79,8 +79,10 @@ export function CustomPricingPage() {
     </>
   );
 
-  const renderRow = (pricing: AdminCustomPricingInfo, index: number) => (
-    <tr key={pricing.id || index}>
+  const renderRow = (pricing: AdminCustomPricingInfo, index: number) => {
+    const mul = pricing.currency === "BTC" ? 1e9 : 100;
+    const maxDigits = pricing.currency === "BTC" ? 11 : 5;
+    return <tr key={pricing.id || index}>
       <td className="whitespace-nowrap text-white">{pricing.id}</td>
       <td className="text-gray-300">
         <div className="space-y-0.5">
@@ -94,14 +96,14 @@ export function CustomPricingPage() {
       <td className="text-gray-300">
         <div className="space-y-0.5 text-sm">
           <div>
-            CPU: {formatCurrency(pricing.cpu_cost, pricing.currency, 0, 5)}/core
+            CPU: {formatCurrency(pricing.cpu_cost * mul, pricing.currency, undefined, maxDigits)}/core
           </div>
           <div>
-            RAM: {formatCurrency(pricing.memory_cost, pricing.currency, 0, 5)}
+            RAM: {formatCurrency(pricing.memory_cost * mul, pricing.currency, undefined, maxDigits)}
             /GB
           </div>
           <div>
-            IPv4: {formatCurrency(pricing.ip4_cost, pricing.currency, 0, 5)}/IP
+            IPv4: {formatCurrency(pricing.ip4_cost * mul, pricing.currency, undefined, maxDigits)}/IP
           </div>
         </div>
       </td>
@@ -122,7 +124,7 @@ export function CustomPricingPage() {
             <div key={idx}>
               <div>
                 {disk.kind.toUpperCase()} {disk.interface.toUpperCase()}:{" "}
-                {formatCurrency(disk.cost, pricing.currency, 0, 5)}/GB
+                {formatCurrency(disk.cost * mul, pricing.currency, undefined, maxDigits)}/GB
               </div>
               <div className="text-xs text-gray-400">
                 {formatBytes(disk.min_disk_size)}-
@@ -174,7 +176,7 @@ export function CustomPricingPage() {
         </div>
       </td>
     </tr>
-  );
+  }
 
   const calculateStats = (
     pricingModels: AdminCustomPricingInfo[],

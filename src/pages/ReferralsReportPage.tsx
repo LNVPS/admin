@@ -338,7 +338,7 @@ export function ReferralsReportPage() {
       key: "rate",
       render: (item: ReferralRecord) => (
         <span className="text-gray-300">
-          {formatCurrency(item.rate, item.base_currency)}
+          {formatCurrency(item.rate * (item.base_currency === "BTC" ? 1e9 : 100), item.base_currency, 0)}
         </span>
       ),
     },

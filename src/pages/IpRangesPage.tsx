@@ -240,6 +240,7 @@ function CreateIpRangeModal({
 }) {
   const adminApi = useAdminApi();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [regions, setRegions] = useState<AdminRegionInfo[]>([]);
   const [accessPolicies, setAccessPolicies] = useState<
     AdminAccessPolicyDetail[]
@@ -281,6 +282,7 @@ function CreateIpRangeModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
 
     try {
       const data = {
@@ -309,8 +311,9 @@ function CreateIpRangeModal({
         allocation_mode: IpRangeAllocationMode.SEQUENTIAL,
         use_full_range: false,
       });
-    } catch (error) {
-      console.error("Failed to create IP range:", error);
+    } catch (err) {
+      console.error("Failed to create IP range:", err);
+      setError(err instanceof Error ? err.message : "Failed to create IP range");
     } finally {
       setLoading(false);
     }
@@ -324,6 +327,11 @@ function CreateIpRangeModal({
       size="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="bg-red-900/20 border border-red-500/30 text-red-400 px-3 py-2 rounded text-sm">
+            {error}
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-white mb-2">
@@ -502,6 +510,7 @@ function EditIpRangeModal({
 }) {
   const adminApi = useAdminApi();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [regions, setRegions] = useState<AdminRegionInfo[]>([]);
   const [accessPolicies, setAccessPolicies] = useState<
     AdminAccessPolicyDetail[]
@@ -545,6 +554,7 @@ function EditIpRangeModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
 
     try {
       const updates = {
@@ -563,8 +573,9 @@ function EditIpRangeModal({
       await adminApi.updateIpRange(ipRange.id, updates);
       onSuccess();
       onClose();
-    } catch (error) {
-      console.error("Failed to update IP range:", error);
+    } catch (err) {
+      console.error("Failed to update IP range:", err);
+      setError(err instanceof Error ? err.message : "Failed to update IP range");
     } finally {
       setLoading(false);
     }
@@ -573,6 +584,11 @@ function EditIpRangeModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Edit IP Range" size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="bg-red-900/20 border border-red-500/30 text-red-400 px-3 py-2 rounded text-sm">
+            {error}
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-white mb-2">

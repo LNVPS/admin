@@ -20,6 +20,8 @@ import { VmTemplatesPage } from "./pages/VmTemplatesPage";
 import { CustomPricingPage } from "./pages/CustomPricingPage";
 import { CompaniesPage } from "./pages/CompaniesPage";
 import { IpRangesPage } from "./pages/IpRangesPage";
+import { VmIpAssignmentsPage } from "./pages/VmIpAssignmentsPage";
+import { IpAddressDetailsPage } from "./pages/IpAddressDetailsPage";
 import { AccessPoliciesPage } from "./pages/AccessPoliciesPage";
 import { RoutersPage } from "./pages/RoutersPage";
 import { SalesReportPage } from "./pages/SalesReportPage";
@@ -183,6 +185,22 @@ export function App() {
               element={
                 <PermissionGuard requiredPermissions={["ip_range::view"]}>
                   <IpRangesPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="vm-ip-assignments"
+              element={
+                <PermissionGuard requiredPermissions={["ip_range::view"]}>
+                  <VmIpAssignmentsPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="ip-address/:ip"
+              element={
+                <PermissionGuard requiredPermissions={["ip_range::view"]}>
+                  <IpAddressDetailsPage />
                 </PermissionGuard>
               }
             />

@@ -606,7 +606,7 @@ export function SalesReportPage() {
                         (sum, p) => sum + p.gross_total_base,
                         0,
                       );
-                      return formatCurrency(total, baseCurrency,);
+                      return formatCurrency(total, baseCurrency);
                     })()}
                   </p>
                   <p className="text-blue-400 text-sm">
@@ -706,7 +706,8 @@ export function SalesReportPage() {
                   render: (item: any) => {
                     if (item.rate === 1) return "";
                     return formatCurrency(
-                      item.rate * (item.company_base_currency === "BTC" ? 1e9 : 100),
+                      item.rate *
+                        (item.company_base_currency === "BTC" ? 1e9 : 100),
                       item.company_base_currency,
                       0,
                     );

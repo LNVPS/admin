@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { Button } from "../components/Button";
@@ -7,6 +7,7 @@ import { StatusBadge } from "../components/StatusBadge";
 import { Profile } from "../components/Profile";
 import { VmStatusBadge, getVmStatus } from "../components/VmStatusBadge";
 import { ErrorState } from "../components/ErrorState";
+import { VmIpAssignmentModal } from "../components/VmIpAssignmentModal";
 import {
   AdminVmInfo,
   VmRunningStates,
@@ -27,6 +28,7 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   PlusIcon,
+  GlobeAltIcon,
 } from "@heroicons/react/24/outline";
 
 export function VMDetailPage() {
@@ -39,6 +41,7 @@ export function VMDetailPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+  const [showIpAssignModal, setShowIpAssignModal] = useState(false);
 
   const vmId = id ? parseInt(id, 10) : null;
 
@@ -465,6 +468,15 @@ export function VMDetailPage() {
           </Button>
           <Button
             variant="secondary"
+            onClick={() => setShowIpAssignModal(true)}
+            disabled={!!actionLoading}
+            className="text-purple-400 hover:text-purple-300 p-2"
+            title="Assign IP address"
+          >
+            <GlobeAltIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="secondary"
             onClick={handleDeleteVM}
             disabled={actionLoading === "delete"}
             className="text-red-400 hover:text-red-300 p-2"
@@ -494,9 +506,13 @@ export function VMDetailPage() {
             <div className="space-y-1">
               {vm.ip_addresses.length > 0 ? (
                 vm.ip_addresses.map((ip, idx) => (
-                  <div key={idx} className="font-mono text-white text-xs">
+                  <Link
+                    key={idx}
+                    to={`/ip-address/${encodeURIComponent(ip.ip)}`}
+                    className="block font-mono text-blue-400 hover:text-blue-300 hover:underline text-xs"
+                  >
                     {ip.ip}
-                  </div>
+                  </Link>
                 ))
               ) : (
                 <span className="text-gray-500">None</span>
@@ -534,12 +550,13 @@ export function VMDetailPage() {
                 const expiryInfo = formatTimeUntilExpiry(vm.expires);
                 return (
                   <div
-                    className={`text-xs ${expiryInfo.isExpired
-                      ? "text-red-400"
-                      : expiryInfo.isExpiringSoon
-                        ? "text-yellow-400"
-                        : "text-gray-400"
-                      }`}
+                    className={`text-xs ${
+                      expiryInfo.isExpired
+                        ? "text-red-400"
+                        : expiryInfo.isExpiringSoon
+                          ? "text-yellow-400"
+                          : "text-gray-400"
+                    }`}
                   >
                     {expiryInfo.text}
                   </div>
@@ -679,6 +696,17 @@ export function VMDetailPage() {
           )}
         />
       </div>
+
+      {/* IP Assignment Modal */}
+      <VmIpAssignmentModal
+        isOpen={showIpAssignModal}
+        onClose={() => setShowIpAssignModal(false)}
+        vm={vm}
+        onSuccess={() => {
+          loadVM(true);
+          setHistoryRefreshKey((prev) => prev + 1);
+        }}
+      />
     </div>
   );
 }

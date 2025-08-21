@@ -9,6 +9,7 @@ import { AdminHostInfo, AdminRegionInfo, VmHostKind } from "../lib/api";
 import { formatBytes } from "../utils/formatBytes";
 import { PencilIcon, PlusIcon, CogIcon } from "@heroicons/react/24/outline";
 import { HostDiskEditor } from "../components/HostDiskEditor";
+import { ProxmoxTokenInput } from "../components/ProxmoxTokenInput";
 
 export function HostsPage() {
   const adminApi = useAdminApi();
@@ -450,16 +451,26 @@ function CreateHostModal({
           <label className="block text-xs font-medium text-white mb-2">
             API Token*
           </label>
-          <input
-            type="password"
-            value={formData.api_token}
-            onChange={(e) =>
-              setFormData({ ...formData, api_token: e.target.value })
-            }
-            className=""
-            placeholder="API token for host communication"
-            required
-          />
+          {formData.kind === "proxmox" ? (
+            <ProxmoxTokenInput
+              value={formData.api_token}
+              onChange={(token) =>
+                setFormData({ ...formData, api_token: token })
+              }
+              required
+            />
+          ) : (
+            <input
+              type="text"
+              value={formData.api_token}
+              onChange={(e) =>
+                setFormData({ ...formData, api_token: e.target.value })
+              }
+              className=""
+              placeholder="API token for host communication"
+              required
+            />
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -741,13 +752,20 @@ function EditHostModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              API Token
-            </label>
+        <div>
+          <label className="block text-xs font-medium text-white mb-2">
+            API Token
+          </label>
+          {formData.kind === "proxmox" ? (
+            <ProxmoxTokenInput
+              value={formData.api_token}
+              onChange={(token) =>
+                setFormData({ ...formData, api_token: token })
+              }
+            />
+          ) : (
             <input
-              type="password"
+              type="text"
               value={formData.api_token}
               onChange={(e) =>
                 setFormData({ ...formData, api_token: e.target.value })
@@ -755,10 +773,13 @@ function EditHostModal({
               className=""
               placeholder="Leave empty to keep current token"
             />
-            <p className="text-xs text-gray-400 mt-1">
-              Leave empty to keep current token
-            </p>
-          </div>
+          )}
+          <p className="text-xs text-gray-400 mt-1">
+            Leave empty to keep current token
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-white mb-2">
               VLAN ID

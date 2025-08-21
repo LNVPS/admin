@@ -182,7 +182,6 @@ export interface AdminVmInfo {
     range_id: number;
   }[];
   running_state: VmRunningState | null;
-  auto_renewal_enabled: boolean;
   cpu: number;
   memory: number;
   disk_size: number;
@@ -192,8 +191,9 @@ export interface AdminVmInfo {
   user_id: number;
   user_pubkey: string;
   user_email: string | null;
-  host_name: string | null;
-  region_name: string | null;
+  host_name: string;
+  region_id: number;
+  region_name: string;
   deleted: boolean;
   ref_code: string | null;
 }
@@ -554,19 +554,21 @@ export interface ReferralUsageTimeSeriesReportData {
   referrals: ReferralRecord[];
 }
 
-export interface AdminIpRangeInfo {
+export interface AdminVmIpAssignmentInfo {
   id: number;
-  cidr: string;
-  gateway: string;
-  enabled: boolean;
+  vm_id: number;
+  ip_range_id: number;
   region_id: number;
+  user_id: number;
+  ip: string;
+  deleted: boolean;
+  arp_ref: string | null;
+  dns_forward: string | null;
+  dns_forward_ref: string | null;
+  dns_reverse: string | null;
+  dns_reverse_ref: string | null;
+  ip_range_cidr: string | null;
   region_name: string | null;
-  reverse_zone_id: string | null;
-  access_policy_id: number | null;
-  access_policy_name: string | null;
-  allocation_mode: IpRangeAllocationMode;
-  use_full_range: boolean;
-  assignment_count: number;
 }
 
 function getConfiguredServerUrl(): string {
@@ -1721,6 +1723,141 @@ export class AdminApi {
   async deleteCostPlan(id: number) {
     await this.handleResponse<ApiResponse<void>>(
       await this.req(`/api/admin/v1/cost_plans/${id}`, "DELETE"),
+    );
+  }
+
+  // VM IP Assignment Management
+  async getVmIpAssignments(params?: {
+    limit?: number;
+    offset?: number;
+    vm_id?: number;
+    ip_range_id?: number;
+    ip?: string;
+    include_deleted?: boolean;
+  }) {
+    const queryParams = params
+      ? {
+          ...params,
+          include_deleted:
+            params.include_deleted !== undefined
+              ? params.include_deleted.toString()
+              : undefined,
+        }
+      : undefined;
+
+    return await this.handleResponse<
+      PaginatedApiResponse<AdminVmIpAssignmentInfo>
+    >(
+      await this.req(
+        "/api/admin/v1/vm_ip_assignments",
+        "GET",
+        undefined,
+        queryParams,
+      ),
+    );
+  }
+
+  async getVmIpAssignment(id: number) {
+    const result = await this.handleResponse<
+      ApiResponse<AdminVmIpAssignmentInfo>
+    >(await this.req(`/api/admin/v1/vm_ip_assignments/${id}`, "GET"));
+    return result.data;
+  }
+
+  async createVmIpAssignment(data: {
+    vm_id: number;
+    ip_range_id: number;
+    ip?: string | null;
+    arp_ref?: string | null;
+    dns_forward?: string | null;
+    dns_reverse?: string | null;
+  }) {
+    const result = await this.handleResponse<
+      ApiResponse<AdminVmIpAssignmentInfo>
+    >(await this.req("/api/admin/v1/vm_ip_assignments", "POST", data));
+    return result.data;
+  }
+
+  async updateVmIpAssignment(
+    id: number,
+    updates: Partial<{
+      ip: string;
+      arp_ref: string | null;
+      dns_forward: string | null;
+      dns_reverse: string | null;
+    }>,
+  ) {
+    const result = await this.handleResponse<
+      ApiResponse<AdminVmIpAssignmentInfo>
+    >(
+      await this.req(`/api/admin/v1/vm_ip_assignments/${id}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
+  async deleteVmIpAssignment(id: number) {
+    await this.handleResponse<ApiResponse<void>>(
+      await this.req(`/api/admin/v1/vm_ip_assignments/${id}`, "DELETE"),
+    );
+  }
+
+  async getVmIpAssignmentsByVm(
+    vmId: number,
+    params?: {
+      limit?: number;
+      offset?: number;
+      include_deleted?: boolean;
+    },
+  ) {
+    const queryParams = params
+      ? {
+          ...params,
+          include_deleted:
+            params.include_deleted !== undefined
+              ? params.include_deleted.toString()
+              : undefined,
+        }
+      : undefined;
+
+    return await this.handleResponse<
+      PaginatedApiResponse<AdminVmIpAssignmentInfo>
+    >(
+      await this.req(
+        `/api/admin/v1/vms/${vmId}/ip_assignments`,
+        "GET",
+        undefined,
+        queryParams,
+      ),
+    );
+  }
+
+  async getVmIpAssignmentsByRange(
+    ipRangeId: number,
+    params?: {
+      limit?: number;
+      offset?: number;
+      include_deleted?: boolean;
+    },
+  ) {
+    const queryParams = params
+      ? {
+          ...params,
+          include_deleted:
+            params.include_deleted !== undefined
+              ? params.include_deleted.toString()
+              : undefined,
+        }
+      : undefined;
+
+    return await this.handleResponse<
+      PaginatedApiResponse<AdminVmIpAssignmentInfo>
+    >(
+      await this.req(
+        `/api/admin/v1/ip_ranges/${ipRangeId}/assignments`,
+        "GET",
+        undefined,
+        queryParams,
+      ),
     );
   }
 

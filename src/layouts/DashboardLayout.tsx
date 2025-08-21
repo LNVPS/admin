@@ -91,6 +91,12 @@ const navigation: SidebarItem[] = [
         icon: CurrencyDollarIcon,
         requiredPermissions: ["vm_custom_pricing::view"],
       },
+      {
+        name: "IP Assignments",
+        to: "/vm-ip-assignments",
+        icon: GlobeAltIcon,
+        requiredPermissions: ["ip_range::view"],
+      },
     ],
   },
   {

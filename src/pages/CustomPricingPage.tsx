@@ -82,104 +82,139 @@ export function CustomPricingPage() {
   const renderRow = (pricing: AdminCustomPricingInfo, index: number) => {
     const mul = pricing.currency === "BTC" ? 1e9 : 100;
     const maxDigits = pricing.currency === "BTC" ? 11 : 5;
-    return <tr key={pricing.id || index}>
-      <td className="whitespace-nowrap text-white">{pricing.id}</td>
-      <td className="text-gray-300">
-        <div className="space-y-0.5">
-          <div className="font-medium text-white">{pricing.name}</div>
-          <div className="flex items-center text-gray-400">
-            <GlobeAltIcon className="h-4 w-4 mr-1" />
-            {pricing.region_name || `Region ${pricing.region_id}`}
-          </div>
-        </div>
-      </td>
-      <td className="text-gray-300">
-        <div className="space-y-0.5 text-sm">
-          <div>
-            CPU: {formatCurrency(pricing.cpu_cost * mul, pricing.currency, undefined, maxDigits)}/core
-          </div>
-          <div>
-            RAM: {formatCurrency(pricing.memory_cost * mul, pricing.currency, undefined, maxDigits)}
-            /GB
-          </div>
-          <div>
-            IPv4: {formatCurrency(pricing.ip4_cost * mul, pricing.currency, undefined, maxDigits)}/IP
-          </div>
-          <div>
-            IPv6: {formatCurrency(pricing.ip6_cost * mul, pricing.currency, undefined, maxDigits)}/IP
-          </div>
-        </div>
-      </td>
-      <td className="text-gray-300">
-        <div className="space-y-0.5 text-sm">
-          <div>
-            CPU: {pricing.min_cpu}-{pricing.max_cpu} cores
-          </div>
-          <div>
-            RAM: {formatBytes(pricing.min_memory)}-
-            {formatBytes(pricing.max_memory)}
-          </div>
-        </div>
-      </td>
-      <td className="text-gray-300">
-        <div className="space-y-0.5 text-sm">
-          {pricing.disk_pricing.map((disk, idx) => (
-            <div key={idx}>
-              <div>
-                {disk.kind.toUpperCase()} {disk.interface.toUpperCase()}:{" "}
-                {formatCurrency(disk.cost * mul, pricing.currency, undefined, maxDigits)}/GB
-              </div>
-              <div className="text-xs text-gray-400">
-                {formatBytes(disk.min_disk_size)}-
-                {formatBytes(disk.max_disk_size)}
-              </div>
+    return (
+      <tr key={pricing.id || index}>
+        <td className="whitespace-nowrap text-white">{pricing.id}</td>
+        <td className="text-gray-300">
+          <div className="space-y-0.5">
+            <div className="font-medium text-white">{pricing.name}</div>
+            <div className="flex items-center text-gray-400">
+              <GlobeAltIcon className="h-4 w-4 mr-1" />
+              {pricing.region_name || `Region ${pricing.region_id}`}
             </div>
-          ))}
-        </div>
-      </td>
-      <td className="text-gray-300">
-        <div className="flex items-center">
-          <ServerIcon className="h-4 w-4 mr-1 text-gray-400" />
-          {pricing.template_count}
-        </div>
-      </td>
-      <td>
-        <div className="space-y-1">
-          <StatusBadge status={pricing.enabled ? "enabled" : "disabled"} />
-          {pricing.expires && new Date(pricing.expires) < new Date() && (
+          </div>
+        </td>
+        <td className="text-gray-300">
+          <div className="space-y-0.5 text-sm">
             <div>
-              <StatusBadge status="expired" />
+              CPU:{" "}
+              {formatCurrency(
+                pricing.cpu_cost * mul,
+                pricing.currency,
+                undefined,
+                maxDigits,
+              )}
+              /core
             </div>
-          )}
-        </div>
-      </td>
-      <td>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => handleEdit(pricing)}
-            className="p-1 text-green-400 hover:text-green-300 rounded"
-            title="Edit pricing model"
-          >
-            <PencilIcon className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => handleCopy(pricing.id, pricing.name)}
-            className="p-1 text-blue-400 hover:text-blue-300 rounded"
-            title="Copy pricing model"
-          >
-            <DocumentDuplicateIcon className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => handleDelete(pricing.id)}
-            className="p-1 text-red-400 hover:text-red-300 rounded"
-            title="Delete pricing model"
-          >
-            <TrashIcon className="h-4 w-4" />
-          </button>
-        </div>
-      </td>
-    </tr>
-  }
+            <div>
+              RAM:{" "}
+              {formatCurrency(
+                pricing.memory_cost * mul,
+                pricing.currency,
+                undefined,
+                maxDigits,
+              )}
+              /GB
+            </div>
+            <div>
+              IPv4:{" "}
+              {formatCurrency(
+                pricing.ip4_cost * mul,
+                pricing.currency,
+                undefined,
+                maxDigits,
+              )}
+              /IP
+            </div>
+            <div>
+              IPv6:{" "}
+              {formatCurrency(
+                pricing.ip6_cost * mul,
+                pricing.currency,
+                undefined,
+                maxDigits,
+              )}
+              /IP
+            </div>
+          </div>
+        </td>
+        <td className="text-gray-300">
+          <div className="space-y-0.5 text-sm">
+            <div>
+              CPU: {pricing.min_cpu}-{pricing.max_cpu} cores
+            </div>
+            <div>
+              RAM: {formatBytes(pricing.min_memory)}-
+              {formatBytes(pricing.max_memory)}
+            </div>
+          </div>
+        </td>
+        <td className="text-gray-300">
+          <div className="space-y-0.5 text-sm">
+            {pricing.disk_pricing.map((disk, idx) => (
+              <div key={idx}>
+                <div>
+                  {disk.kind.toUpperCase()} {disk.interface.toUpperCase()}:{" "}
+                  {formatCurrency(
+                    disk.cost * mul,
+                    pricing.currency,
+                    undefined,
+                    maxDigits,
+                  )}
+                  /GB
+                </div>
+                <div className="text-xs text-gray-400">
+                  {formatBytes(disk.min_disk_size)}-
+                  {formatBytes(disk.max_disk_size)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </td>
+        <td className="text-gray-300">
+          <div className="flex items-center">
+            <ServerIcon className="h-4 w-4 mr-1 text-gray-400" />
+            {pricing.template_count}
+          </div>
+        </td>
+        <td>
+          <div className="space-y-1">
+            <StatusBadge status={pricing.enabled ? "enabled" : "disabled"} />
+            {pricing.expires && new Date(pricing.expires) < new Date() && (
+              <div>
+                <StatusBadge status="expired" />
+              </div>
+            )}
+          </div>
+        </td>
+        <td>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleEdit(pricing)}
+              className="p-1 text-green-400 hover:text-green-300 rounded"
+              title="Edit pricing model"
+            >
+              <PencilIcon className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => handleCopy(pricing.id, pricing.name)}
+              className="p-1 text-blue-400 hover:text-blue-300 rounded"
+              title="Copy pricing model"
+            >
+              <DocumentDuplicateIcon className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => handleDelete(pricing.id)}
+              className="p-1 text-red-400 hover:text-red-300 rounded"
+              title="Delete pricing model"
+            >
+              <TrashIcon className="h-4 w-4" />
+            </button>
+          </div>
+        </td>
+      </tr>
+    );
+  };
 
   const calculateStats = (
     pricingModels: AdminCustomPricingInfo[],

@@ -313,7 +313,9 @@ function CreateIpRangeModal({
       });
     } catch (err) {
       console.error("Failed to create IP range:", err);
-      setError(err instanceof Error ? err.message : "Failed to create IP range");
+      setError(
+        err instanceof Error ? err.message : "Failed to create IP range",
+      );
     } finally {
       setLoading(false);
     }
@@ -575,7 +577,9 @@ function EditIpRangeModal({
       onClose();
     } catch (err) {
       console.error("Failed to update IP range:", err);
-      setError(err instanceof Error ? err.message : "Failed to update IP range");
+      setError(
+        err instanceof Error ? err.message : "Failed to update IP range",
+      );
     } finally {
       setLoading(false);
     }

@@ -1907,6 +1907,16 @@ export class AdminApi {
     );
     return result.data;
   }
+
+  // Bulk messaging
+  async sendBulkMessage(params: { subject: string; message: string }) {
+    const result = await this.handleResponse<
+      ApiResponse<{ job_dispatched: boolean; job_id: string }>
+    >(
+      await this.req("/api/admin/v1/users/bulk-message", "POST", params),
+    );
+    return result.data;
+  }
 }
 
 export const adminApi = new AdminApi();

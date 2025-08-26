@@ -20,6 +20,7 @@ import {
   BuildingOfficeIcon,
   WifiIcon,
   UserGroupIcon,
+  ChatBubbleLeftRightIcon,
 } from "@heroicons/react/24/outline";
 
 interface SidebarItem {
@@ -47,6 +48,12 @@ const navigation: SidebarItem[] = [
         to: "/roles",
         icon: KeyIcon,
         requiredPermissions: ["roles::view"],
+      },
+      {
+        name: "Bulk Message",
+        to: "/bulk-message",
+        icon: ChatBubbleLeftRightIcon,
+        requiredPermissions: ["users::update"],
       },
     ],
   },

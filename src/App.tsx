@@ -26,6 +26,7 @@ import { AccessPoliciesPage } from "./pages/AccessPoliciesPage";
 import { RoutersPage } from "./pages/RoutersPage";
 import { SalesReportPage } from "./pages/SalesReportPage";
 import { ReferralsReportPage } from "./pages/ReferralsReportPage";
+import { BulkMessagePage } from "./pages/BulkMessagePage";
 import { PermissionGuard } from "./components/PermissionGuard";
 import { SmartRedirect } from "./components/SmartRedirect";
 
@@ -233,6 +234,14 @@ export function App() {
               element={
                 <PermissionGuard requiredPermissions={["analytics::view"]}>
                   <ReferralsReportPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="bulk-message"
+              element={
+                <PermissionGuard requiredPermissions={["users::update"]}>
+                  <BulkMessagePage />
                 </PermissionGuard>
               }
             />

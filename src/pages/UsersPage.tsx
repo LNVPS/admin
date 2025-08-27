@@ -6,16 +6,48 @@ import { Profile } from "../components/Profile";
 import { Button } from "../components/Button";
 import { EditUserModal } from "../components/EditUserModal";
 import { AdminUserInfo, getCountryName } from "../lib/api";
-import { PencilIcon, EyeIcon } from "@heroicons/react/24/outline";
+import { PencilIcon, EyeIcon, MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { tryParseNostrLink } from "@snort/system";
+import { bech32ToHex } from "@snort/shared";
 
 export function UsersPage() {
   const adminApi = useAdminApi();
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<AdminUserInfo | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const refreshData = () => {
     setRefreshTrigger((prev) => prev + 1);
+  };
+
+  const parseSearchTerm = (term: string): string => {
+    const trimmedTerm = term.trim();
+    if (!trimmedTerm) return "";
+
+    try {
+      if (trimmedTerm.startsWith("npub1") || trimmedTerm.startsWith("nprofile1")) {
+        const link = tryParseNostrLink(trimmedTerm);
+        if (link) {
+          return link.id; // This gives us the hex pubkey
+        } else {
+          return bech32ToHex(trimmedTerm);
+        }
+      }
+    } catch (error) {
+      console.debug("Failed to parse nostr identifier:", error);
+    }
+
+    return trimmedTerm;
+  };
+
+  const getSearchParams = () => {
+    const parsed = parseSearchTerm(searchTerm);
+    return parsed ? { search: parsed } : {};
+  };
+
+  const clearSearch = () => {
+    setSearchTerm("");
   };
 
   const handleEdit = (user: AdminUserInfo) => {
@@ -109,22 +141,20 @@ export function UsersPage() {
       </td>
       <td className="whitespace-nowrap text-center">
         <span
-          className={`inline-flex px-0.5 py-0.5 font-medium rounded ${
-            user.vm_count > 0
+          className={`inline-flex px-0.5 py-0.5 font-medium rounded ${user.vm_count > 0
               ? "bg-blue-900 text-blue-300"
               : "bg-gray-600 text-gray-400"
-          }`}
+            }`}
         >
           {user.vm_count}
         </span>
       </td>
       <td className="whitespace-nowrap">
         <span
-          className={`inline-flex px-0.5 py-0.5 font-medium rounded ${
-            user.is_admin
+          className={`inline-flex px-0.5 py-0.5 font-medium rounded ${user.is_admin
               ? "bg-orange-900 text-orange-300"
               : "bg-gray-600 text-gray-300"
-          }`}
+            }`}
         >
           {user.is_admin ? "A" : "U"}
         </span>
@@ -188,7 +218,7 @@ export function UsersPage() {
         (user) =>
           user.last_login &&
           new Date(user.last_login) >
-            new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+          new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
       ).length,
     };
 
@@ -231,6 +261,26 @@ export function UsersPage() {
             </span>
           </div>
         </div>
+        <div className="flex items-center space-x-2">
+          <div className="relative">
+            <MagnifyingGlassIcon className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by email, ID, npub, or nprofile..."
+              className="pl-10 pr-10 py-2 w-80 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+            />
+            {searchTerm && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+              >
+                <XMarkIcon className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     );
   };
@@ -238,14 +288,14 @@ export function UsersPage() {
   return (
     <div className="space-y-6">
       <PaginatedTable
-        apiCall={(params) => adminApi.getUsers(params)}
+        apiCall={(params) => adminApi.getUsers({ ...params, ...getSearchParams() })}
         renderHeader={renderHeader}
         renderRow={renderRow}
         calculateStats={calculateStats}
         itemsPerPage={20}
         errorAction="view users"
         loadingMessage="Loading users..."
-        dependencies={[refreshTrigger]}
+        dependencies={[refreshTrigger, searchTerm]}
         minWidth="1000px"
       />
 

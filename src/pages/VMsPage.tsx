@@ -19,6 +19,8 @@ import {
   XMarkIcon,
   EyeIcon,
 } from "@heroicons/react/24/outline";
+import { tryParseNostrLink } from "@snort/system";
+import { bech32ToHex } from "@snort/shared";
 
 export function VMsPage() {
   const adminApi = useAdminApi();
@@ -72,6 +74,26 @@ export function VMsPage() {
     setRefreshTrigger((prev) => prev + 1);
   };
 
+  const parsePubkey = (pubkey: string): string => {
+    const trimmedPubkey = pubkey.trim();
+    if (!trimmedPubkey) return "";
+
+    try {
+      if (trimmedPubkey.startsWith("npub1") || trimmedPubkey.startsWith("nprofile1")) {
+        const link = tryParseNostrLink(trimmedPubkey);
+        if (link) {
+          return link.id; // This gives us the hex pubkey
+        } else {
+          return bech32ToHex(trimmedPubkey);
+        }
+      }
+    } catch (error) {
+      console.debug("Failed to parse nostr identifier:", error);
+    }
+
+    return trimmedPubkey;
+  };
+
   const getApiFilters = () => {
     const apiFilters: any = {};
 
@@ -82,7 +104,7 @@ export function VMsPage() {
       apiFilters.host_id = Number(filters.host_id);
     }
     if (filters.pubkey.trim()) {
-      apiFilters.pubkey = filters.pubkey.trim();
+      apiFilters.pubkey = parsePubkey(filters.pubkey);
     }
     if (filters.region_id && !isNaN(Number(filters.region_id))) {
       apiFilters.region_id = Number(filters.region_id);
@@ -393,7 +415,7 @@ export function VMsPage() {
                 value={filters.pubkey}
                 onChange={(e) => handleFilterChange("pubkey", e.target.value)}
                 className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
-                placeholder="Enter public key (hex format)"
+                placeholder="Enter pubkey (hex, npub, or nprofile)"
               />
             </div>
 

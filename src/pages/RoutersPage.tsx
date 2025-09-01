@@ -4,6 +4,7 @@ import { PaginatedTable } from "../components/PaginatedTable";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
 import { StatusBadge } from "../components/StatusBadge";
+import { OvhCredentialsInput } from "../components/OvhCredentialsInput";
 import { AdminRouterDetail, RouterKind } from "../lib/api";
 import {
   ServerIcon,
@@ -310,30 +311,40 @@ function CreateRouterModal({
 
         <div>
           <label className="block text-xs font-medium text-white mb-2">
-            Authentication Token *
+            {formData.kind === RouterKind.OVH_ADDITIONAL_IP
+              ? "OVH Credentials *"
+              : "Authentication Token *"}
           </label>
-          <div className="relative">
-            <input
-              type={showToken ? "text" : "password"}
+          {formData.kind === RouterKind.OVH_ADDITIONAL_IP ? (
+            <OvhCredentialsInput
               value={formData.token}
-              onChange={(e) =>
-                setFormData({ ...formData, token: e.target.value })
-              }
-              className="font-mono"
+              onChange={(token) => setFormData({ ...formData, token })}
               required
             />
-            <button
-              type="button"
-              onClick={() => setShowToken(!showToken)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-white"
-            >
-              {showToken ? (
-                <EyeSlashIcon className="h-4 w-4" />
-              ) : (
-                <EyeIcon className="h-4 w-4" />
-              )}
-            </button>
-          </div>
+          ) : (
+            <div className="relative">
+              <input
+                type={showToken ? "text" : "password"}
+                value={formData.token}
+                onChange={(e) =>
+                  setFormData({ ...formData, token: e.target.value })
+                }
+                className="font-mono"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowToken(!showToken)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-white"
+              >
+                {showToken ? (
+                  <EyeSlashIcon className="h-4 w-4" />
+                ) : (
+                  <EyeIcon className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center">
@@ -467,33 +478,49 @@ function EditRouterModal({
 
         <div>
           <label className="block text-xs font-medium text-white mb-2">
-            Authentication Token
+            {formData.kind === RouterKind.OVH_ADDITIONAL_IP
+              ? "OVH Credentials"
+              : "Authentication Token"}
           </label>
-          <div className="relative">
-            <input
-              type={showToken ? "text" : "password"}
-              value={formData.token}
-              onChange={(e) =>
-                setFormData({ ...formData, token: e.target.value })
-              }
-              className="font-mono"
-              placeholder="Leave empty to keep current token"
-            />
-            <button
-              type="button"
-              onClick={() => setShowToken(!showToken)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-white"
-            >
-              {showToken ? (
-                <EyeSlashIcon className="h-4 w-4" />
-              ) : (
-                <EyeIcon className="h-4 w-4" />
-              )}
-            </button>
-          </div>
-          <p className="mt-1 text-xs text-gray-400">
-            Leave empty to keep the current authentication token
-          </p>
+          {formData.kind === RouterKind.OVH_ADDITIONAL_IP ? (
+            <>
+              <OvhCredentialsInput
+                value={formData.token}
+                onChange={(token) => setFormData({ ...formData, token })}
+              />
+              <p className="mt-1 text-xs text-gray-400">
+                Leave empty to keep the current OVH credentials
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="relative">
+                <input
+                  type={showToken ? "text" : "password"}
+                  value={formData.token}
+                  onChange={(e) =>
+                    setFormData({ ...formData, token: e.target.value })
+                  }
+                  className="font-mono"
+                  placeholder="Leave empty to keep current token"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowToken(!showToken)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-white"
+                >
+                  {showToken ? (
+                    <EyeSlashIcon className="h-4 w-4" />
+                  ) : (
+                    <EyeIcon className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+              <p className="mt-1 text-xs text-gray-400">
+                Leave empty to keep the current authentication token
+              </p>
+            </>
+          )}
         </div>
 
         <div className="flex items-center">

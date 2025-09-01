@@ -24,6 +24,7 @@ export function EditPricingModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: pricing.name,
+    enabled: pricing.enabled,
     region_id: pricing.region_id.toString(),
     currency: pricing.currency,
     cpu_cost: pricing.cpu_cost,
@@ -47,6 +48,7 @@ export function EditPricingModal({
   useEffect(() => {
     setFormData({
       name: pricing.name,
+      enabled: pricing.enabled,
       region_id: pricing.region_id.toString(),
       currency: pricing.currency,
       cpu_cost: pricing.cpu_cost,
@@ -75,6 +77,7 @@ export function EditPricingModal({
     try {
       await adminApi.updateCustomPricing(pricing.id, {
         name: formData.name,
+        enabled: formData.enabled,
         region_id: parseInt(formData.region_id),
         currency: formData.currency,
         cpu_cost: formData.cpu_cost,
@@ -167,6 +170,22 @@ export function EditPricingModal({
               ))}
             </select>
           </div>
+        </div>
+
+        <div>
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              checked={formData.enabled}
+              onChange={(e) =>
+                setFormData({ ...formData, enabled: e.target.checked })
+              }
+              className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <span className="text-sm font-medium text-gray-300">
+              Enabled (pricing model is available for use)
+            </span>
+          </label>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

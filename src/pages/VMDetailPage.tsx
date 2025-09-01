@@ -8,6 +8,7 @@ import { Profile } from "../components/Profile";
 import { VmStatusBadge, getVmStatus } from "../components/VmStatusBadge";
 import { ErrorState } from "../components/ErrorState";
 import { VmIpAssignmentModal } from "../components/VmIpAssignmentModal";
+import { VmRefundModal } from "../components/VmRefundModal";
 import {
   AdminVmInfo,
   VmRunningStates,
@@ -29,6 +30,7 @@ import {
   XCircleIcon,
   PlusIcon,
   GlobeAltIcon,
+  BanknotesIcon,
 } from "@heroicons/react/24/outline";
 
 export function VMDetailPage() {
@@ -42,6 +44,7 @@ export function VMDetailPage() {
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const [showIpAssignModal, setShowIpAssignModal] = useState(false);
+  const [showRefundModal, setShowRefundModal] = useState(false);
 
   const vmId = id ? parseInt(id, 10) : null;
 
@@ -90,7 +93,8 @@ export function VMDetailPage() {
     if (!vm) return;
     try {
       setActionLoading("start");
-      await adminApi.startVM(vm.id);
+      const result = await adminApi.startVM(vm.id);
+      console.log("Start VM job dispatched:", result.job_id);
       await loadVM(true);
       setHistoryRefreshKey((prev) => prev + 1);
     } catch (error) {
@@ -104,7 +108,8 @@ export function VMDetailPage() {
     if (!vm) return;
     try {
       setActionLoading("stop");
-      await adminApi.stopVM(vm.id);
+      const result = await adminApi.stopVM(vm.id);
+      console.log("Stop VM job dispatched:", result.job_id);
       await loadVM(true);
       setHistoryRefreshKey((prev) => prev + 1);
     } catch (error) {
@@ -122,7 +127,8 @@ export function VMDetailPage() {
       );
       try {
         setActionLoading("delete");
-        await adminApi.deleteVM(vm.id, reason || undefined);
+        const result = await adminApi.deleteVM(vm.id, reason || undefined);
+        console.log("Delete VM job dispatched:", result.job_id);
         navigate("/vms");
       } catch (error) {
         console.error("Failed to delete VM:", error);
@@ -356,9 +362,6 @@ export function VMDetailPage() {
     );
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 
-    // Consider "expiring soon" if less than 24 hours
-    const isExpiringSoon = diffMs < 24 * 60 * 60 * 1000;
-
     if (days > 0) {
       return {
         text: `${days}d ${hours}h remaining`,
@@ -477,6 +480,15 @@ export function VMDetailPage() {
           </Button>
           <Button
             variant="secondary"
+            onClick={() => setShowRefundModal(true)}
+            disabled={!!actionLoading}
+            className="text-orange-400 hover:text-orange-300 p-2"
+            title="Process refund"
+          >
+            <BanknotesIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="secondary"
             onClick={handleDeleteVM}
             disabled={actionLoading === "delete"}
             className="text-red-400 hover:text-red-300 p-2"
@@ -528,7 +540,7 @@ export function VMDetailPage() {
             <div className="text-white">
               {new Date(vm.created).toLocaleString()}
             </div>
-            {vm.auto_renewal_enabled === true && (
+            {vm.auto_renewal_enabled && (
               <StatusBadge status="running" className="mt-1">
                 Auto-Renew
               </StatusBadge>
@@ -643,7 +655,7 @@ export function VMDetailPage() {
           errorAction="load VM history"
           loadingMessage="Loading VM history..."
           dependencies={[vm.id, historyRefreshKey]}
-          calculateStats={(histories, total) => (
+          calculateStats={(_, total) => (
             <div className="text-sm text-gray-400">
               Total history entries:{" "}
               <span className="text-white font-medium">{total}</span>
@@ -701,6 +713,17 @@ export function VMDetailPage() {
       <VmIpAssignmentModal
         isOpen={showIpAssignModal}
         onClose={() => setShowIpAssignModal(false)}
+        vm={vm}
+        onSuccess={() => {
+          loadVM(true);
+          setHistoryRefreshKey((prev) => prev + 1);
+        }}
+      />
+
+      {/* Refund Modal */}
+      <VmRefundModal
+        isOpen={showRefundModal}
+        onClose={() => setShowRefundModal(false)}
         vm={vm}
         onSuccess={() => {
           loadVM(true);

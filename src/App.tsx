@@ -2,6 +2,11 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { ProtectedLayout } from "./layouts/ProtectedLayout";
 import { SnortContext } from "@snort/system-react";
 import { NostrSystem } from "@snort/system";
+import { ToastContainer } from "./components/Toast";
+import { useToast } from "./hooks/useToast";
+import { useEffect } from "react";
+import { jobNotificationService } from "./services/jobNotificationService";
+import { jobHistoryService } from "./services/jobHistoryService";
 
 // Import pages (we'll create these next)
 import { LoginPage } from "./pages/LoginPage";
@@ -27,6 +32,7 @@ import { RoutersPage } from "./pages/RoutersPage";
 import { SalesReportPage } from "./pages/SalesReportPage";
 import { ReferralsReportPage } from "./pages/ReferralsReportPage";
 import { BulkMessagePage } from "./pages/BulkMessagePage";
+import { JobHistoryPage } from "./pages/JobHistoryPage";
 import { PermissionGuard } from "./components/PermissionGuard";
 import { SmartRedirect } from "./components/SmartRedirect";
 
@@ -54,9 +60,21 @@ relays.forEach(async (url) => {
   }
 });
 
-export function App() {
+function AppContent() {
+  const { toasts, dismiss } = useToast();
+
+  useEffect(() => {
+    // Services will start automatically when components subscribe to them
+    // No need to manually start/stop here as it can interfere with subscriber lifecycle
+    return () => {
+      // Optional cleanup on app unmount
+      jobNotificationService.stop();
+      jobHistoryService.stop();
+    };
+  }, []);
+
   return (
-    <SnortContext.Provider value={system}>
+    <>
       <Router>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -245,9 +263,30 @@ export function App() {
                 </PermissionGuard>
               }
             />
+            <Route
+              path="job-history"
+              element={
+                <PermissionGuard
+                  requiredPermissions={["virtual_machines::view"]}
+                >
+                  <JobHistoryPage />
+                </PermissionGuard>
+              }
+            />
           </Route>
         </Routes>
       </Router>
+
+      {/* Global Toast Container */}
+      <ToastContainer toasts={toasts} onDismiss={dismiss} />
+    </>
+  );
+}
+
+export function App() {
+  return (
+    <SnortContext.Provider value={system}>
+      <AppContent />
     </SnortContext.Provider>
   );
 }

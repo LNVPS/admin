@@ -5,6 +5,7 @@ import { PaginatedTable } from "../components/PaginatedTable";
 import { Profile } from "../components/Profile";
 import { Button } from "../components/Button";
 import { VmStatusBadge, getVmStatus } from "../components/VmStatusBadge";
+import { CreateVmModal } from "../components/CreateVmModal";
 import {
   AdminVmInfo,
   VmRunningStates,
@@ -18,6 +19,7 @@ import {
   FunnelIcon,
   XMarkIcon,
   EyeIcon,
+  PlusIcon,
 } from "@heroicons/react/24/outline";
 import { tryParseNostrLink } from "@snort/system";
 import { bech32ToHex } from "@snort/shared";
@@ -26,6 +28,7 @@ export function VMsPage() {
   const adminApi = useAdminApi();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
+  const [showCreateVmModal, setShowCreateVmModal] = useState(false);
   const [regions, setRegions] = useState<AdminRegionInfo[]>([]);
   const [hosts, setHosts] = useState<AdminHostInfo[]>([]);
   const [filters, setFilters] = useState({
@@ -38,6 +41,11 @@ export function VMsPage() {
 
   const refreshData = () => {
     setRefreshTrigger((prev) => prev + 1);
+  };
+
+  const handleVmCreated = (jobId: string) => {
+    console.log("VM creation job dispatched:", jobId);
+    refreshData(); // Refresh VM list
   };
 
   useEffect(() => {
@@ -79,7 +87,10 @@ export function VMsPage() {
     if (!trimmedPubkey) return "";
 
     try {
-      if (trimmedPubkey.startsWith("npub1") || trimmedPubkey.startsWith("nprofile1")) {
+      if (
+        trimmedPubkey.startsWith("npub1") ||
+        trimmedPubkey.startsWith("nprofile1")
+      ) {
         const link = tryParseNostrLink(trimmedPubkey);
         if (link) {
           return link.id; // This gives us the hex pubkey
@@ -320,6 +331,10 @@ export function VMsPage() {
           </div>
         </div>
         <div className="flex items-center space-x-2">
+          <Button variant="primary" onClick={() => setShowCreateVmModal(true)}>
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Create VM
+          </Button>
           <Button
             variant="secondary"
             onClick={() => setShowFilters(!showFilters)}
@@ -460,6 +475,13 @@ export function VMsPage() {
         loadingMessage="Loading virtual machines..."
         dependencies={[refreshTrigger, filters]}
         minWidth="1200px"
+      />
+
+      {/* Create VM Modal */}
+      <CreateVmModal
+        isOpen={showCreateVmModal}
+        onClose={() => setShowCreateVmModal(false)}
+        onSuccess={handleVmCreated}
       />
     </div>
   );

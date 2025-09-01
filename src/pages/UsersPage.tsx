@@ -5,14 +5,22 @@ import { PaginatedTable } from "../components/PaginatedTable";
 import { Profile } from "../components/Profile";
 import { Button } from "../components/Button";
 import { EditUserModal } from "../components/EditUserModal";
+import { CreateVmModal } from "../components/CreateVmModal";
 import { AdminUserInfo, getCountryName } from "../lib/api";
-import { PencilIcon, EyeIcon, MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import {
+  PencilIcon,
+  EyeIcon,
+  MagnifyingGlassIcon,
+  XMarkIcon,
+  ServerIcon,
+} from "@heroicons/react/24/outline";
 import { tryParseNostrLink } from "@snort/system";
 import { bech32ToHex } from "@snort/shared";
 
 export function UsersPage() {
   const adminApi = useAdminApi();
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showCreateVmModal, setShowCreateVmModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<AdminUserInfo | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
@@ -26,7 +34,10 @@ export function UsersPage() {
     if (!trimmedTerm) return "";
 
     try {
-      if (trimmedTerm.startsWith("npub1") || trimmedTerm.startsWith("nprofile1")) {
+      if (
+        trimmedTerm.startsWith("npub1") ||
+        trimmedTerm.startsWith("nprofile1")
+      ) {
         const link = tryParseNostrLink(trimmedTerm);
         if (link) {
           return link.id; // This gives us the hex pubkey
@@ -53,6 +64,16 @@ export function UsersPage() {
   const handleEdit = (user: AdminUserInfo) => {
     setSelectedUser(user);
     setShowEditModal(true);
+  };
+
+  const handleCreateVm = (user: AdminUserInfo) => {
+    setSelectedUser(user);
+    setShowCreateVmModal(true);
+  };
+
+  const handleVmCreated = (jobId: string) => {
+    console.log("VM creation job dispatched:", jobId);
+    refreshData(); // Refresh user list to show updated VM count
   };
 
   const renderHeader = () => (
@@ -141,20 +162,22 @@ export function UsersPage() {
       </td>
       <td className="whitespace-nowrap text-center">
         <span
-          className={`inline-flex px-0.5 py-0.5 font-medium rounded ${user.vm_count > 0
+          className={`inline-flex px-0.5 py-0.5 font-medium rounded ${
+            user.vm_count > 0
               ? "bg-blue-900 text-blue-300"
               : "bg-gray-600 text-gray-400"
-            }`}
+          }`}
         >
           {user.vm_count}
         </span>
       </td>
       <td className="whitespace-nowrap">
         <span
-          className={`inline-flex px-0.5 py-0.5 font-medium rounded ${user.is_admin
+          className={`inline-flex px-0.5 py-0.5 font-medium rounded ${
+            user.is_admin
               ? "bg-orange-900 text-orange-300"
               : "bg-gray-600 text-gray-300"
-            }`}
+          }`}
         >
           {user.is_admin ? "A" : "U"}
         </span>
@@ -196,6 +219,15 @@ export function UsersPage() {
           <Button
             size="sm"
             variant="secondary"
+            onClick={() => handleCreateVm(user)}
+            className="p-1 text-green-400 hover:text-green-300"
+            title="Create VM for User"
+          >
+            <ServerIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
             onClick={() => handleEdit(user)}
             className="p-1"
             title="Edit User"
@@ -218,7 +250,7 @@ export function UsersPage() {
         (user) =>
           user.last_login &&
           new Date(user.last_login) >
-          new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+            new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
       ).length,
     };
 
@@ -288,7 +320,9 @@ export function UsersPage() {
   return (
     <div className="space-y-6">
       <PaginatedTable
-        apiCall={(params) => adminApi.getUsers({ ...params, ...getSearchParams() })}
+        apiCall={(params) =>
+          adminApi.getUsers({ ...params, ...getSearchParams() })
+        }
         renderHeader={renderHeader}
         renderRow={renderRow}
         calculateStats={calculateStats}
@@ -309,6 +343,19 @@ export function UsersPage() {
           }}
           user={selectedUser}
           onSuccess={refreshData}
+        />
+      )}
+
+      {/* Create VM Modal */}
+      {selectedUser && (
+        <CreateVmModal
+          isOpen={showCreateVmModal}
+          onClose={() => {
+            setShowCreateVmModal(false);
+            setSelectedUser(null);
+          }}
+          preselectedUser={selectedUser}
+          onSuccess={handleVmCreated}
         />
       )}
     </div>

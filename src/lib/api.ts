@@ -182,6 +182,7 @@ export interface AdminVmInfo {
     range_id: number;
   }[];
   running_state: VmRunningState | null;
+  auto_renewal_enabled: boolean;
   cpu: number;
   memory: number;
   disk_size: number;
@@ -468,6 +469,12 @@ export interface AdminVmPaymentInfo {
   base_currency: string;
 }
 
+export interface AdminRefundAmountInfo {
+  amount: number;
+  currency: string;
+  rate: number;
+}
+
 export interface AdminAccessPolicyInfo {
   id: number;
   name: string;
@@ -569,6 +576,14 @@ export interface AdminVmIpAssignmentInfo {
   dns_reverse_ref: string | null;
   ip_range_cidr: string | null;
   region_name: string | null;
+}
+
+export interface AdminSshKeyInfo {
+  id: number;
+  name: string;
+  fingerprint: string;
+  public_key: string;
+  created: string;
 }
 
 function getConfiguredServerUrl(): string {
@@ -761,6 +776,14 @@ export class AdminApi {
     return result.data;
   }
 
+  // Note: This endpoint may need to be implemented based on actual API
+  async getUserSshKeys(userId: number) {
+    const result = await this.handleResponse<ApiResponse<AdminSshKeyInfo[]>>(
+      await this.req(`/api/admin/v1/users/${userId}/ssh_keys`, "GET"),
+    );
+    return result.data;
+  }
+
   // VM Management
   async getVMs(params?: {
     limit?: number;
@@ -783,23 +806,40 @@ export class AdminApi {
     return result.data;
   }
 
+  async createVM(data: {
+    user_id: number;
+    template_id: number;
+    image_id: number;
+    ssh_key_id: number;
+    ref_code?: string;
+    reason?: string;
+  }) {
+    const result = await this.handleResponse<ApiResponse<{ job_id: string }>>(
+      await this.req("/api/admin/v1/vms", "POST", data),
+    );
+    return result.data;
+  }
+
   async startVM(id: number) {
-    await this.handleResponse<ApiResponse<void>>(
+    const result = await this.handleResponse<ApiResponse<{ job_id: string }>>(
       await this.req(`/api/admin/v1/vms/${id}/start`, "POST"),
     );
+    return result.data;
   }
 
   async stopVM(id: number) {
-    await this.handleResponse<ApiResponse<void>>(
+    const result = await this.handleResponse<ApiResponse<{ job_id: string }>>(
       await this.req(`/api/admin/v1/vms/${id}/stop`, "POST"),
     );
+    return result.data;
   }
 
   async deleteVM(id: number, reason?: string) {
     const body = reason ? { reason } : undefined;
-    await this.handleResponse<ApiResponse<void>>(
+    const result = await this.handleResponse<ApiResponse<{ job_id: string }>>(
       await this.req(`/api/admin/v1/vms/${id}`, "DELETE", body),
     );
+    return result.data;
   }
 
   async extendVM(id: number, days: number, reason?: string) {
@@ -841,6 +881,43 @@ export class AdminApi {
     const result = await this.handleResponse<ApiResponse<AdminVmPaymentInfo>>(
       await this.req(`/api/admin/v1/vms/${vmId}/payments/${paymentId}`, "GET"),
     );
+    return result.data;
+  }
+
+  async calculateVMRefund(
+    vmId: number,
+    method: AdminPaymentMethod,
+    from_date?: number,
+  ) {
+    const params: { method: string; from_date?: number } = { method };
+    if (from_date) {
+      params.from_date = from_date;
+    }
+    const result = await this.handleResponse<
+      ApiResponse<AdminRefundAmountInfo>
+    >(
+      await this.req(
+        `/api/admin/v1/vms/${vmId}/refund`,
+        "GET",
+        undefined,
+        params,
+      ),
+    );
+    return result.data;
+  }
+
+  async processVMRefund(
+    vmId: number,
+    data: {
+      payment_method: AdminPaymentMethod;
+      refund_from_date?: number;
+      reason?: string;
+      lightning_invoice?: string;
+    },
+  ) {
+    const result = await this.handleResponse<
+      ApiResponse<{ job_dispatched: boolean; job_id: string }>
+    >(await this.req(`/api/admin/v1/vms/${vmId}/refund`, "POST", data));
     return result.data;
   }
 
@@ -1912,9 +1989,7 @@ export class AdminApi {
   async sendBulkMessage(params: { subject: string; message: string }) {
     const result = await this.handleResponse<
       ApiResponse<{ job_dispatched: boolean; job_id: string }>
-    >(
-      await this.req("/api/admin/v1/users/bulk-message", "POST", params),
-    );
+    >(await this.req("/api/admin/v1/users/bulk-message", "POST", params));
     return result.data;
   }
 }

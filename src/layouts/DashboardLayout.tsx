@@ -21,6 +21,7 @@ import {
   WifiIcon,
   UserGroupIcon,
   ChatBubbleLeftRightIcon,
+  ClockIcon,
 } from "@heroicons/react/24/outline";
 
 interface SidebarItem {
@@ -159,6 +160,12 @@ const navigation: SidebarItem[] = [
         requiredPermissions: ["analytics::view"],
       },
     ],
+  },
+  {
+    name: "Job History",
+    to: "/job-history",
+    icon: ClockIcon,
+    requiredPermissions: ["virtual_machines::view"],
   },
 ];
 

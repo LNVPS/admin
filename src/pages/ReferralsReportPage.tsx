@@ -58,6 +58,7 @@ export function ReferralsReportPage() {
   >("monthly");
   const [refCode, setRefCode] = useState<string>("");
   const [companyId, setCompanyId] = useState<number | null>(null);
+  const [refSplitPercent, setRefSplitPercent] = useState<number>(33);
 
   const api = useAdminApi();
 
@@ -164,7 +165,7 @@ export function ReferralsReportPage() {
 
       const summary = summaries.get(key);
       summary.referral_count += 1;
-      summary.total_amount += referral.amount;
+      summary.total_amount += referral.amount * (refSplitPercent / 100);
     });
 
     return Array.from(summaries.values()).sort(
@@ -242,9 +243,9 @@ export function ReferralsReportPage() {
 
       // Convert to base currency using the provided rate
       const baseCurrencyAmount =
-        referral.currency === "BTC"
+        (referral.currency === "BTC"
           ? (referral.amount / 1e11) * referral.rate
-          : (referral.amount / 100) * referral.rate;
+          : (referral.amount / 100) * referral.rate) * (refSplitPercent / 100);
 
       if (!total[referral.ref_code]) {
         total[referral.ref_code] = 0;
@@ -285,14 +286,14 @@ export function ReferralsReportPage() {
       referral.ref_code,
       new Date(referral.created).toISOString(),
       referral.currency === "BTC"
-        ? (referral.amount / 1e11).toFixed(8)
-        : (referral.amount / 100).toFixed(2),
+        ? ((referral.amount / 1e11) * (refSplitPercent / 100)).toFixed(8)
+        : ((referral.amount / 100) * (refSplitPercent / 100)).toFixed(2),
       referral.currency,
       referral.rate,
-      (referral.currency === "BTC"
+      ((referral.currency === "BTC"
         ? (referral.amount / 1e11) * referral.rate
         : (referral.amount / 100) * referral.rate
-      ).toFixed(2),
+      ) * (refSplitPercent / 100)).toFixed(2),
       referral.base_currency,
     ]);
 
@@ -329,7 +330,7 @@ export function ReferralsReportPage() {
       key: "amount",
       render: (item: ReferralRecord) => (
         <span className="text-green-400">
-          {formatCurrency(item.amount, item.currency)}
+          {formatCurrency(item.amount * (refSplitPercent / 100), item.currency)}
         </span>
       ),
     },
@@ -352,7 +353,7 @@ export function ReferralsReportPage() {
       render: (item: ReferralRecord) => (
         <span className="text-blue-400">
           {formatCurrency(
-            item.amount * (item.rate / (item.currency === "BTC" ? 1e9 : 100)),
+            item.amount * (item.rate / (item.currency === "BTC" ? 1e9 : 100)) * (refSplitPercent / 100),
             item.base_currency,
           )}
         </span>
@@ -395,7 +396,7 @@ export function ReferralsReportPage() {
 
       {/* Filter Controls */}
       <Card>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
               Start Date
@@ -477,6 +478,22 @@ export function ReferralsReportPage() {
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Commission Amount %
+            </label>
+            <input
+              type="number"
+              value={refSplitPercent}
+              onChange={(e) => setRefSplitPercent(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
+              placeholder="33"
+              min="0"
+              max="100"
+              step="0.01"
+              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none"
+            />
+          </div>
+
           <div className="flex items-end">
             <Button
               onClick={loadReferralData}
@@ -536,7 +553,8 @@ export function ReferralsReportPage() {
                         (sum, r) =>
                           sum +
                           r.amount *
-                            (r.rate / (r.currency === "BTC" ? 1e9 : 100)),
+                            (r.rate / (r.currency === "BTC" ? 1e9 : 100)) *
+                            (refSplitPercent / 100),
                         0,
                       ),
                       reportData.referrals[0]?.base_currency || "USD",

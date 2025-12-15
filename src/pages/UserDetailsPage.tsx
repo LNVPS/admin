@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import * as React from "react";
-import { useLocation, useNavigate, Link } from "react-router-dom";
+import { useLocation, useNavigate, Link, useParams } from "react-router-dom";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { useUserRoles } from "../hooks/useUserRoles";
 import { PaginatedTable } from "../components/PaginatedTable";
@@ -32,25 +32,59 @@ import {
 } from "@heroicons/react/24/outline";
 
 export function UserDetailsPage() {
+  const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const navigate = useNavigate();
   const adminApi = useAdminApi();
   const { hasPermission } = useUserRoles();
 
   // Get user data from navigation state
-  const user = location.state?.user as AdminUserInfo | undefined;
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [showAddRoleModal, setShowAddRoleModal] = useState(false);
-  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const userFromState = location.state?.user as AdminUserInfo | undefined;
+  const [user, setUser] = useState<AdminUserInfo | null>(userFromState || null);
+  const [loading, setLoading] = useState(!userFromState);
+  const [error, setError] = useState<string | null>(null);
+  const [userId, setUserId] = useState<number | null>(null);
 
   // Check if user has permission to update users (assign/revoke roles)
   const canManageRoles = hasPermission("users::update");
 
-  // If no user data in state, redirect back to users list
-  if (!user) {
-    navigate("/users", { replace: true });
-    return null;
-  }
+  // Initialize userId from params
+  useEffect(() => {
+    const userIdFromParams = id ? parseInt(id, 10) : null;
+    setUserId(userIdFromParams);
+  }, [id]);
+
+  // If user data is in state, use it; otherwise fetch from API
+  useEffect(() => {
+    if (!userId) {
+      setError("Invalid user ID");
+      setLoading(false);
+      return;
+    }
+
+    if (userFromState) {
+      // User data was passed via state, use it
+      setLoading(false);
+      return;
+    }
+
+    const fetchUser = async () => {
+      try {
+        setLoading(true);
+        const userData = await adminApi.getUser(userId);
+        setUser(userData);
+        setError(null);
+      } catch (err) {
+        console.error("Failed to load user:", err);
+        setError(err instanceof Error ? err.message : "Failed to load user");
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, [userId, userFromState, adminApi]);
 
   const refreshRoles = () => {
     setRefreshTrigger((prev) => prev + 1);
@@ -196,6 +230,45 @@ export function UserDetailsPage() {
       )}
     </tr>
   );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <div className="text-gray-400">Loading user details...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <div className="text-center">
+          <div className="text-red-400 text-lg mb-4">⚠️ Error</div>
+          <div className="text-gray-300 mb-4">Failed to load user details</div>
+          <div className="text-gray-400 mb-6">{error}</div>
+          <Link to="/users">
+            <Button variant="primary">Back to Users List</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <div className="text-center">
+          <div className="text-red-400 text-lg mb-4">⚠️ User Not Found</div>
+          <div className="text-gray-300 mb-6">
+            The user with this ID does not exist.
+          </div>
+          <Link to="/users">
+            <Button variant="primary">Back to Users List</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

@@ -753,6 +753,13 @@ export class AdminApi {
     );
   }
 
+  async getUser(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminUserInfo>>(
+      await this.req(`/api/admin/v1/users/${id}`, "GET"),
+    );
+    return result.data;
+  }
+
   async updateUser(
     id: number,
     data: Partial<{

@@ -245,7 +245,8 @@ export function ReferralsReportPage() {
       const baseCurrencyAmount =
         (referral.currency === "BTC"
           ? (referral.amount / 1e11) * referral.rate
-          : (referral.amount / 100) * referral.rate) * (refSplitPercent / 100);
+          : (referral.amount / 100) * referral.rate) *
+        (refSplitPercent / 100);
 
       if (!total[referral.ref_code]) {
         total[referral.ref_code] = 0;
@@ -290,10 +291,12 @@ export function ReferralsReportPage() {
         : ((referral.amount / 100) * (refSplitPercent / 100)).toFixed(2),
       referral.currency,
       referral.rate,
-      ((referral.currency === "BTC"
-        ? (referral.amount / 1e11) * referral.rate
-        : (referral.amount / 100) * referral.rate
-      ) * (refSplitPercent / 100)).toFixed(2),
+      (
+        (referral.currency === "BTC"
+          ? (referral.amount / 1e11) * referral.rate
+          : (referral.amount / 100) * referral.rate) *
+        (refSplitPercent / 100)
+      ).toFixed(2),
       referral.base_currency,
     ]);
 
@@ -353,7 +356,9 @@ export function ReferralsReportPage() {
       render: (item: ReferralRecord) => (
         <span className="text-blue-400">
           {formatCurrency(
-            item.amount * (item.rate / (item.currency === "BTC" ? 1e9 : 100)) * (refSplitPercent / 100),
+            item.amount *
+              (item.rate / (item.currency === "BTC" ? 1e9 : 100)) *
+              (refSplitPercent / 100),
             item.base_currency,
           )}
         </span>
@@ -485,7 +490,11 @@ export function ReferralsReportPage() {
             <input
               type="number"
               value={refSplitPercent}
-              onChange={(e) => setRefSplitPercent(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
+              onChange={(e) =>
+                setRefSplitPercent(
+                  Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)),
+                )
+              }
               placeholder="33"
               min="0"
               max="100"

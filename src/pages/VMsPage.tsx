@@ -216,8 +216,14 @@ export function VMsPage() {
         </div>
       </td>
       <td>
-        {vmInfo.user_pubkey ? (
-          <Profile pubkey={vmInfo.user_pubkey} avatarSize="sm" />
+        {vmInfo.user_id ? (
+          <Link
+            to={`/users/${vmInfo.user_id}`}
+            className="text-blue-400 hover:text-blue-300"
+            state={{ user: undefined }} // Navigate to user details page
+          >
+            <Profile pubkey={vmInfo.user_pubkey || ""} avatarSize="sm" />
+          </Link>
         ) : (
           <span className="text-gray-400">N/A</span>
         )}

@@ -7,10 +7,10 @@ import { Button } from "../components/Button";
 import { VmStatusBadge, getVmStatus } from "../components/VmStatusBadge";
 import { CreateVmModal } from "../components/CreateVmModal";
 import {
-  AdminVmInfo,
+  type AdminVmInfo,
   VmRunningStates,
-  AdminRegionInfo,
-  AdminHostInfo,
+  type AdminRegionInfo,
+  type AdminHostInfo,
 } from "../lib/api";
 import { formatBytes } from "../utils/formatBytes";
 import {

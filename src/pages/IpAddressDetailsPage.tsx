@@ -6,7 +6,7 @@ import { Button } from "../components/Button";
 import { StatusBadge } from "../components/StatusBadge";
 import { ErrorState } from "../components/ErrorState";
 import { Modal } from "../components/Modal";
-import { AdminVmIpAssignmentInfo, AdminIpRangeInfo } from "../lib/api";
+import type { AdminVmIpAssignmentInfo, AdminIpRangeInfo } from "../lib/api";
 import {
   GlobeAltIcon,
   ArrowLeftIcon,

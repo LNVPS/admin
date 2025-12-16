@@ -10,10 +10,10 @@ import { ErrorState } from "../components/ErrorState";
 import { VmIpAssignmentModal } from "../components/VmIpAssignmentModal";
 import { VmRefundModal } from "../components/VmRefundModal";
 import {
-  AdminVmInfo,
+  type AdminVmInfo,
   VmRunningStates,
-  AdminVmHistoryInfo,
-  AdminVmPaymentInfo,
+  type AdminVmHistoryInfo,
+  type AdminVmPaymentInfo,
   AdminVmHistoryActionType,
   AdminPaymentMethod,
 } from "../lib/api";

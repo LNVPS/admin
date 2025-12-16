@@ -4,7 +4,7 @@ import { PaginatedTable } from "../components/PaginatedTable";
 import { StatusBadge } from "../components/StatusBadge";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
-import { AdminVmOsImageInfo, ApiOsDistribution } from "../lib/api";
+import { type AdminVmOsImageInfo, ApiOsDistribution } from "../lib/api";
 import {
   CommandLineIcon,
   PlusIcon,

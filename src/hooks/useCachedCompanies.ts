@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useCached } from "./useCached";
 import { useAdminApi } from "./useAdminApi";
-import { AdminCompanyInfo } from "../lib/api";
+import type { AdminCompanyInfo } from "../lib/api";
 
 export function useCachedCompanies(expires: number = 10) {
   const adminApi = useAdminApi();

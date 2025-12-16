@@ -1,5 +1,5 @@
 import { StatusBadge } from "./StatusBadge";
-import { AdminVmInfo, VmRunningStates } from "../lib/api";
+import { type AdminVmInfo, VmRunningStates } from "../lib/api";
 
 interface VmStatusBadgeProps {
   vm: AdminVmInfo;

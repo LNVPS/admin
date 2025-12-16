@@ -6,7 +6,7 @@ import { Profile } from "../components/Profile";
 import { Button } from "../components/Button";
 import { EditUserModal } from "../components/EditUserModal";
 import { CreateVmModal } from "../components/CreateVmModal";
-import { AdminUserInfo, getCountryName } from "../lib/api";
+import { type AdminUserInfo, getCountryName } from "../lib/api";
 import {
   PencilIcon,
   EyeIcon,
@@ -33,20 +33,36 @@ export function UsersPage() {
     const trimmedTerm = term.trim();
     if (!trimmedTerm) return "";
 
-    try {
-      if (
-        trimmedTerm.startsWith("npub1") ||
-        trimmedTerm.startsWith("nprofile1")
-      ) {
+    // If it's a number (user ID), return as-is
+    if (/^\d+$/.test(trimmedTerm)) {
+      return trimmedTerm;
+    }
+
+    // If it looks like an email, return as-is
+    if (trimmedTerm.includes("@")) {
+      return trimmedTerm;
+    }
+
+    // Only try nostr parsing if it looks like a nostr identifier
+    const looksLikeNostr =
+      trimmedTerm.startsWith("npub1") ||
+      trimmedTerm.startsWith("nprofile1") ||
+      trimmedTerm.startsWith("nostr:");
+
+    if (looksLikeNostr) {
+      try {
         const link = tryParseNostrLink(trimmedTerm);
         if (link) {
           return link.id; // This gives us the hex pubkey
-        } else {
+        }
+
+        // Try bech32 decode for npub/nprofile without nostr: prefix
+        if (trimmedTerm.startsWith("npub1") || trimmedTerm.startsWith("nprofile1")) {
           return bech32ToHex(trimmedTerm);
         }
+      } catch (error) {
+        console.debug("Failed to parse nostr identifier:", error);
       }
-    } catch (error) {
-      console.debug("Failed to parse nostr identifier:", error);
     }
 
     return trimmedTerm;
@@ -239,7 +255,7 @@ export function UsersPage() {
     </tr>
   );
 
-  const calculateStats = (users: AdminUserInfo[], totalItems: number) => {
+  const calculateStats = (users: AdminUserInfo[], totalItems: number, error?: Error | null) => {
     const stats = {
       total: totalItems,
       admins: users.filter((user) => user.is_admin).length,
@@ -293,7 +309,7 @@ export function UsersPage() {
             </span>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-col items-end space-y-1">
           <div className="relative">
             <MagnifyingGlassIcon className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
@@ -301,17 +317,22 @@ export function UsersPage() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by email, ID, npub, or nprofile..."
-              className="pl-10 pr-10 py-2 w-80 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+              className={`pl-10 pr-10 py-2 w-80 bg-gray-700 border rounded-md text-white placeholder-gray-400 focus:outline-none ${
+                error ? "border-red-500" : "border-gray-600 focus:border-blue-500"
+              }`}
             />
             {searchTerm && (
               <button
                 onClick={clearSearch}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white cursor-pointer"
               >
                 <XMarkIcon className="h-4 w-4" />
               </button>
             )}
           </div>
+          {error && (
+            <span className="text-red-400 text-xs">{error.message}</span>
+          )}
         </div>
       </div>
     );
@@ -331,6 +352,7 @@ export function UsersPage() {
         loadingMessage="Loading users..."
         dependencies={[refreshTrigger, searchTerm]}
         minWidth="1000px"
+        inlineError={true}
       />
 
       {/* Edit User Modal */}

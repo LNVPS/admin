@@ -5,9 +5,9 @@ import { StatusBadge } from "../components/StatusBadge";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
 import {
-  AdminVmTemplateInfo,
-  AdminRegionInfo,
-  AdminCostPlanInfo,
+  type AdminVmTemplateInfo,
+  type AdminRegionInfo,
+  type AdminCostPlanInfo,
   DiskType,
   DiskInterface,
 } from "../lib/api";

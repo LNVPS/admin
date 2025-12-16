@@ -4,7 +4,7 @@ import { useAdminApi } from "../hooks/useAdminApi";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { Button } from "../components/Button";
 import { StatusBadge } from "../components/StatusBadge";
-import { AdminVmIpAssignmentInfo, AdminIpRangeInfo } from "../lib/api";
+import type { AdminVmIpAssignmentInfo, AdminIpRangeInfo } from "../lib/api";
 import {
   GlobeAltIcon,
   PencilIcon,

@@ -4,7 +4,7 @@ import { useApiCall } from "../hooks/useApiCall";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
-import { AdminRoleInfo, PaginatedApiResponse } from "../lib/api";
+import type { AdminRoleInfo, PaginatedApiResponse } from "../lib/api";
 import {
   PlusIcon,
   PencilIcon,

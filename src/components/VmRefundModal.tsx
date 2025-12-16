@@ -3,9 +3,9 @@ import { useAdminApi } from "../hooks/useAdminApi";
 import { Button } from "./Button";
 import { Modal } from "./Modal";
 import {
-  AdminVmInfo,
+  type AdminVmInfo,
   AdminPaymentMethod,
-  AdminRefundAmountInfo,
+  type AdminRefundAmountInfo,
 } from "../lib/api";
 import { formatCurrency } from "../utils/currency";
 import {

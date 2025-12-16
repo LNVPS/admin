@@ -2,8 +2,6 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { ProtectedLayout } from "./layouts/ProtectedLayout";
 import { SnortContext } from "@snort/system-react";
 import { NostrSystem } from "@snort/system";
-import { ToastContainer } from "./components/Toast";
-import { useToast } from "./hooks/useToast";
 import { useEffect } from "react";
 import { jobNotificationService } from "./services/jobNotificationService";
 import { jobHistoryService } from "./services/jobHistoryService";
@@ -61,7 +59,6 @@ relays.forEach(async (url) => {
 });
 
 function AppContent() {
-  const { toasts, dismiss } = useToast();
 
   useEffect(() => {
     // Services will start automatically when components subscribe to them
@@ -276,9 +273,6 @@ function AppContent() {
           </Route>
         </Routes>
       </Router>
-
-      {/* Global Toast Container */}
-      <ToastContainer toasts={toasts} onDismiss={dismiss} />
     </>
   );
 }

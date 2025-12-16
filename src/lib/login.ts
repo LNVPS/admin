@@ -5,7 +5,7 @@ import {
   Nip7Signer,
   PrivateKeySigner,
 } from "@snort/system";
-import { UserRoleInfo } from "./api";
+import type { UserRoleInfo } from "./api";
 
 export interface LoginSession {
   type: "nip7" | "nsec" | "nip46";

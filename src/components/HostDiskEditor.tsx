@@ -3,8 +3,8 @@ import { useAdminApi } from "../hooks/useAdminApi";
 import { Button } from "./Button";
 import { Modal } from "./Modal";
 import {
-  AdminHostInfo,
-  AdminHostDisk,
+  type AdminHostInfo,
+  type AdminHostDisk,
   DiskType,
   DiskInterface,
 } from "../lib/api";

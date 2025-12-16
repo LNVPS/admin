@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { Button } from "./Button";
 import { Modal } from "./Modal";
-import { AdminVmInfo, AdminIpRangeInfo, AdminVmInfo as VM } from "../lib/api";
+import type { AdminVmInfo, AdminIpRangeInfo, AdminVmInfo as VM } from "../lib/api";
 
 interface VmIpAssignmentModalProps {
   isOpen: boolean;

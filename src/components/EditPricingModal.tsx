@@ -3,7 +3,7 @@ import { useAdminApi } from "../hooks/useAdminApi";
 import { useCachedRegions } from "../hooks/useCachedRegions";
 import { Modal } from "./Modal";
 import { Button } from "./Button";
-import { AdminCustomPricingInfo } from "../lib/api";
+import type { AdminCustomPricingInfo } from "../lib/api";
 import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
 interface EditPricingModalProps {

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useJobHistory } from "../hooks/useJobHistory";
-import { JobHistoryEntry } from "../services/jobHistoryService";
+import type { JobHistoryEntry } from "../services/jobHistoryService";
 import { Button } from "../components/Button";
 import { StatusBadge } from "../components/StatusBadge";
 import { Modal } from "../components/Modal";

@@ -5,7 +5,7 @@ import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
 import { StatusBadge } from "../components/StatusBadge";
 import { OvhCredentialsInput } from "../components/OvhCredentialsInput";
-import { AdminRouterDetail, RouterKind } from "../lib/api";
+import { type AdminRouterDetail, RouterKind } from "../lib/api";
 import {
   ServerIcon,
   PlusIcon,

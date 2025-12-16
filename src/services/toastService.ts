@@ -1,4 +1,4 @@
-import { Toast } from "../components/Toast";
+import type { Toast } from "../components/Toast";
 
 type ToastListener = (toasts: Toast[]) => void;
 

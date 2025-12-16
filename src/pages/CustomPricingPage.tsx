@@ -5,7 +5,7 @@ import { StatusBadge } from "../components/StatusBadge";
 import { Button } from "../components/Button";
 import { CreatePricingModal } from "../components/CreatePricingModal";
 import { EditPricingModal } from "../components/EditPricingModal";
-import { AdminCustomPricingInfo } from "../lib/api";
+import type { AdminCustomPricingInfo } from "../lib/api";
 import { formatBytes } from "../utils/formatBytes";
 import {
   PlusIcon,

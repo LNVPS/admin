@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import * as React from "react";
+import type * as React from "react";
 import { Modal } from "./Modal";
 import { Button } from "./Button";
 import { useAdminApi } from "../hooks/useAdminApi";
-import { AdminUserInfo, getAllCountries } from "../lib/api";
+import { type AdminUserInfo, getAllCountries } from "../lib/api";
 
 interface EditUserModalProps {
   isOpen: boolean;

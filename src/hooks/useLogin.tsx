@@ -1,5 +1,5 @@
 import { useContext, useMemo, useSyncExternalStore } from "react";
-import { LoginSession, LoginState } from "../lib/login";
+import { type LoginSession, LoginState } from "../lib/login";
 import { SnortContext } from "@snort/system-react";
 
 export default function useLogin() {

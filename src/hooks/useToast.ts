@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Toast } from "../components/Toast";
+import type { Toast } from "../components/Toast";
 import { toastService } from "../services/toastService";
 import { jobNotificationService } from "../services/jobNotificationService";
 

@@ -20,7 +20,7 @@ import {
   UserGroupIcon,
   ArrowDownTrayIcon,
 } from "@heroicons/react/24/outline";
-import {
+import type {
   ReferralUsageTimeSeriesReportData,
   ReferralPeriodSummary,
   ReferralRecord,
@@ -133,19 +133,21 @@ export function ReferralsReportPage() {
         case "daily":
           period = date.toISOString().split("T")[0]; // YYYY-MM-DD
           break;
-        case "weekly":
+        case "weekly": {
           // Get Monday of the week
           const monday = new Date(date);
           monday.setDate(date.getDate() - date.getDay() + 1);
           period = monday.toISOString().split("T")[0];
           break;
+        }
         case "monthly":
           period = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
           break;
-        case "quarterly":
+        case "quarterly": {
           const quarter = Math.floor(date.getMonth() / 3) + 1;
           period = `${date.getFullYear()}-Q${quarter}`;
           break;
+        }
         case "yearly":
           period = date.getFullYear().toString();
           break;
@@ -217,18 +219,20 @@ export function ReferralsReportPage() {
         case "daily":
           period = date.toISOString().split("T")[0];
           break;
-        case "weekly":
+        case "weekly": {
           const monday = new Date(date);
           monday.setDate(date.getDate() - date.getDay() + 1);
           period = monday.toISOString().split("T")[0];
           break;
+        }
         case "monthly":
           period = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
           break;
-        case "quarterly":
+        case "quarterly": {
           const quarter = Math.floor(date.getMonth() / 3) + 1;
           period = `${date.getFullYear()}-Q${quarter}`;
           break;
+        }
         case "yearly":
           period = date.getFullYear().toString();
           break;

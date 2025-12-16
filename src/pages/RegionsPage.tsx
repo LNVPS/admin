@@ -4,7 +4,7 @@ import { PaginatedTable } from "../components/PaginatedTable";
 import { StatusBadge } from "../components/StatusBadge";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
-import { AdminRegionInfo, AdminCompanyInfo } from "../lib/api";
+import type { AdminRegionInfo, AdminCompanyInfo } from "../lib/api";
 import {
   GlobeAltIcon,
   PlusIcon,

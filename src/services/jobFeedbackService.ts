@@ -103,7 +103,7 @@ class JobFeedbackService extends EventEmitter<JobFeedbackEvents> {
 
       // Wait a bit before retrying (exponential backoff)
       await new Promise((resolve) =>
-        setTimeout(resolve, Math.min(1000 * Math.pow(2, attempt), 5000)),
+        setTimeout(resolve, Math.min(1000 * 2 ** attempt, 5000)),
       );
     }
     return false;
@@ -282,7 +282,7 @@ class JobFeedbackService extends EventEmitter<JobFeedbackEvents> {
 
     this.reconnectAttempts++;
     const delay = Math.min(
-      this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1),
+      this.reconnectDelay * 2 ** (this.reconnectAttempts - 1),
       30000,
     );
 

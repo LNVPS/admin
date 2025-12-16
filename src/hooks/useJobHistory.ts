@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   jobHistoryService,
-  JobHistoryEntry,
+  type JobHistoryEntry,
 } from "../services/jobHistoryService";
 
 export function useJobHistory() {

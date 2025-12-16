@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { Button } from "./Button";
 import { Modal } from "./Modal";
-import {
+import type {
   AdminUserInfo,
   AdminVmTemplateInfo,
   AdminVmOsImageInfo,

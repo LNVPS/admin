@@ -12,10 +12,10 @@ import { PermissionGuard } from "../components/PermissionGuard";
 import { VmStatusBadge, getVmStatus } from "../components/VmStatusBadge";
 import { EditUserModal } from "../components/EditUserModal";
 import {
-  AdminUserInfo,
-  AdminVmInfo,
-  UserRoleInfo,
-  AdminRoleInfo,
+  type AdminUserInfo,
+  type AdminVmInfo,
+  type UserRoleInfo,
+  type AdminRoleInfo,
   VmRunningStates,
   getCountryName,
 } from "../lib/api";
@@ -43,16 +43,15 @@ export function UserDetailsPage() {
   const [user, setUser] = useState<AdminUserInfo | null>(userFromState || null);
   const [loading, setLoading] = useState(!userFromState);
   const [error, setError] = useState<string | null>(null);
-  const [userId, setUserId] = useState<number | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showAddRoleModal, setShowAddRoleModal] = useState(false);
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+
+  // Parse userId from params
+  const userId = id ? parseInt(id, 10) : null;
 
   // Check if user has permission to update users (assign/revoke roles)
   const canManageRoles = hasPermission("users::update");
-
-  // Initialize userId from params
-  useEffect(() => {
-    const userIdFromParams = id ? parseInt(id, 10) : null;
-    setUserId(userIdFromParams);
-  }, [id]);
 
   // If user data is in state, use it; otherwise fetch from API
   useEffect(() => {

@@ -5,7 +5,7 @@ import { StatusBadge } from "../components/StatusBadge";
 import { Pill } from "../components/Pill";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
-import { AdminHostInfo, AdminRegionInfo, VmHostKind } from "../lib/api";
+import type { AdminHostInfo, AdminRegionInfo, VmHostKind } from "../lib/api";
 import { formatBytes } from "../utils/formatBytes";
 import { PencilIcon, PlusIcon, CogIcon } from "@heroicons/react/24/outline";
 import { HostDiskEditor } from "../components/HostDiskEditor";

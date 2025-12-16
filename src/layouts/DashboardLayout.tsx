@@ -3,6 +3,7 @@ import { Link, useLocation, Outlet, useNavigate } from "react-router-dom";
 import { LoginState } from "../lib/login";
 import { useUserRoles } from "../hooks/useUserRoles";
 import { ServerSelector } from "../components/ServerSelector";
+import { TasksWidget } from "../components/TasksWidget";
 import {
   UsersIcon,
   ServerIcon,
@@ -20,8 +21,7 @@ import {
   BuildingOfficeIcon,
   WifiIcon,
   UserGroupIcon,
-  ChatBubbleLeftRightIcon,
-  ClockIcon,
+  ChatBubbleLeftRightIcon
 } from "@heroicons/react/24/outline";
 
 interface SidebarItem {
@@ -160,13 +160,7 @@ const navigation: SidebarItem[] = [
         requiredPermissions: ["analytics::view"],
       },
     ],
-  },
-  {
-    name: "Job History",
-    to: "/job-history",
-    icon: ClockIcon,
-    requiredPermissions: ["virtual_machines::view"],
-  },
+  }
 ];
 
 export function DashboardLayout() {
@@ -239,9 +233,8 @@ export function DashboardLayout() {
     <div className="h-screen bg-slate-900 text-white flex">
       {/* Sidebar */}
       <div
-        className={`w-64 bg-slate-800 transition-transform duration-200 ease-in-out md:translate-x-0 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } fixed md:relative z-50 md:z-auto h-screen flex flex-col`}
+        className={`w-64 bg-slate-800 transition-transform duration-200 ease-in-out md:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          } fixed md:relative z-50 md:z-auto h-screen flex flex-col`}
       >
         <div className="flex h-16 items-center justify-between px-4">
           <span className="text-xl font-bold text-blue-500">LNVPS Admin</span>
@@ -288,10 +281,9 @@ export function DashboardLayout() {
                           to={child.to!}
                           className={`
                             mt-1 flex items-center rounded-lg px-4 py-2 text-sm font-medium transition-colors
-                            ${
-                              location.pathname === child.to
-                                ? "bg-blue-600 text-white"
-                                : "text-slate-300 hover:bg-slate-700 hover:text-white"
+                            ${location.pathname === child.to
+                              ? "bg-blue-600 text-white"
+                              : "text-slate-300 hover:bg-slate-700 hover:text-white"
                             }
                           `}
                         >
@@ -308,10 +300,9 @@ export function DashboardLayout() {
                   to={item.to!}
                   className={`
                     mt-1 flex items-center rounded-lg px-4 py-2 text-sm font-medium transition-colors
-                    ${
-                      location.pathname === item.to
-                        ? "bg-blue-600 text-white"
-                        : "text-slate-300 hover:bg-slate-700 hover:text-white"
+                    ${location.pathname === item.to
+                      ? "bg-blue-600 text-white"
+                      : "text-slate-300 hover:bg-slate-700 hover:text-white"
                     }
                   `}
                 >
@@ -324,6 +315,7 @@ export function DashboardLayout() {
         </nav>
 
         <div className="p-2 mt-auto space-y-2">
+          <TasksWidget />
           <ServerSelector />
           <button
             onClick={handleLogout}

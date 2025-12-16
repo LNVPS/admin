@@ -1,6 +1,6 @@
 import {
   jobFeedbackService,
-  JobFeedback,
+  type JobFeedback,
   normalizeJobStatus,
 } from "./jobFeedbackService";
 import { toastService } from "./toastService";

@@ -3,7 +3,7 @@ import { useAdminApi } from "../hooks/useAdminApi";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
-import { AdminCompanyInfo } from "../lib/api";
+import type { AdminCompanyInfo } from "../lib/api";
 import {
   BuildingOfficeIcon,
   PlusIcon,

@@ -3,7 +3,7 @@ import { useAdminApi } from "../hooks/useAdminApi";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
-import {
+import type {
   AdminAccessPolicyDetail,
   AdminRouterDetail,
   NetworkAccessPolicyKind,

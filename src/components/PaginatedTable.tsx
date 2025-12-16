@@ -3,7 +3,7 @@ import { useApiCall } from "../hooks/useApiCall";
 import { ErrorState } from "./ErrorState";
 import { Card } from "./Card";
 import { Pagination } from "./Table";
-import { PaginatedApiResponse } from "../lib/api";
+import type { PaginatedApiResponse } from "../lib/api";
 
 interface PaginatedTableProps<T> {
   // API function that returns paginated data
@@ -26,11 +26,14 @@ interface PaginatedTableProps<T> {
   dependencies?: any[];
 
   // Optional stats calculation
-  calculateStats?: (items: T[], totalItems: number) => React.ReactNode;
+  calculateStats?: (items: T[], totalItems: number, error?: Error | null) => React.ReactNode;
 
   // Table styling
   tableClassName?: string;
   minWidth?: string;
+
+  // Show errors inline instead of blocking the page
+  inlineError?: boolean;
 }
 
 export function PaginatedTable<T>({
@@ -45,6 +48,7 @@ export function PaginatedTable<T>({
   calculateStats,
   tableClassName = "",
   minWidth = "1200px",
+  inlineError = false,
 }: PaginatedTableProps<T>) {
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -67,11 +71,11 @@ export function PaginatedTable<T>({
     [currentPage, ...dependencies],
   );
 
-  if (error) {
+  if (error && !inlineError) {
     return <ErrorState error={error} onRetry={retry} action={errorAction} />;
   }
 
-  if (loading) {
+  if (loading && !inlineError) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
         <div className="text-white">{loadingMessage}</div>
@@ -92,12 +96,20 @@ export function PaginatedTable<T>({
   return (
     <div className="space-y-6">
       {/* Stats Section */}
-      {calculateStats && calculateStats(items, totalItems)}
+      {calculateStats && calculateStats(items, totalItems, error)}
 
       {/* Table */}
       <Card>
         <div className="p-0">
-          {items.length === 0 ? (
+          {inlineError && loading ? (
+            <div className="flex min-h-[200px] items-center justify-center">
+              <div className="text-white">{loadingMessage}</div>
+            </div>
+          ) : inlineError && error ? (
+            <div className="flex min-h-[200px] items-center justify-center">
+              <div className="text-red-400">Failed to {errorAction}: {error.message}</div>
+            </div>
+          ) : items.length === 0 ? (
             renderEmptyState ? (
               renderEmptyState()
             ) : (

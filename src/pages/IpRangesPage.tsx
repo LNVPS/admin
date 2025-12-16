@@ -5,9 +5,9 @@ import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
 import { StatusBadge } from "../components/StatusBadge";
 import {
-  AdminIpRangeInfo,
-  AdminRegionInfo,
-  AdminAccessPolicyDetail,
+  type AdminIpRangeInfo,
+  type AdminRegionInfo,
+  type AdminAccessPolicyDetail,
   IpRangeAllocationMode,
 } from "../lib/api";
 import {

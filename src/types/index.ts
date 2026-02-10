@@ -91,4 +91,13 @@ export type Permission =
   | "roles::create"
   | "roles::update"
   | "roles::delete"
-  | "audit::view";
+  | "audit::view"
+  | "subscriptions::view"
+  | "subscriptions::create"
+  | "subscriptions::update"
+  | "subscriptions::delete"
+  | "subscription_line_items::view"
+  | "subscription_line_items::create"
+  | "subscription_line_items::update"
+  | "subscription_line_items::delete"
+  | "subscription_payments::view";

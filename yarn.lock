@@ -1010,15 +1010,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@snort/system-react@npm:^2.0.0-pre.8":
-  version: 2.0.0-pre.8
-  resolution: "@snort/system-react@npm:2.0.0-pre.8"
+"@snort/system-react@npm:^2.0.0-pre.11":
+  version: 2.0.0-pre.11
+  resolution: "@snort/system-react@npm:2.0.0-pre.11"
   dependencies:
     "@snort/shared": "npm:^2.0.0-pre.3"
     "@snort/system": "npm:^2.0.0-pre.8"
-    react: "npm:^19.2.0"
-    react-dom: "npm:^19.2.0"
-  checksum: 10c0/f0e80614335d30a8d341cda79a53e3cfd6128a97adab3b8580deb8b47dbfe6759b347529961ad0469c213d9b849e7bd71761991fa166f737afa0266e045d3b0f
+    react: "npm:^19.2.3"
+    react-dom: "npm:^19.2.3"
+  checksum: 10c0/8d12c4a2f283ee1e7097e9f083301f6d1e300ab85ab0c5093208065ccd31825ded4b3f3d6f6d08adf181be42339bc8ae0d48dfbd9f89d80100f1981fc59b2d07
   languageName: node
   linkType: hard
 
@@ -2381,7 +2381,7 @@ __metadata:
     "@scure/base": "npm:^1.2.6"
     "@snort/shared": "npm:^2.0.0-pre.3"
     "@snort/system": "npm:^2.0.0-pre.8"
-    "@snort/system-react": "npm:^2.0.0-pre.8"
+    "@snort/system-react": "npm:^2.0.0-pre.11"
     "@tailwindcss/forms": "npm:^0.5.10"
     "@tailwindcss/vite": "npm:^4.1.11"
     "@tanstack/react-query": "npm:^5.84.1"
@@ -2712,14 +2712,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-dom@npm:^19.2.0":
-  version: 19.2.0
-  resolution: "react-dom@npm:19.2.0"
+"react-dom@npm:^19.2.3":
+  version: 19.2.3
+  resolution: "react-dom@npm:19.2.3"
   dependencies:
     scheduler: "npm:^0.27.0"
   peerDependencies:
-    react: ^19.2.0
-  checksum: 10c0/fa2cae05248d01288e91523b590ce4e7635b1e13f1344e225f850d722a8da037bf0782f63b1c1d46353334e0c696909b82e582f8cad607948fde6f7646cc18d9
+    react: ^19.2.3
+  checksum: 10c0/dc43f7ede06f46f3acc16ee83107c925530de9b91d1d0b3824583814746ff4c498ea64fd65cd83aba363205268adff52e2827c582634ae7b15069deaeabc4892
   languageName: node
   linkType: hard
 
@@ -2791,10 +2791,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react@npm:^19.2.0":
-  version: 19.2.0
-  resolution: "react@npm:19.2.0"
-  checksum: 10c0/1b6d64eacb9324725bfe1e7860cb7a6b8a34bc89a482920765ebff5c10578eb487e6b46b2f0df263bd27a25edbdae2c45e5ea5d81ae61404301c1a7192c38330
+"react@npm:^19.2.3":
+  version: 19.2.3
+  resolution: "react@npm:19.2.3"
+  checksum: 10c0/094220b3ba3a76c1b668f972ace1dd15509b157aead1b40391d1c8e657e720c201d9719537375eff08f5e0514748c0319063392a6f000e31303aafc4471f1436
   languageName: node
   linkType: hard
 

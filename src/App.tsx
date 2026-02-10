@@ -1,38 +1,40 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { ProtectedLayout } from "./layouts/ProtectedLayout";
-import { SnortContext } from "@snort/system-react";
 import { NostrSystem } from "@snort/system";
+import { SnortContext } from "@snort/system-react";
 import { useEffect } from "react";
-import { jobNotificationService } from "./services/jobNotificationService";
-import { jobHistoryService } from "./services/jobHistoryService";
-
-// Import pages (we'll create these next)
-import { LoginPage } from "./pages/LoginPage";
-import { UsersPage } from "./pages/UsersPage";
-import { UserDetailsPage } from "./pages/UserDetailsPage";
-import { VMsPage } from "./pages/VMsPage";
-import { VMDetailPage } from "./pages/VMDetailPage";
-import { HostsPage } from "./pages/HostsPage";
-import { RolesPage } from "./pages/RolesPage";
-import { AnalyticsPage } from "./pages/AnalyticsPage";
-import { SystemPage } from "./pages/SystemPage";
-import { AuditLogPage } from "./pages/AuditLogPage";
-import { RegionsPage } from "./pages/RegionsPage";
-import { OsImagesPage } from "./pages/OsImagesPage";
-import { VmTemplatesPage } from "./pages/VmTemplatesPage";
-import { CustomPricingPage } from "./pages/CustomPricingPage";
-import { CompaniesPage } from "./pages/CompaniesPage";
-import { IpRangesPage } from "./pages/IpRangesPage";
-import { VmIpAssignmentsPage } from "./pages/VmIpAssignmentsPage";
-import { IpAddressDetailsPage } from "./pages/IpAddressDetailsPage";
-import { AccessPoliciesPage } from "./pages/AccessPoliciesPage";
-import { RoutersPage } from "./pages/RoutersPage";
-import { SalesReportPage } from "./pages/SalesReportPage";
-import { ReferralsReportPage } from "./pages/ReferralsReportPage";
-import { BulkMessagePage } from "./pages/BulkMessagePage";
-import { JobHistoryPage } from "./pages/JobHistoryPage";
+import { Route, BrowserRouter as Router, Routes } from "react-router-dom";
 import { PermissionGuard } from "./components/PermissionGuard";
 import { SmartRedirect } from "./components/SmartRedirect";
+import { ProtectedLayout } from "./layouts/ProtectedLayout";
+import { AccessPoliciesPage } from "./pages/AccessPoliciesPage";
+import { AnalyticsPage } from "./pages/AnalyticsPage";
+import { AuditLogPage } from "./pages/AuditLogPage";
+import { BulkMessagePage } from "./pages/BulkMessagePage";
+import { CompaniesPage } from "./pages/CompaniesPage";
+import { CustomPricingPage } from "./pages/CustomPricingPage";
+import { HostsPage } from "./pages/HostsPage";
+import { IpAddressDetailsPage } from "./pages/IpAddressDetailsPage";
+import { IpRangesPage } from "./pages/IpRangesPage";
+import { IpSpacesPage } from "./pages/IpSpacesPage";
+import { JobHistoryPage } from "./pages/JobHistoryPage";
+// Import pages (we'll create these next)
+import { LoginPage } from "./pages/LoginPage";
+import { OsImagesPage } from "./pages/OsImagesPage";
+import { ReferralsReportPage } from "./pages/ReferralsReportPage";
+import { RegionsPage } from "./pages/RegionsPage";
+import { RolesPage } from "./pages/RolesPage";
+import { RoutersPage } from "./pages/RoutersPage";
+import { SalesReportPage } from "./pages/SalesReportPage";
+import { SubscriptionDetailPage } from "./pages/SubscriptionDetailPage";
+import { SubscriptionsPage } from "./pages/SubscriptionsPage";
+import { SystemPage } from "./pages/SystemPage";
+import { UserDetailsPage } from "./pages/UserDetailsPage";
+import { UsersPage } from "./pages/UsersPage";
+import { VMDetailPage } from "./pages/VMDetailPage";
+import { VMsPage } from "./pages/VMsPage";
+import { VmIpAssignmentsPage } from "./pages/VmIpAssignmentsPage";
+import { VmTemplatesPage } from "./pages/VmTemplatesPage";
+import { jobHistoryService } from "./services/jobHistoryService";
+import { jobNotificationService } from "./services/jobNotificationService";
 
 const system = new NostrSystem({
   automaticOutboxModel: false,
@@ -59,7 +61,6 @@ relays.forEach(async (url) => {
 });
 
 function AppContent() {
-
   useEffect(() => {
     // Services will start automatically when components subscribe to them
     // No need to manually start/stop here as it can interfere with subscriber lifecycle
@@ -97,9 +98,7 @@ function AppContent() {
             <Route
               path="vms"
               element={
-                <PermissionGuard
-                  requiredPermissions={["virtual_machines::view"]}
-                >
+                <PermissionGuard requiredPermissions={["virtual_machines::view"]}>
                   <VMsPage />
                 </PermissionGuard>
               }
@@ -107,9 +106,7 @@ function AppContent() {
             <Route
               path="vms/:id"
               element={
-                <PermissionGuard
-                  requiredPermissions={["virtual_machines::view"]}
-                >
+                <PermissionGuard requiredPermissions={["virtual_machines::view"]}>
                   <VMDetailPage />
                 </PermissionGuard>
               }
@@ -181,9 +178,7 @@ function AppContent() {
             <Route
               path="custom-pricing"
               element={
-                <PermissionGuard
-                  requiredPermissions={["vm_custom_pricing::view"]}
-                >
+                <PermissionGuard requiredPermissions={["vm_custom_pricing::view"]}>
                   <CustomPricingPage />
                 </PermissionGuard>
               }
@@ -263,10 +258,32 @@ function AppContent() {
             <Route
               path="job-history"
               element={
-                <PermissionGuard
-                  requiredPermissions={["virtual_machines::view"]}
-                >
+                <PermissionGuard requiredPermissions={["virtual_machines::view"]}>
                   <JobHistoryPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="ip-spaces"
+              element={
+                <PermissionGuard requiredPermissions={["ip_space::view"]}>
+                  <IpSpacesPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="subscriptions"
+              element={
+                <PermissionGuard requiredPermissions={["subscriptions::view"]}>
+                  <SubscriptionsPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="subscriptions/:id"
+              element={
+                <PermissionGuard requiredPermissions={["subscriptions::view"]}>
+                  <SubscriptionDetailPage />
                 </PermissionGuard>
               }
             />

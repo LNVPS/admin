@@ -1,28 +1,30 @@
+import {
+  ArrowRightStartOnRectangleIcon,
+  BanknotesIcon,
+  BuildingOfficeIcon,
+  ChartBarIcon,
+  ChatBubbleLeftRightIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  CommandLineIcon,
+  ComputerDesktopIcon,
+  CurrencyDollarIcon,
+  DocumentDuplicateIcon,
+  DocumentTextIcon,
+  GlobeAltIcon,
+  KeyIcon,
+  ListBulletIcon,
+  ServerIcon,
+  UserGroupIcon,
+  UsersIcon,
+  WifiIcon,
+} from "@heroicons/react/24/outline";
 import React, { useState } from "react";
-import { Link, useLocation, Outlet, useNavigate } from "react-router-dom";
-import { LoginState } from "../lib/login";
-import { useUserRoles } from "../hooks/useUserRoles";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { ServerSelector } from "../components/ServerSelector";
 import { TasksWidget } from "../components/TasksWidget";
-import {
-  UsersIcon,
-  ServerIcon,
-  KeyIcon,
-  ChartBarIcon,
-  ArrowRightStartOnRectangleIcon,
-  ComputerDesktopIcon,
-  ChevronRightIcon,
-  ChevronDownIcon,
-  ListBulletIcon,
-  GlobeAltIcon,
-  CommandLineIcon,
-  DocumentDuplicateIcon,
-  CurrencyDollarIcon,
-  BuildingOfficeIcon,
-  WifiIcon,
-  UserGroupIcon,
-  ChatBubbleLeftRightIcon
-} from "@heroicons/react/24/outline";
+import { useUserRoles } from "../hooks/useUserRoles";
+import { LoginState } from "../lib/login";
 
 interface SidebarItem {
   name: string;
@@ -108,13 +110,9 @@ const navigation: SidebarItem[] = [
     ],
   },
   {
-    name: "Networking",
+    name: "VM Networking",
     icon: WifiIcon,
-    requiredPermissions: [
-      "ip_range::view",
-      "access_policy::view",
-      "router::view",
-    ],
+    requiredPermissions: ["ip_range::view", "access_policy::view", "router::view"],
     children: [
       {
         name: "IP Ranges",
@@ -135,6 +133,25 @@ const navigation: SidebarItem[] = [
         requiredPermissions: ["router::view"],
       },
     ],
+  },
+  {
+    name: "LIR Services",
+    icon: BanknotesIcon,
+    requiredPermissions: ["ip_space::view"],
+    children: [
+      {
+        name: "IP Space",
+        to: "/ip-spaces",
+        icon: GlobeAltIcon,
+        requiredPermissions: ["ip_space::view"],
+      },
+    ],
+  },
+  {
+    name: "Subscriptions",
+    to: "/subscriptions",
+    icon: DocumentTextIcon,
+    requiredPermissions: ["subscriptions::view"],
   },
   {
     name: "Companies",
@@ -160,7 +177,7 @@ const navigation: SidebarItem[] = [
         requiredPermissions: ["analytics::view"],
       },
     ],
-  }
+  },
 ];
 
 export function DashboardLayout() {
@@ -201,26 +218,19 @@ export function DashboardLayout() {
       })
       .map((item) => ({
         ...item,
-        children: item.children
-          ? filterNavigationItems(item.children)
-          : undefined,
+        children: item.children ? filterNavigationItems(item.children) : undefined,
       }));
   };
 
   // Filter navigation items based on user permissions
-  const visibleNavigation = React.useMemo(
-    () => filterNavigationItems(navigation),
-    [hasAnyPermission],
-  );
+  const visibleNavigation = React.useMemo(() => filterNavigationItems(navigation), [hasAnyPermission]);
 
   // Auto-expand parent items when their child routes are active
   React.useEffect(() => {
     const activeParents = new Set<string>();
     visibleNavigation.forEach((item) => {
       if (item.children) {
-        const hasActiveChild = item.children.some(
-          (child) => child.to === location.pathname,
-        );
+        const hasActiveChild = item.children.some((child) => child.to === location.pathname);
         if (hasActiveChild) {
           activeParents.add(item.name);
         }
@@ -233,24 +243,15 @@ export function DashboardLayout() {
     <div className="h-screen bg-slate-900 text-white flex">
       {/* Sidebar */}
       <div
-        className={`w-64 bg-slate-800 transition-transform duration-200 ease-in-out md:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } fixed md:relative z-50 md:z-auto h-screen flex flex-col`}
+        className={`w-64 bg-slate-800 transition-transform duration-200 ease-in-out md:translate-x-0 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        } fixed md:relative z-50 md:z-auto h-screen flex flex-col`}
       >
         <div className="flex h-16 items-center justify-between px-4">
           <span className="text-xl font-bold text-blue-500">LNVPS Admin</span>
           <button className="md:hidden" onClick={() => setSidebarOpen(false)}>
-            <svg
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
@@ -281,9 +282,10 @@ export function DashboardLayout() {
                           to={child.to!}
                           className={`
                             mt-1 flex items-center rounded-lg px-4 py-2 text-sm font-medium transition-colors
-                            ${location.pathname === child.to
-                              ? "bg-blue-600 text-white"
-                              : "text-slate-300 hover:bg-slate-700 hover:text-white"
+                            ${
+                              location.pathname === child.to
+                                ? "bg-blue-600 text-white"
+                                : "text-slate-300 hover:bg-slate-700 hover:text-white"
                             }
                           `}
                         >
@@ -300,9 +302,10 @@ export function DashboardLayout() {
                   to={item.to!}
                   className={`
                     mt-1 flex items-center rounded-lg px-4 py-2 text-sm font-medium transition-colors
-                    ${location.pathname === item.to
-                      ? "bg-blue-600 text-white"
-                      : "text-slate-300 hover:bg-slate-700 hover:text-white"
+                    ${
+                      location.pathname === item.to
+                        ? "bg-blue-600 text-white"
+                        : "text-slate-300 hover:bg-slate-700 hover:text-white"
                     }
                   `}
                 >
@@ -333,18 +336,8 @@ export function DashboardLayout() {
         <div className="md:hidden flex items-center justify-between bg-slate-800 p-4">
           <span className="text-xl font-bold text-white">LNVPS Admin</span>
           <button onClick={() => setSidebarOpen(true)} className="text-white">
-            <svg
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
-              />
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
         </div>
@@ -356,10 +349,7 @@ export function DashboardLayout() {
 
       {/* Mobile backdrop */}
       {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />
       )}
     </div>
   );

@@ -1,8 +1,8 @@
-import { EventKind } from "@snort/system";
 import { base64 } from "@scure/base";
-import { LoginState } from "./login";
-import { handleApiError } from "./errorHandler";
+import { EventKind } from "@snort/system";
 import ISO3166 from "iso-3166-1";
+import { handleApiError } from "./errorHandler";
+import { LoginState } from "./login";
 
 // Enum types from API documentation
 export enum DiskType {
@@ -91,6 +91,38 @@ export enum AdminPaymentMethod {
   LIGHTNING = "lightning",
   REVOLUT = "revolut",
   PAYPAL = "paypal",
+  STRIPE = "stripe",
+}
+
+export enum SubscriptionPaymentType {
+  PURCHASE = "purchase",
+  RENEWAL = "renewal",
+}
+
+export enum SubscriptionType {
+  IP_RANGE = "ip_range",
+  ASN_SPONSORING = "asn_sponsoring",
+  DNS_HOSTING = "dns_hosting",
+}
+
+export enum CostPlanIntervalType {
+  DAY = "day",
+  MONTH = "month",
+  YEAR = "year",
+}
+
+export enum InternetRegistry {
+  ARIN = 0,
+  RIPE = 1,
+  APNIC = 2,
+  LACNIC = 3,
+  AFRINIC = 4,
+}
+
+// Helper function to get registry name from number
+export function getRegistryName(registry: number): string {
+  const names = ["ARIN", "RIPE", "APNIC", "LACNIC", "AFRINIC"];
+  return names[registry] || "Unknown";
 }
 
 // Export iso-3166-1 library for country codes
@@ -586,6 +618,94 @@ export interface AdminSshKeyInfo {
   created: string;
 }
 
+export interface AdminAvailableIpSpaceInfo {
+  id: number;
+  cidr: string;
+  min_prefix_size: number;
+  max_prefix_size: number;
+  registry: {
+    value: number;
+    name: string;
+  };
+  external_id: string | null;
+  is_available: boolean;
+  is_reserved: boolean;
+  metadata: Record<string, any> | null;
+  pricing_count: number;
+}
+
+export interface AdminIpSpacePricingInfo {
+  id: number;
+  available_ip_space_id: number;
+  prefix_size: number;
+  price_per_month: number;
+  currency: string;
+  setup_fee: number;
+  cidr: string | null;
+}
+
+export interface AdminIpRangeSubscriptionInfo {
+  id: number;
+  subscription_line_item_id: number;
+  available_ip_space_id: number;
+  cidr: string;
+  is_active: boolean;
+  started_at: string;
+  ended_at: string | null;
+  metadata: Record<string, any> | null;
+  subscription_id: number | null;
+  user_id: number | null;
+  parent_cidr: string | null;
+}
+
+export interface AdminSubscriptionLineItemInfo {
+  id: number;
+  subscription_id: number;
+  name: string;
+  description: string | null;
+  amount: number;
+  setup_amount: number;
+  configuration: Record<string, any> | null;
+}
+
+export interface AdminSubscriptionInfo {
+  id: number;
+  user_id: number;
+  name: string;
+  description: string | null;
+  created: string;
+  expires: string | null;
+  is_active: boolean;
+  currency: string;
+  interval_amount: number;
+  interval_type: "day" | "month" | "year";
+  setup_fee: number;
+  auto_renewal_enabled: boolean;
+  external_id: string | null;
+  line_items: AdminSubscriptionLineItemInfo[];
+  payment_count: number;
+}
+
+export interface AdminSubscriptionPaymentInfo {
+  id: string;
+  subscription_id: number;
+  user_id: number;
+  created: string;
+  expires: string | null;
+  amount: number;
+  currency: string;
+  payment_method: AdminPaymentMethod;
+  payment_type: SubscriptionPaymentType;
+  is_paid: boolean;
+  rate: number | null;
+  time_value: number;
+  tax: number;
+  external_id: string | null;
+  company_id: number | null;
+  company_name: string | null;
+  company_base_currency: string | null;
+}
+
 function getConfiguredServerUrl(): string {
   try {
     const saved = localStorage.getItem("lnvps_admin_server_config");
@@ -624,10 +744,7 @@ export class AdminApi {
         // Handle the nested error structure: { "error": { "code": 403, "reason": "Forbidden", "description": "..." } }
         if (obj.error && typeof obj.error === "object") {
           const errorInfo = obj.error;
-          const message =
-            errorInfo.description ||
-            errorInfo.reason ||
-            `HTTP ${errorInfo.code || rsp.status}`;
+          const message = errorInfo.description || errorInfo.reason || `HTTP ${errorInfo.code || rsp.status}`;
           error = new Error(message);
 
           // Preserve the original error structure for better error detection
@@ -635,16 +752,13 @@ export class AdminApi {
           (error as any).errorReason = errorInfo.reason;
         } else {
           // Fallback for simple error responses
-          error = new Error(
-            obj.error || `HTTP ${rsp.status}: ${rsp.statusText}`,
-          );
+          error = new Error(obj.error || `HTTP ${rsp.status}: ${rsp.statusText}`);
           (error as any).errorCode = rsp.status;
         }
       } catch (jsonError) {
         // If JSON parsing fails, check if it's HTML
         const isHtml =
-          text.trim().toLowerCase().startsWith("<!doctype html") ||
-          text.trim().toLowerCase().startsWith("<html");
+          text.trim().toLowerCase().startsWith("<!doctype html") || text.trim().toLowerCase().startsWith("<html");
 
         if (isHtml) {
           // For HTML responses, use a generic message based on status code
@@ -658,9 +772,7 @@ export class AdminApi {
             503: "Service unavailable - the server is temporarily down",
           };
 
-          const message =
-            statusMessages[rsp.status] ||
-            `Server error (${rsp.status}) - please try again later`;
+          const message = statusMessages[rsp.status] || `Server error (${rsp.status}) - please try again later`;
           error = new Error(message);
           (error as any).errorCode = rsp.status;
           (error as any).isHtmlError = true;
@@ -684,19 +796,14 @@ export class AdminApi {
   private async authEvent(url: string, method: string) {
     const signer = LoginState.getSigner();
     return await signer?.generic((eb) => {
-      return eb
-        .kind(EventKind.HttpAuthentication)
-        .tag(["u", url])
-        .tag(["method", method]);
+      return eb.kind(EventKind.HttpAuthentication).tag(["u", url]).tag(["method", method]);
     });
   }
 
   private async auth(url: string, method: string) {
     const auth = await this.authEvent(url, method);
     if (auth) {
-      return `Nostr ${base64.encode(
-        new TextEncoder().encode(JSON.stringify(auth)),
-      )}`;
+      return `Nostr ${base64.encode(new TextEncoder().encode(JSON.stringify(auth)))}`;
     }
   }
 
@@ -743,11 +850,7 @@ export class AdminApi {
   }
 
   // User Management
-  async getUsers(params?: {
-    limit?: number;
-    offset?: number;
-    search?: string;
-  }) {
+  async getUsers(params?: { limit?: number; offset?: number; search?: string }) {
     return await this.handleResponse<PaginatedApiResponse<AdminUserInfo>>(
       await this.req("/api/admin/v1/users", "GET", undefined, params),
     );
@@ -842,7 +945,7 @@ export class AdminApi {
   }
 
   async deleteVM(id: number, reason?: string) {
-    const body = reason ? { reason } : undefined;
+    const body = { reason };
     const result = await this.handleResponse<ApiResponse<{ job_id: string }>>(
       await this.req(`/api/admin/v1/vms/${id}`, "DELETE", body),
     );
@@ -851,22 +954,12 @@ export class AdminApi {
 
   async extendVM(id: number, days: number, reason?: string) {
     const body = { days, ...(reason && { reason }) };
-    await this.handleResponse<ApiResponse<void>>(
-      await this.req(`/api/admin/v1/vms/${id}/extend`, "PUT", body),
-    );
+    await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/vms/${id}/extend`, "PUT", body));
   }
 
-  async getVMHistory(
-    vmId: number,
-    params?: { limit?: number; offset?: number },
-  ) {
+  async getVMHistory(vmId: number, params?: { limit?: number; offset?: number }) {
     return await this.handleResponse<PaginatedApiResponse<AdminVmHistoryInfo>>(
-      await this.req(
-        `/api/admin/v1/vms/${vmId}/history`,
-        "GET",
-        undefined,
-        params,
-      ),
+      await this.req(`/api/admin/v1/vms/${vmId}/history`, "GET", undefined, params),
     );
   }
 
@@ -891,24 +984,13 @@ export class AdminApi {
     return result.data;
   }
 
-  async calculateVMRefund(
-    vmId: number,
-    method: AdminPaymentMethod,
-    from_date?: number,
-  ) {
+  async calculateVMRefund(vmId: number, method: AdminPaymentMethod, from_date?: number) {
     const params: { method: string; from_date?: number } = { method };
     if (from_date) {
       params.from_date = from_date;
     }
-    const result = await this.handleResponse<
-      ApiResponse<AdminRefundAmountInfo>
-    >(
-      await this.req(
-        `/api/admin/v1/vms/${vmId}/refund`,
-        "GET",
-        undefined,
-        params,
-      ),
+    const result = await this.handleResponse<ApiResponse<AdminRefundAmountInfo>>(
+      await this.req(`/api/admin/v1/vms/${vmId}/refund`, "GET", undefined, params),
     );
     return result.data;
   }
@@ -922,9 +1004,9 @@ export class AdminApi {
       lightning_invoice?: string;
     },
   ) {
-    const result = await this.handleResponse<
-      ApiResponse<{ job_dispatched: boolean; job_id: string }>
-    >(await this.req(`/api/admin/v1/vms/${vmId}/refund`, "POST", data));
+    const result = await this.handleResponse<ApiResponse<{ job_dispatched: boolean; job_id: string }>>(
+      await this.req(`/api/admin/v1/vms/${vmId}/refund`, "POST", data),
+    );
     return result.data;
   }
 
@@ -942,11 +1024,7 @@ export class AdminApi {
     return result.data;
   }
 
-  async createRole(data: {
-    name: string;
-    description?: string;
-    permissions: string[];
-  }) {
+  async createRole(data: { name: string; description?: string; permissions: string[] }) {
     const result = await this.handleResponse<ApiResponse<AdminRoleInfo>>(
       await this.req("/api/admin/v1/roles", "POST", data),
     );
@@ -968,9 +1046,7 @@ export class AdminApi {
   }
 
   async deleteRole(id: number) {
-    await this.handleResponse<ApiResponse<void>>(
-      await this.req(`/api/admin/v1/roles/${id}`, "DELETE"),
-    );
+    await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/roles/${id}`, "DELETE"));
   }
 
   // User Role Assignments
@@ -1066,11 +1142,7 @@ export class AdminApi {
     },
   ) {
     const result = await this.handleResponse<ApiResponse<AdminHostDisk>>(
-      await this.req(
-        `/api/admin/v1/hosts/${hostId}/disks/${diskId}`,
-        "PATCH",
-        updates,
-      ),
+      await this.req(`/api/admin/v1/hosts/${hostId}/disks/${diskId}`, "PATCH", updates),
     );
     return result.data;
   }
@@ -1112,19 +1184,12 @@ export class AdminApi {
   }
 
   // Region Management
-  async getRegions(params?: {
-    limit?: number;
-    offset?: number;
-    enabled?: boolean;
-  }) {
+  async getRegions(params?: { limit?: number; offset?: number; enabled?: boolean }) {
     // Convert boolean to string for URL params
     const queryParams = params
       ? {
           ...params,
-          enabled:
-            params.enabled !== undefined
-              ? params.enabled.toString()
-              : undefined,
+          enabled: params.enabled !== undefined ? params.enabled.toString() : undefined,
         }
       : undefined;
 
@@ -1140,11 +1205,7 @@ export class AdminApi {
     return result.data;
   }
 
-  async createRegion(data: {
-    name: string;
-    enabled?: boolean;
-    company_id?: number | null;
-  }) {
+  async createRegion(data: { name: string; enabled?: boolean; company_id?: number | null }) {
     const result = await this.handleResponse<ApiResponse<AdminRegionInfo>>(
       await this.req("/api/admin/v1/regions", "POST", data),
     );
@@ -1227,9 +1288,7 @@ export class AdminApi {
   }
 
   async deleteVmOsImage(id: number) {
-    await this.handleResponse<ApiResponse<void>>(
-      await this.req(`/api/admin/v1/vm_os_images/${id}`, "DELETE"),
-    );
+    await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/vm_os_images/${id}`, "DELETE"));
   }
 
   // VM Template Management
@@ -1297,45 +1356,28 @@ export class AdminApi {
   }
 
   async deleteVmTemplate(id: number) {
-    await this.handleResponse<ApiResponse<void>>(
-      await this.req(`/api/admin/v1/vm_templates/${id}`, "DELETE"),
-    );
+    await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/vm_templates/${id}`, "DELETE"));
   }
 
   // Custom Pricing Management
-  async getCustomPricing(params?: {
-    limit?: number;
-    offset?: number;
-    region_id?: number;
-    enabled?: boolean;
-  }) {
+  async getCustomPricing(params?: { limit?: number; offset?: number; region_id?: number; enabled?: boolean }) {
     // Convert boolean to string for URL params
     const queryParams = params
       ? {
           ...params,
-          enabled:
-            params.enabled !== undefined
-              ? params.enabled.toString()
-              : undefined,
+          enabled: params.enabled !== undefined ? params.enabled.toString() : undefined,
         }
       : undefined;
 
-    return await this.handleResponse<
-      PaginatedApiResponse<AdminCustomPricingInfo>
-    >(
-      await this.req(
-        "/api/admin/v1/custom_pricing",
-        "GET",
-        undefined,
-        queryParams,
-      ),
+    return await this.handleResponse<PaginatedApiResponse<AdminCustomPricingInfo>>(
+      await this.req("/api/admin/v1/custom_pricing", "GET", undefined, queryParams),
     );
   }
 
   async getCustomPricingModel(id: number) {
-    const result = await this.handleResponse<
-      ApiResponse<AdminCustomPricingInfo>
-    >(await this.req(`/api/admin/v1/custom_pricing/${id}`, "GET"));
+    const result = await this.handleResponse<ApiResponse<AdminCustomPricingInfo>>(
+      await this.req(`/api/admin/v1/custom_pricing/${id}`, "GET"),
+    );
     return result.data;
   }
 
@@ -1361,9 +1403,9 @@ export class AdminApi {
       max_disk_size: number;
     }[];
   }) {
-    const result = await this.handleResponse<
-      ApiResponse<AdminCustomPricingInfo>
-    >(await this.req("/api/admin/v1/custom_pricing", "POST", data));
+    const result = await this.handleResponse<ApiResponse<AdminCustomPricingInfo>>(
+      await this.req("/api/admin/v1/custom_pricing", "POST", data),
+    );
     return result.data;
   }
 
@@ -1392,16 +1434,14 @@ export class AdminApi {
       }[];
     }>,
   ) {
-    const result = await this.handleResponse<
-      ApiResponse<AdminCustomPricingInfo>
-    >(await this.req(`/api/admin/v1/custom_pricing/${id}`, "PATCH", updates));
+    const result = await this.handleResponse<ApiResponse<AdminCustomPricingInfo>>(
+      await this.req(`/api/admin/v1/custom_pricing/${id}`, "PATCH", updates),
+    );
     return result.data;
   }
 
   async deleteCustomPricing(id: number) {
-    await this.handleResponse<ApiResponse<void>>(
-      await this.req(`/api/admin/v1/custom_pricing/${id}`, "DELETE"),
-    );
+    await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/custom_pricing/${id}`, "DELETE"));
   }
 
   async copyCustomPricing(
@@ -1412,25 +1452,15 @@ export class AdminApi {
       enabled?: boolean;
     },
   ) {
-    const result = await this.handleResponse<
-      ApiResponse<AdminCustomPricingInfo>
-    >(await this.req(`/api/admin/v1/custom_pricing/${id}/copy`, "POST", data));
+    const result = await this.handleResponse<ApiResponse<AdminCustomPricingInfo>>(
+      await this.req(`/api/admin/v1/custom_pricing/${id}/copy`, "POST", data),
+    );
     return result.data;
   }
 
-  async getCustomTemplates(
-    pricingId: number,
-    params?: { limit?: number; offset?: number },
-  ) {
-    return await this.handleResponse<
-      PaginatedApiResponse<AdminCustomTemplateInfo>
-    >(
-      await this.req(
-        `/api/admin/v1/custom_pricing/${pricingId}/templates`,
-        "GET",
-        undefined,
-        params,
-      ),
+  async getCustomTemplates(pricingId: number, params?: { limit?: number; offset?: number }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminCustomTemplateInfo>>(
+      await this.req(`/api/admin/v1/custom_pricing/${pricingId}/templates`, "GET", undefined, params),
     );
   }
 
@@ -1444,22 +1474,16 @@ export class AdminApi {
       disk_interface: string;
     },
   ) {
-    const result = await this.handleResponse<
-      ApiResponse<AdminCustomTemplateInfo>
-    >(
-      await this.req(
-        `/api/admin/v1/custom_pricing/${pricingId}/templates`,
-        "POST",
-        data,
-      ),
+    const result = await this.handleResponse<ApiResponse<AdminCustomTemplateInfo>>(
+      await this.req(`/api/admin/v1/custom_pricing/${pricingId}/templates`, "POST", data),
     );
     return result.data;
   }
 
   async getCustomTemplate(id: number) {
-    const result = await this.handleResponse<
-      ApiResponse<AdminCustomTemplateInfo>
-    >(await this.req(`/api/admin/v1/custom_templates/${id}`, "GET"));
+    const result = await this.handleResponse<ApiResponse<AdminCustomTemplateInfo>>(
+      await this.req(`/api/admin/v1/custom_templates/${id}`, "GET"),
+    );
     return result.data;
   }
 
@@ -1474,16 +1498,14 @@ export class AdminApi {
       pricing_id: number;
     }>,
   ) {
-    const result = await this.handleResponse<
-      ApiResponse<AdminCustomTemplateInfo>
-    >(await this.req(`/api/admin/v1/custom_templates/${id}`, "PATCH", updates));
+    const result = await this.handleResponse<ApiResponse<AdminCustomTemplateInfo>>(
+      await this.req(`/api/admin/v1/custom_templates/${id}`, "PATCH", updates),
+    );
     return result.data;
   }
 
   async deleteCustomTemplate(id: number) {
-    await this.handleResponse<ApiResponse<void>>(
-      await this.req(`/api/admin/v1/custom_templates/${id}`, "DELETE"),
-    );
+    await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/custom_templates/${id}`, "DELETE"));
   }
 
   async calculateCustomPricing(
@@ -1498,42 +1520,23 @@ export class AdminApi {
       ip6_count?: number;
     },
   ) {
-    const result = await this.handleResponse<
-      ApiResponse<CustomPricingCalculation>
-    >(
-      await this.req(
-        `/api/admin/v1/custom_pricing/${pricingId}/calculate`,
-        "POST",
-        data,
-      ),
+    const result = await this.handleResponse<ApiResponse<CustomPricingCalculation>>(
+      await this.req(`/api/admin/v1/custom_pricing/${pricingId}/calculate`, "POST", data),
     );
     return result.data;
   }
 
-  async getRegionCustomPricing(
-    regionId: number,
-    params?: { limit?: number; offset?: number; enabled?: boolean },
-  ) {
+  async getRegionCustomPricing(regionId: number, params?: { limit?: number; offset?: number; enabled?: boolean }) {
     // Convert boolean to string for URL params
     const queryParams = params
       ? {
           ...params,
-          enabled:
-            params.enabled !== undefined
-              ? params.enabled.toString()
-              : undefined,
+          enabled: params.enabled !== undefined ? params.enabled.toString() : undefined,
         }
       : undefined;
 
-    return await this.handleResponse<
-      PaginatedApiResponse<AdminCustomPricingInfo>
-    >(
-      await this.req(
-        `/api/admin/v1/regions/${regionId}/custom_pricing`,
-        "GET",
-        undefined,
-        queryParams,
-      ),
+    return await this.handleResponse<PaginatedApiResponse<AdminCustomPricingInfo>>(
+      await this.req(`/api/admin/v1/regions/${regionId}/custom_pricing`, "GET", undefined, queryParams),
     );
   }
 
@@ -1591,17 +1594,11 @@ export class AdminApi {
   }
 
   async deleteCompany(id: number) {
-    await this.handleResponse<ApiResponse<void>>(
-      await this.req(`/api/admin/v1/companies/${id}`, "DELETE"),
-    );
+    await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/companies/${id}`, "DELETE"));
   }
 
   // IP Range Management
-  async getIpRanges(params?: {
-    limit?: number;
-    offset?: number;
-    region_id?: number;
-  }) {
+  async getIpRanges(params?: { limit?: number; offset?: number; region_id?: number }) {
     return await this.handleResponse<PaginatedApiResponse<AdminIpRangeInfo>>(
       await this.req("/api/admin/v1/ip_ranges", "GET", undefined, params),
     );
@@ -1650,24 +1647,20 @@ export class AdminApi {
   }
 
   async deleteIpRange(id: number) {
-    await this.handleResponse<ApiResponse<void>>(
-      await this.req(`/api/admin/v1/ip_ranges/${id}`, "DELETE"),
-    );
+    await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/ip_ranges/${id}`, "DELETE"));
   }
 
   // Access Policy Management
   async getAccessPolicies(params?: { limit?: number; offset?: number }) {
-    return await this.handleResponse<
-      PaginatedApiResponse<AdminAccessPolicyDetail>
-    >(
+    return await this.handleResponse<PaginatedApiResponse<AdminAccessPolicyDetail>>(
       await this.req("/api/admin/v1/access_policies", "GET", undefined, params),
     );
   }
 
   async getAccessPolicy(id: number) {
-    const result = await this.handleResponse<
-      ApiResponse<AdminAccessPolicyDetail>
-    >(await this.req(`/api/admin/v1/access_policies/${id}`, "GET"));
+    const result = await this.handleResponse<ApiResponse<AdminAccessPolicyDetail>>(
+      await this.req(`/api/admin/v1/access_policies/${id}`, "GET"),
+    );
     return result.data;
   }
 
@@ -1677,9 +1670,9 @@ export class AdminApi {
     router_id?: number | null;
     interface?: string | null;
   }) {
-    const result = await this.handleResponse<
-      ApiResponse<AdminAccessPolicyDetail>
-    >(await this.req("/api/admin/v1/access_policies", "POST", data));
+    const result = await this.handleResponse<ApiResponse<AdminAccessPolicyDetail>>(
+      await this.req("/api/admin/v1/access_policies", "POST", data),
+    );
     return result.data;
   }
 
@@ -1692,23 +1685,21 @@ export class AdminApi {
       interface: string | null;
     }>,
   ) {
-    const result = await this.handleResponse<
-      ApiResponse<AdminAccessPolicyDetail>
-    >(await this.req(`/api/admin/v1/access_policies/${id}`, "PATCH", updates));
+    const result = await this.handleResponse<ApiResponse<AdminAccessPolicyDetail>>(
+      await this.req(`/api/admin/v1/access_policies/${id}`, "PATCH", updates),
+    );
     return result.data;
   }
 
   async deleteAccessPolicy(id: number) {
-    await this.handleResponse<ApiResponse<void>>(
-      await this.req(`/api/admin/v1/access_policies/${id}`, "DELETE"),
-    );
+    await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/access_policies/${id}`, "DELETE"));
   }
 
   // Helper endpoint for Access Policies used by IP ranges
   async getAccessPoliciesHelper() {
-    const result = await this.handleResponse<
-      ApiResponse<AdminAccessPolicyInfo[]>
-    >(await this.req("/api/admin/v1/access_policies", "GET"));
+    const result = await this.handleResponse<ApiResponse<AdminAccessPolicyInfo[]>>(
+      await this.req("/api/admin/v1/access_policies", "GET"),
+    );
     return result.data;
   }
 
@@ -1726,13 +1717,7 @@ export class AdminApi {
     return result.data;
   }
 
-  async createRouter(data: {
-    name: string;
-    enabled?: boolean;
-    kind: string;
-    url: string;
-    token: string;
-  }) {
+  async createRouter(data: { name: string; enabled?: boolean; kind: string; url: string; token: string }) {
     const result = await this.handleResponse<ApiResponse<AdminRouterDetail>>(
       await this.req("/api/admin/v1/routers", "POST", data),
     );
@@ -1756,9 +1741,7 @@ export class AdminApi {
   }
 
   async deleteRouter(id: number) {
-    await this.handleResponse<ApiResponse<void>>(
-      await this.req(`/api/admin/v1/routers/${id}`, "DELETE"),
-    );
+    await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/routers/${id}`, "DELETE"));
   }
 
   // Cost Plan Management
@@ -1805,9 +1788,7 @@ export class AdminApi {
   }
 
   async deleteCostPlan(id: number) {
-    await this.handleResponse<ApiResponse<void>>(
-      await this.req(`/api/admin/v1/cost_plans/${id}`, "DELETE"),
-    );
+    await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/cost_plans/${id}`, "DELETE"));
   }
 
   // VM IP Assignment Management
@@ -1822,29 +1803,19 @@ export class AdminApi {
     const queryParams = params
       ? {
           ...params,
-          include_deleted:
-            params.include_deleted !== undefined
-              ? params.include_deleted.toString()
-              : undefined,
+          include_deleted: params.include_deleted !== undefined ? params.include_deleted.toString() : undefined,
         }
       : undefined;
 
-    return await this.handleResponse<
-      PaginatedApiResponse<AdminVmIpAssignmentInfo>
-    >(
-      await this.req(
-        "/api/admin/v1/vm_ip_assignments",
-        "GET",
-        undefined,
-        queryParams,
-      ),
+    return await this.handleResponse<PaginatedApiResponse<AdminVmIpAssignmentInfo>>(
+      await this.req("/api/admin/v1/vm_ip_assignments", "GET", undefined, queryParams),
     );
   }
 
   async getVmIpAssignment(id: number) {
-    const result = await this.handleResponse<
-      ApiResponse<AdminVmIpAssignmentInfo>
-    >(await this.req(`/api/admin/v1/vm_ip_assignments/${id}`, "GET"));
+    const result = await this.handleResponse<ApiResponse<AdminVmIpAssignmentInfo>>(
+      await this.req(`/api/admin/v1/vm_ip_assignments/${id}`, "GET"),
+    );
     return result.data;
   }
 
@@ -1856,9 +1827,9 @@ export class AdminApi {
     dns_forward?: string | null;
     dns_reverse?: string | null;
   }) {
-    const result = await this.handleResponse<
-      ApiResponse<AdminVmIpAssignmentInfo>
-    >(await this.req("/api/admin/v1/vm_ip_assignments", "POST", data));
+    const result = await this.handleResponse<ApiResponse<AdminVmIpAssignmentInfo>>(
+      await this.req("/api/admin/v1/vm_ip_assignments", "POST", data),
+    );
     return result.data;
   }
 
@@ -1871,18 +1842,14 @@ export class AdminApi {
       dns_reverse: string | null;
     }>,
   ) {
-    const result = await this.handleResponse<
-      ApiResponse<AdminVmIpAssignmentInfo>
-    >(
+    const result = await this.handleResponse<ApiResponse<AdminVmIpAssignmentInfo>>(
       await this.req(`/api/admin/v1/vm_ip_assignments/${id}`, "PATCH", updates),
     );
     return result.data;
   }
 
   async deleteVmIpAssignment(id: number) {
-    await this.handleResponse<ApiResponse<void>>(
-      await this.req(`/api/admin/v1/vm_ip_assignments/${id}`, "DELETE"),
-    );
+    await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/vm_ip_assignments/${id}`, "DELETE"));
   }
 
   async getVmIpAssignmentsByVm(
@@ -1896,22 +1863,12 @@ export class AdminApi {
     const queryParams = params
       ? {
           ...params,
-          include_deleted:
-            params.include_deleted !== undefined
-              ? params.include_deleted.toString()
-              : undefined,
+          include_deleted: params.include_deleted !== undefined ? params.include_deleted.toString() : undefined,
         }
       : undefined;
 
-    return await this.handleResponse<
-      PaginatedApiResponse<AdminVmIpAssignmentInfo>
-    >(
-      await this.req(
-        `/api/admin/v1/vms/${vmId}/ip_assignments`,
-        "GET",
-        undefined,
-        queryParams,
-      ),
+    return await this.handleResponse<PaginatedApiResponse<AdminVmIpAssignmentInfo>>(
+      await this.req(`/api/admin/v1/vms/${vmId}/ip_assignments`, "GET", undefined, queryParams),
     );
   }
 
@@ -1926,49 +1883,26 @@ export class AdminApi {
     const queryParams = params
       ? {
           ...params,
-          include_deleted:
-            params.include_deleted !== undefined
-              ? params.include_deleted.toString()
-              : undefined,
+          include_deleted: params.include_deleted !== undefined ? params.include_deleted.toString() : undefined,
         }
       : undefined;
 
-    return await this.handleResponse<
-      PaginatedApiResponse<AdminVmIpAssignmentInfo>
-    >(
-      await this.req(
-        `/api/admin/v1/ip_ranges/${ipRangeId}/assignments`,
-        "GET",
-        undefined,
-        queryParams,
-      ),
+    return await this.handleResponse<PaginatedApiResponse<AdminVmIpAssignmentInfo>>(
+      await this.req(`/api/admin/v1/ip_ranges/${ipRangeId}/assignments`, "GET", undefined, queryParams),
     );
   }
 
   // Reports Management
   async getMonthlySalesReport(year: number, month: number, company_id: number) {
     const result = await this.handleResponse<ApiResponse<any>>(
-      await this.req(
-        `/api/admin/v1/reports/monthly-sales/${year}/${month}/${company_id}`,
-        "GET",
-      ),
+      await this.req(`/api/admin/v1/reports/monthly-sales/${year}/${month}/${company_id}`, "GET"),
     );
     return result.data;
   }
 
-  async getTimeSeriesReport(params: {
-    start_date: string;
-    end_date: string;
-    company_id: number;
-    currency?: string;
-  }) {
+  async getTimeSeriesReport(params: { start_date: string; end_date: string; company_id: number; currency?: string }) {
     const result = await this.handleResponse<ApiResponse<TimeSeriesReportData>>(
-      await this.req(
-        "/api/admin/v1/reports/time-series",
-        "GET",
-        undefined,
-        params,
-      ),
+      await this.req("/api/admin/v1/reports/time-series", "GET", undefined, params),
     );
     return result.data;
   }
@@ -1979,24 +1913,275 @@ export class AdminApi {
     company_id: number;
     ref_code?: string;
   }) {
-    const result = await this.handleResponse<
-      ApiResponse<ReferralUsageTimeSeriesReportData>
-    >(
-      await this.req(
-        "/api/admin/v1/reports/referral-usage/time-series",
-        "GET",
-        undefined,
-        params,
-      ),
+    const result = await this.handleResponse<ApiResponse<ReferralUsageTimeSeriesReportData>>(
+      await this.req("/api/admin/v1/reports/referral-usage/time-series", "GET", undefined, params),
     );
     return result.data;
   }
 
   // Bulk messaging
   async sendBulkMessage(params: { subject: string; message: string }) {
-    const result = await this.handleResponse<
-      ApiResponse<{ job_dispatched: boolean; job_id: string }>
-    >(await this.req("/api/admin/v1/users/bulk-message", "POST", params));
+    const result = await this.handleResponse<ApiResponse<{ job_dispatched: boolean; job_id: string }>>(
+      await this.req("/api/admin/v1/users/bulk-message", "POST", params),
+    );
+    return result.data;
+  }
+
+  // IP Space Management
+  async getIpSpaces(params?: { limit?: number; offset?: number; is_available?: boolean; registry?: number }) {
+    const queryParams = params
+      ? {
+          ...params,
+          is_available: params.is_available !== undefined ? params.is_available.toString() : undefined,
+        }
+      : undefined;
+
+    return await this.handleResponse<PaginatedApiResponse<AdminAvailableIpSpaceInfo>>(
+      await this.req("/api/admin/v1/ip_space", "GET", undefined, queryParams),
+    );
+  }
+
+  async getIpSpace(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminAvailableIpSpaceInfo>>(
+      await this.req(`/api/admin/v1/ip_space/${id}`, "GET"),
+    );
+    return result.data;
+  }
+
+  async createIpSpace(data: {
+    cidr: string;
+    min_prefix_size: number;
+    max_prefix_size: number;
+    registry: number;
+    external_id?: string | null;
+    is_available?: boolean;
+    is_reserved?: boolean;
+    metadata?: Record<string, any> | null;
+  }) {
+    const result = await this.handleResponse<ApiResponse<AdminAvailableIpSpaceInfo>>(
+      await this.req("/api/admin/v1/ip_space", "POST", data),
+    );
+    return result.data;
+  }
+
+  async updateIpSpace(
+    id: number,
+    updates: Partial<{
+      cidr: string;
+      min_prefix_size: number;
+      max_prefix_size: number;
+      registry: number;
+      external_id: string | null;
+      is_available: boolean;
+      is_reserved: boolean;
+      metadata: Record<string, any> | null;
+    }>,
+  ) {
+    const result = await this.handleResponse<ApiResponse<AdminAvailableIpSpaceInfo>>(
+      await this.req(`/api/admin/v1/ip_space/${id}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
+  async deleteIpSpace(id: number) {
+    await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/ip_space/${id}`, "DELETE"));
+  }
+
+  // IP Space Pricing Management
+  async getIpSpacePricing(spaceId: number, params?: { limit?: number; offset?: number }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminIpSpacePricingInfo>>(
+      await this.req(`/api/admin/v1/ip_space/${spaceId}/pricing`, "GET", undefined, params),
+    );
+  }
+
+  async getIpSpacePricingItem(spaceId: number, pricingId: number) {
+    const result = await this.handleResponse<ApiResponse<AdminIpSpacePricingInfo>>(
+      await this.req(`/api/admin/v1/ip_space/${spaceId}/pricing/${pricingId}`, "GET"),
+    );
+    return result.data;
+  }
+
+  async createIpSpacePricing(
+    spaceId: number,
+    data: {
+      prefix_size: number;
+      price_per_month: number;
+      currency?: string | null;
+      setup_fee?: number | null;
+    },
+  ) {
+    const result = await this.handleResponse<ApiResponse<AdminIpSpacePricingInfo>>(
+      await this.req(`/api/admin/v1/ip_space/${spaceId}/pricing`, "POST", data),
+    );
+    return result.data;
+  }
+
+  async updateIpSpacePricing(
+    spaceId: number,
+    pricingId: number,
+    updates: Partial<{
+      prefix_size: number;
+      price_per_month: number;
+      currency: string;
+      setup_fee: number;
+    }>,
+  ) {
+    const result = await this.handleResponse<ApiResponse<AdminIpSpacePricingInfo>>(
+      await this.req(`/api/admin/v1/ip_space/${spaceId}/pricing/${pricingId}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
+  async deleteIpSpacePricing(spaceId: number, pricingId: number) {
+    await this.handleResponse<ApiResponse<void>>(
+      await this.req(`/api/admin/v1/ip_space/${spaceId}/pricing/${pricingId}`, "DELETE"),
+    );
+  }
+
+  // IP Space Subscriptions
+  async getIpSpaceSubscriptions(
+    spaceId: number,
+    params?: {
+      limit?: number;
+      offset?: number;
+      user_id?: number;
+      is_active?: boolean;
+    },
+  ) {
+    const queryParams = params
+      ? {
+          ...params,
+          is_active: params.is_active !== undefined ? params.is_active.toString() : undefined,
+        }
+      : undefined;
+
+    return await this.handleResponse<PaginatedApiResponse<AdminIpRangeSubscriptionInfo>>(
+      await this.req(`/api/admin/v1/ip_space/${spaceId}/subscriptions`, "GET", undefined, queryParams),
+    );
+  }
+
+  // Subscription Management
+  async getSubscriptions(params?: { limit?: number; offset?: number; user_id?: number }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminSubscriptionInfo>>(
+      await this.req("/api/admin/v1/subscriptions", "GET", undefined, params),
+    );
+  }
+
+  async getSubscription(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminSubscriptionInfo>>(
+      await this.req(`/api/admin/v1/subscriptions/${id}`, "GET"),
+    );
+    return result.data;
+  }
+
+  async createSubscription(data: {
+    user_id: number;
+    name: string;
+    description?: string;
+    expires?: string;
+    is_active: boolean;
+    currency: string;
+    interval_amount: number;
+    interval_type: "day" | "month" | "year";
+    setup_fee: number;
+    auto_renewal_enabled: boolean;
+    external_id?: string;
+  }) {
+    const result = await this.handleResponse<ApiResponse<AdminSubscriptionInfo>>(
+      await this.req("/api/admin/v1/subscriptions", "POST", data),
+    );
+    return result.data;
+  }
+
+  async updateSubscription(
+    id: number,
+    updates: Partial<{
+      name: string;
+      description: string;
+      expires: string | null;
+      is_active: boolean;
+      currency: string;
+      interval_amount: number;
+      interval_type: "day" | "month" | "year";
+      setup_fee: number;
+      auto_renewal_enabled: boolean;
+      external_id: string;
+    }>,
+  ) {
+    const result = await this.handleResponse<ApiResponse<AdminSubscriptionInfo>>(
+      await this.req(`/api/admin/v1/subscriptions/${id}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
+  async deleteSubscription(id: number) {
+    await this.handleResponse<ApiResponse<{ deleted: boolean }>>(
+      await this.req(`/api/admin/v1/subscriptions/${id}`, "DELETE"),
+    );
+  }
+
+  // Subscription Line Items
+  async getSubscriptionLineItems(subscriptionId: number) {
+    const result = await this.handleResponse<ApiResponse<AdminSubscriptionLineItemInfo[]>>(
+      await this.req(`/api/admin/v1/subscriptions/${subscriptionId}/line_items`, "GET"),
+    );
+    return result.data;
+  }
+
+  async getSubscriptionLineItem(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminSubscriptionLineItemInfo>>(
+      await this.req(`/api/admin/v1/subscription_line_items/${id}`, "GET"),
+    );
+    return result.data;
+  }
+
+  async createSubscriptionLineItem(data: {
+    subscription_id: number;
+    name: string;
+    description?: string;
+    amount: number;
+    setup_amount: number;
+    configuration?: Record<string, any>;
+  }) {
+    const result = await this.handleResponse<ApiResponse<AdminSubscriptionLineItemInfo>>(
+      await this.req("/api/admin/v1/subscription_line_items", "POST", data),
+    );
+    return result.data;
+  }
+
+  async updateSubscriptionLineItem(
+    id: number,
+    updates: Partial<{
+      name: string;
+      description: string;
+      amount: number;
+      setup_amount: number;
+      configuration: Record<string, any>;
+    }>,
+  ) {
+    const result = await this.handleResponse<ApiResponse<AdminSubscriptionLineItemInfo>>(
+      await this.req(`/api/admin/v1/subscription_line_items/${id}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
+  async deleteSubscriptionLineItem(id: number) {
+    await this.handleResponse<ApiResponse<{ deleted: boolean }>>(
+      await this.req(`/api/admin/v1/subscription_line_items/${id}`, "DELETE"),
+    );
+  }
+
+  // Subscription Payments
+  async getSubscriptionPayments(subscriptionId: number, params?: { limit?: number; offset?: number }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminSubscriptionPaymentInfo>>(
+      await this.req(`/api/admin/v1/subscriptions/${subscriptionId}/payments`, "GET", undefined, params),
+    );
+  }
+
+  async getSubscriptionPayment(hexId: string) {
+    const result = await this.handleResponse<ApiResponse<AdminSubscriptionPaymentInfo>>(
+      await this.req(`/api/admin/v1/subscription_payments/${hexId}`, "GET"),
+    );
     return result.data;
   }
 }

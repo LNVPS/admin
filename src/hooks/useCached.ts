@@ -9,6 +9,11 @@ function unixNow(): number {
   return Math.floor(Date.now() / 1000);
 }
 
+function isLocalhost(): boolean {
+  const hostname = window.location.hostname;
+  return hostname === "localhost" || hostname === "127.0.0.1";
+}
+
 function formatKey(key: string): string {
   return `useCached:${key}`;
 }
@@ -24,10 +29,7 @@ function loadData<T>(key: string): CachedObj<T> | undefined {
   }
 }
 
-async function storeObj<T>(
-  key: string,
-  loader: () => Promise<T>,
-): Promise<CachedObj<T> | undefined> {
+async function storeObj<T>(key: string, loader: () => Promise<T>): Promise<CachedObj<T> | undefined> {
   const k = formatKey(key);
   const newData = await loader();
   const obj = {
@@ -38,23 +40,18 @@ async function storeObj<T>(
   return obj;
 }
 
-export function useCached<T>(
-  key: string,
-  loader: () => Promise<T>,
-  expires?: number,
-) {
+export function useCached<T>(key: string, loader: () => Promise<T>, expires?: number) {
+  const local = isLocalhost();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error>();
-  const [data, setData] = useState<CachedObj<T> | undefined>(() =>
-    loadData<T>(key),
-  );
+  const [data, setData] = useState<CachedObj<T> | undefined>(() => (local ? undefined : loadData<T>(key)));
 
   useEffect(() => {
     const now = unixNow();
     if (
       loading === false &&
       error === undefined &&
-      (data === undefined || data.cached < now - (expires ?? 120))
+      (local || data === undefined || data.cached < now - (expires ?? 120))
     ) {
       setLoading(true);
       storeObj<T>(key, loader)

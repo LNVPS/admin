@@ -372,7 +372,6 @@ function CreateVmTemplateModal({ isOpen, onClose, onSuccess, regions, costPlans 
             <label className="block text-sm font-medium text-gray-300 mb-2">CPU Cores *</label>
             <input
               type="number"
-              min="1"
               required
               value={formData.cpu}
               onChange={(e) => setFormData({ ...formData, cpu: parseInt(e.target.value) || 1 })}
@@ -383,7 +382,6 @@ function CreateVmTemplateModal({ isOpen, onClose, onSuccess, regions, costPlans 
             <label className="block text-sm font-medium text-gray-300 mb-2">Memory (GB) *</label>
             <input
               type="number"
-              min="1"
               required
               value={Math.round(formData.memory / (1024 * 1024 * 1024))}
               onChange={(e) =>
@@ -402,7 +400,6 @@ function CreateVmTemplateModal({ isOpen, onClose, onSuccess, regions, costPlans 
             <label className="block text-sm font-medium text-gray-300 mb-2">Disk Size (GB) *</label>
             <input
               type="number"
-              min="10"
               required
               value={Math.round(formData.disk_size / (1024 * 1024 * 1024))}
               onChange={(e) =>
@@ -738,7 +735,6 @@ function EditVmTemplateModal({ isOpen, onClose, template, onSuccess, regions }: 
             <label className="block text-sm font-medium text-gray-300 mb-2">CPU Cores *</label>
             <input
               type="number"
-              min="1"
               required
               value={formData.cpu}
               onChange={(e) => setFormData({ ...formData, cpu: parseInt(e.target.value) || 1 })}
@@ -749,7 +745,6 @@ function EditVmTemplateModal({ isOpen, onClose, template, onSuccess, regions }: 
             <label className="block text-sm font-medium text-gray-300 mb-2">Memory (GB) *</label>
             <input
               type="number"
-              min="1"
               required
               value={Math.round(formData.memory / (1024 * 1024 * 1024))}
               onChange={(e) =>
@@ -768,7 +763,6 @@ function EditVmTemplateModal({ isOpen, onClose, template, onSuccess, regions }: 
             <label className="block text-sm font-medium text-gray-300 mb-2">Disk Size (GB) *</label>
             <input
               type="number"
-              min="10"
               required
               value={Math.round(formData.disk_size / (1024 * 1024 * 1024))}
               onChange={(e) =>

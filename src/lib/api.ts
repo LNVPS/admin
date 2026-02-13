@@ -474,6 +474,7 @@ export interface AdminIpRangeInfo {
   allocation_mode: IpRangeAllocationMode;
   use_full_range: boolean;
   assignment_count: number;
+  available_ips?: number;
 }
 
 export interface AdminVmHistoryInfo {

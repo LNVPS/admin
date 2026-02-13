@@ -1,30 +1,23 @@
-import { useState, useEffect } from "react";
-import { useAdminApi } from "../hooks/useAdminApi";
-import { PaginatedTable } from "../components/PaginatedTable";
+import { GlobeAltIcon, PencilIcon, PlusIcon, TrashIcon, WifiIcon } from "@heroicons/react/24/outline";
+import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
+import { PaginatedTable } from "../components/PaginatedTable";
 import { StatusBadge } from "../components/StatusBadge";
+import { useAdminApi } from "../hooks/useAdminApi";
 import {
+  type AdminAccessPolicyDetail,
   type AdminIpRangeInfo,
   type AdminRegionInfo,
-  type AdminAccessPolicyDetail,
   IpRangeAllocationMode,
 } from "../lib/api";
-import {
-  WifiIcon,
-  PlusIcon,
-  PencilIcon,
-  TrashIcon,
-  GlobeAltIcon,
-} from "@heroicons/react/24/outline";
 
 export function IpRangesPage() {
   const adminApi = useAdminApi();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedIpRange, setSelectedIpRange] =
-    useState<AdminIpRangeInfo | null>(null);
+  const [selectedIpRange, setSelectedIpRange] = useState<AdminIpRangeInfo | null>(null);
 
   const refreshData = () => {
     setRefreshTrigger((prev) => prev + 1);
@@ -43,9 +36,7 @@ export function IpRangesPage() {
       return;
     }
 
-    if (
-      confirm(`Are you sure you want to delete IP range "${ipRange.cidr}"?`)
-    ) {
+    if (confirm(`Are you sure you want to delete IP range "${ipRange.cidr}"?`)) {
       try {
         await adminApi.deleteIpRange(ipRange.id);
         refreshData();
@@ -62,7 +53,7 @@ export function IpRangesPage() {
       <th>Region</th>
       <th>Access Policy</th>
       <th>Allocation</th>
-      <th>Assignments</th>
+      <th>Assigned (Free)</th>
       <th>Status</th>
       <th className="text-right">Actions</th>
     </>
@@ -74,14 +65,8 @@ export function IpRangesPage() {
       <td>
         <div className="space-y-0.5">
           <div className="font-medium text-white font-mono">{ipRange.cidr}</div>
-          <div className="text-gray-400 text-sm font-mono">
-            Gateway: {ipRange.gateway}
-          </div>
-          {ipRange.reverse_zone_id && (
-            <div className="text-gray-400 text-sm">
-              Zone: {ipRange.reverse_zone_id}
-            </div>
-          )}
+          <div className="text-gray-400 text-sm font-mono">Gateway: {ipRange.gateway}</div>
+          {ipRange.reverse_zone_id && <div className="text-gray-400 text-sm">Zone: {ipRange.reverse_zone_id}</div>}
         </div>
       </td>
       <td className="text-gray-300">
@@ -100,25 +85,20 @@ export function IpRangesPage() {
       <td className="text-gray-300">
         <div className="space-y-0.5">
           <div className="capitalize">{ipRange.allocation_mode}</div>
-          {ipRange.use_full_range && (
-            <div className="text-xs text-yellow-400">Full Range</div>
-          )}
+          {ipRange.use_full_range && <div className="text-xs text-yellow-400">Full Range</div>}
         </div>
       </td>
       <td className="text-gray-300">
-        <span className="font-medium">{ipRange.assignment_count}</span>
+        <span className="font-medium">{ipRange.assignment_count}
+          {ipRange.available_ips && <> ({ipRange.available_ips?.toLocaleString()})</>}
+        </span>
       </td>
       <td>
         <StatusBadge status={ipRange.enabled ? "active" : "inactive"} />
       </td>
       <td className="text-right">
         <div className="flex justify-end space-x-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => handleEdit(ipRange)}
-            className="p-1"
-          >
+          <Button size="sm" variant="secondary" onClick={() => handleEdit(ipRange)} className="p-1">
             <PencilIcon className="h-4 w-4" />
           </Button>
           <Button
@@ -146,11 +126,6 @@ export function IpRangesPage() {
     const stats = {
       total: totalItems,
       enabled: ipRanges.filter((range) => range.enabled).length,
-      totalAssignments: ipRanges.reduce(
-        (sum, range) => sum + range.assignment_count,
-        0,
-      ),
-      withPolicies: ipRanges.filter((range) => range.access_policy_id).length,
     };
 
     return (
@@ -159,26 +134,10 @@ export function IpRangesPage() {
           <h1 className="text-2xl font-bold text-white">IP Ranges</h1>
           <div className="mt-2 flex gap-4 text-sm text-gray-400">
             <span>
-              Total:{" "}
-              <span className="text-white font-medium">{stats.total}</span>
+              Total: <span className="text-white font-medium">{stats.total}</span>
             </span>
             <span>
-              Enabled:{" "}
-              <span className="text-green-400 font-medium">
-                {stats.enabled}
-              </span>
-            </span>
-            <span>
-              With Policies:{" "}
-              <span className="text-blue-400 font-medium">
-                {stats.withPolicies}
-              </span>
-            </span>
-            <span>
-              Assignments:{" "}
-              <span className="text-purple-400 font-medium">
-                {stats.totalAssignments}
-              </span>
+              Enabled: <span className="text-green-400 font-medium">{stats.enabled}</span>
             </span>
           </div>
         </div>
@@ -206,11 +165,7 @@ export function IpRangesPage() {
       />
 
       {/* Create IP Range Modal */}
-      <CreateIpRangeModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onSuccess={refreshData}
-      />
+      <CreateIpRangeModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} onSuccess={refreshData} />
 
       {/* Edit IP Range Modal */}
       {selectedIpRange && (
@@ -242,9 +197,7 @@ function CreateIpRangeModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [regions, setRegions] = useState<AdminRegionInfo[]>([]);
-  const [accessPolicies, setAccessPolicies] = useState<
-    AdminAccessPolicyDetail[]
-  >([]);
+  const [accessPolicies, setAccessPolicies] = useState<AdminAccessPolicyDetail[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   const [formData, setFormData] = useState({
     cidr: "",
@@ -291,9 +244,7 @@ function CreateIpRangeModal({
         enabled: formData.enabled,
         region_id: parseInt(formData.region_id),
         reverse_zone_id: formData.reverse_zone_id || null,
-        access_policy_id: formData.access_policy_id
-          ? parseInt(formData.access_policy_id)
-          : null,
+        access_policy_id: formData.access_policy_id ? parseInt(formData.access_policy_id) : null,
         allocation_mode: formData.allocation_mode,
         use_full_range: formData.use_full_range,
       };
@@ -313,53 +264,36 @@ function CreateIpRangeModal({
       });
     } catch (err) {
       console.error("Failed to create IP range:", err);
-      setError(
-        err instanceof Error ? err.message : "Failed to create IP range",
-      );
+      setError(err instanceof Error ? err.message : "Failed to create IP range");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Create New IP Range"
-      size="lg"
-    >
+    <Modal isOpen={isOpen} onClose={onClose} title="Create New IP Range" size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="bg-red-900/20 border border-red-500/30 text-red-400 px-3 py-2 rounded text-sm">
-            {error}
-          </div>
+          <div className="bg-red-900/20 border border-red-500/30 text-red-400 px-3 py-2 rounded text-sm">{error}</div>
         )}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              CIDR *
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">CIDR *</label>
             <input
               type="text"
               value={formData.cidr}
-              onChange={(e) =>
-                setFormData({ ...formData, cidr: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, cidr: e.target.value })}
               className="font-mono"
               placeholder="192.168.1.0/24"
               required
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              Gateway *
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">Gateway *</label>
             <input
               type="text"
               value={formData.gateway}
-              onChange={(e) =>
-                setFormData({ ...formData, gateway: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, gateway: e.target.value })}
               className="font-mono"
               placeholder="192.168.1.1"
               required
@@ -369,14 +303,10 @@ function CreateIpRangeModal({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              Region *
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">Region *</label>
             <select
               value={formData.region_id}
-              onChange={(e) =>
-                setFormData({ ...formData, region_id: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, region_id: e.target.value })}
               className=""
               disabled={loadingData}
               required
@@ -388,19 +318,13 @@ function CreateIpRangeModal({
                 </option>
               ))}
             </select>
-            {loadingData && (
-              <p className="text-xs text-gray-400 mt-1">Loading regions...</p>
-            )}
+            {loadingData && <p className="text-xs text-gray-400 mt-1">Loading regions...</p>}
           </div>
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              Access Policy (Optional)
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">Access Policy (Optional)</label>
             <select
               value={formData.access_policy_id}
-              onChange={(e) =>
-                setFormData({ ...formData, access_policy_id: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, access_policy_id: e.target.value })}
               className=""
               disabled={loadingData}
             >
@@ -416,9 +340,7 @@ function CreateIpRangeModal({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              Allocation Mode
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">Allocation Mode</label>
             <select
               value={formData.allocation_mode}
               onChange={(e) =>
@@ -429,25 +351,17 @@ function CreateIpRangeModal({
               }
               className=""
             >
-              <option value={IpRangeAllocationMode.SEQUENTIAL}>
-                Sequential
-              </option>
+              <option value={IpRangeAllocationMode.SEQUENTIAL}>Sequential</option>
               <option value={IpRangeAllocationMode.RANDOM}>Random</option>
-              <option value={IpRangeAllocationMode.SLAAC_EUI64}>
-                SLAAC EUI-64
-              </option>
+              <option value={IpRangeAllocationMode.SLAAC_EUI64}>SLAAC EUI-64</option>
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              Reverse Zone ID (Optional)
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">Reverse Zone ID (Optional)</label>
             <input
               type="text"
               value={formData.reverse_zone_id}
-              onChange={(e) =>
-                setFormData({ ...formData, reverse_zone_id: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, reverse_zone_id: e.target.value })}
               className=""
               placeholder="Reverse DNS zone ID"
             />
@@ -460,9 +374,7 @@ function CreateIpRangeModal({
               type="checkbox"
               id="enabled"
               checked={formData.enabled}
-              onChange={(e) =>
-                setFormData({ ...formData, enabled: e.target.checked })
-              }
+              onChange={(e) => setFormData({ ...formData, enabled: e.target.checked })}
               className=""
             />
             <label htmlFor="enabled" className="ml-2 text-xs text-white">
@@ -474,9 +386,7 @@ function CreateIpRangeModal({
               type="checkbox"
               id="use_full_range"
               checked={formData.use_full_range}
-              onChange={(e) =>
-                setFormData({ ...formData, use_full_range: e.target.checked })
-              }
+              onChange={(e) => setFormData({ ...formData, use_full_range: e.target.checked })}
               className=""
             />
             <label htmlFor="use_full_range" className="ml-2 text-xs text-white">
@@ -514,9 +424,7 @@ function EditIpRangeModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [regions, setRegions] = useState<AdminRegionInfo[]>([]);
-  const [accessPolicies, setAccessPolicies] = useState<
-    AdminAccessPolicyDetail[]
-  >([]);
+  const [accessPolicies, setAccessPolicies] = useState<AdminAccessPolicyDetail[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   const [formData, setFormData] = useState({
     cidr: ipRange.cidr,
@@ -524,9 +432,7 @@ function EditIpRangeModal({
     enabled: ipRange.enabled,
     region_id: ipRange.region_id.toString(),
     reverse_zone_id: ipRange.reverse_zone_id || "",
-    access_policy_id: ipRange.access_policy_id
-      ? ipRange.access_policy_id.toString()
-      : "",
+    access_policy_id: ipRange.access_policy_id ? ipRange.access_policy_id.toString() : "",
     allocation_mode: ipRange.allocation_mode,
     use_full_range: ipRange.use_full_range,
   });
@@ -565,9 +471,7 @@ function EditIpRangeModal({
         enabled: formData.enabled,
         region_id: parseInt(formData.region_id),
         reverse_zone_id: formData.reverse_zone_id || null,
-        access_policy_id: formData.access_policy_id
-          ? parseInt(formData.access_policy_id)
-          : null,
+        access_policy_id: formData.access_policy_id ? parseInt(formData.access_policy_id) : null,
         allocation_mode: formData.allocation_mode,
         use_full_range: formData.use_full_range,
       };
@@ -577,9 +481,7 @@ function EditIpRangeModal({
       onClose();
     } catch (err) {
       console.error("Failed to update IP range:", err);
-      setError(
-        err instanceof Error ? err.message : "Failed to update IP range",
-      );
+      setError(err instanceof Error ? err.message : "Failed to update IP range");
     } finally {
       setLoading(false);
     }
@@ -589,36 +491,26 @@ function EditIpRangeModal({
     <Modal isOpen={isOpen} onClose={onClose} title="Edit IP Range" size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="bg-red-900/20 border border-red-500/30 text-red-400 px-3 py-2 rounded text-sm">
-            {error}
-          </div>
+          <div className="bg-red-900/20 border border-red-500/30 text-red-400 px-3 py-2 rounded text-sm">{error}</div>
         )}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              CIDR *
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">CIDR *</label>
             <input
               type="text"
               value={formData.cidr}
-              onChange={(e) =>
-                setFormData({ ...formData, cidr: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, cidr: e.target.value })}
               className="font-mono"
               placeholder="192.168.1.0/24"
               required
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              Gateway *
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">Gateway *</label>
             <input
               type="text"
               value={formData.gateway}
-              onChange={(e) =>
-                setFormData({ ...formData, gateway: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, gateway: e.target.value })}
               className="font-mono"
               placeholder="192.168.1.1"
               required
@@ -628,14 +520,10 @@ function EditIpRangeModal({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              Region *
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">Region *</label>
             <select
               value={formData.region_id}
-              onChange={(e) =>
-                setFormData({ ...formData, region_id: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, region_id: e.target.value })}
               className=""
               disabled={loadingData}
               required
@@ -647,19 +535,13 @@ function EditIpRangeModal({
                 </option>
               ))}
             </select>
-            {loadingData && (
-              <p className="text-xs text-gray-400 mt-1">Loading regions...</p>
-            )}
+            {loadingData && <p className="text-xs text-gray-400 mt-1">Loading regions...</p>}
           </div>
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              Access Policy (Optional)
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">Access Policy (Optional)</label>
             <select
               value={formData.access_policy_id}
-              onChange={(e) =>
-                setFormData({ ...formData, access_policy_id: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, access_policy_id: e.target.value })}
               className=""
               disabled={loadingData}
             >
@@ -675,9 +557,7 @@ function EditIpRangeModal({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              Allocation Mode
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">Allocation Mode</label>
             <select
               value={formData.allocation_mode}
               onChange={(e) =>
@@ -688,25 +568,17 @@ function EditIpRangeModal({
               }
               className=""
             >
-              <option value={IpRangeAllocationMode.SEQUENTIAL}>
-                Sequential
-              </option>
+              <option value={IpRangeAllocationMode.SEQUENTIAL}>Sequential</option>
               <option value={IpRangeAllocationMode.RANDOM}>Random</option>
-              <option value={IpRangeAllocationMode.SLAAC_EUI64}>
-                SLAAC EUI-64
-              </option>
+              <option value={IpRangeAllocationMode.SLAAC_EUI64}>SLAAC EUI-64</option>
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              Reverse Zone ID (Optional)
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">Reverse Zone ID (Optional)</label>
             <input
               type="text"
               value={formData.reverse_zone_id}
-              onChange={(e) =>
-                setFormData({ ...formData, reverse_zone_id: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, reverse_zone_id: e.target.value })}
               className=""
               placeholder="Reverse DNS zone ID"
             />
@@ -719,9 +591,7 @@ function EditIpRangeModal({
               type="checkbox"
               id="enabled-edit"
               checked={formData.enabled}
-              onChange={(e) =>
-                setFormData({ ...formData, enabled: e.target.checked })
-              }
+              onChange={(e) => setFormData({ ...formData, enabled: e.target.checked })}
               className=""
             />
             <label htmlFor="enabled-edit" className="ml-2 text-xs text-white">
@@ -733,15 +603,10 @@ function EditIpRangeModal({
               type="checkbox"
               id="use_full_range-edit"
               checked={formData.use_full_range}
-              onChange={(e) =>
-                setFormData({ ...formData, use_full_range: e.target.checked })
-              }
+              onChange={(e) => setFormData({ ...formData, use_full_range: e.target.checked })}
               className=""
             />
-            <label
-              htmlFor="use_full_range-edit"
-              className="ml-2 text-xs text-white"
-            >
+            <label htmlFor="use_full_range-edit" className="ml-2 text-xs text-white">
               Use Full Range
             </label>
           </div>

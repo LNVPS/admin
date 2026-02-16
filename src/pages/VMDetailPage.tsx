@@ -1,37 +1,39 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { useAdminApi } from "../hooks/useAdminApi";
-import { PaginatedTable } from "../components/PaginatedTable";
-import { Button } from "../components/Button";
-import { StatusBadge } from "../components/StatusBadge";
-import { Profile } from "../components/Profile";
-import { VmStatusBadge, getVmStatus } from "../components/VmStatusBadge";
-import { ErrorState } from "../components/ErrorState";
-import { VmIpAssignmentModal } from "../components/VmIpAssignmentModal";
-import { VmRefundModal } from "../components/VmRefundModal";
 import {
-  type AdminVmInfo,
-  VmRunningStates,
-  type AdminVmHistoryInfo,
-  type AdminVmPaymentInfo,
-  AdminVmHistoryActionType,
-  AdminPaymentMethod,
-} from "../lib/api";
-import { formatBytes } from "../utils/formatBytes";
-import { formatCurrency } from "../utils/currency";
-import {
-  PlayIcon,
-  StopIcon,
-  TrashIcon,
   ArrowPathIcon,
+  BanknotesIcon,
+  CheckCircleIcon,
+  CheckIcon,
+  ClipboardIcon,
   ClockIcon,
   CreditCardIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  PlusIcon,
   GlobeAltIcon,
-  BanknotesIcon,
+  PlayIcon,
+  PlusIcon,
+  StopIcon,
+  TrashIcon,
+  XCircleIcon,
 } from "@heroicons/react/24/outline";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { Button } from "../components/Button";
+import { ErrorState } from "../components/ErrorState";
+import { PaginatedTable } from "../components/PaginatedTable";
+import { Profile } from "../components/Profile";
+import { StatusBadge } from "../components/StatusBadge";
+import { VmIpAssignmentModal } from "../components/VmIpAssignmentModal";
+import { VmRefundModal } from "../components/VmRefundModal";
+import { getVmStatus, VmStatusBadge } from "../components/VmStatusBadge";
+import { useAdminApi } from "../hooks/useAdminApi";
+import {
+  AdminPaymentMethod,
+  AdminVmHistoryActionType,
+  type AdminVmHistoryInfo,
+  type AdminVmInfo,
+  type AdminVmPaymentInfo,
+  VmRunningStates,
+} from "../lib/api";
+import { formatCurrency } from "../utils/currency";
+import { formatBytes } from "../utils/formatBytes";
 
 export function VMDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -45,6 +47,7 @@ export function VMDetailPage() {
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const [showIpAssignModal, setShowIpAssignModal] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
+  const [copiedPaymentId, setCopiedPaymentId] = useState<string | null>(null);
 
   const vmId = id ? parseInt(id, 10) : null;
 
@@ -122,9 +125,7 @@ export function VMDetailPage() {
   const handleDeleteVM = async () => {
     if (!vm) return;
     if (confirm(`Are you sure you want to delete VM ${vm.id}?`)) {
-      const reason = prompt(
-        "Optional: Enter a reason for deletion (e.g., 'Policy violation', 'User requested'):",
-      );
+      const reason = prompt("Optional: Enter a reason for deletion (e.g., 'Policy violation', 'User requested'):");
       try {
         setActionLoading("delete");
         const result = await adminApi.deleteVM(vm.id, reason || undefined);
@@ -139,10 +140,7 @@ export function VMDetailPage() {
 
   const handleExtendVM = async () => {
     if (!vm) return;
-    const daysInput = prompt(
-      "Enter the number of days to extend the VM (1-365):",
-      "30",
-    );
+    const daysInput = prompt("Enter the number of days to extend the VM (1-365):", "30");
     if (!daysInput) return;
 
     const days = parseInt(daysInput, 10);
@@ -165,6 +163,16 @@ export function VMDetailPage() {
     }
   };
 
+  const handleCopyPaymentId = async (paymentId: string) => {
+    try {
+      await navigator.clipboard.writeText(paymentId);
+      setCopiedPaymentId(paymentId);
+      setTimeout(() => setCopiedPaymentId(null), 2000);
+    } catch (err) {
+      console.error("Failed to copy payment ID:", err);
+    }
+  };
+
   const renderHistoryHeader = () => (
     <>
       <th>Action</th>
@@ -177,10 +185,7 @@ export function VMDetailPage() {
   const renderHistoryRow = (history: AdminVmHistoryInfo, index: number) => (
     <tr key={history.id || index}>
       <td>
-        <StatusBadge
-          status="unknown"
-          colorOverride={getHistoryColorOverride(history.action_type)}
-        >
+        <StatusBadge status="unknown" colorOverride={getHistoryColorOverride(history.action_type)}>
           {formatActionType(history.action_type)}
         </StatusBadge>
       </td>
@@ -192,9 +197,7 @@ export function VMDetailPage() {
           <span className="text-gray-400 text-sm">System</span>
         )}
       </td>
-      <td className="text-gray-400 text-sm">
-        {new Date(history.timestamp).toLocaleString()}
-      </td>
+      <td className="text-gray-400 text-sm">{new Date(history.timestamp).toLocaleString()}</td>
     </tr>
   );
 
@@ -211,24 +214,21 @@ export function VMDetailPage() {
   const renderPaymentsRow = (payment: AdminVmPaymentInfo, index: number) => (
     <tr key={payment.id || index}>
       <td className="font-mono text-sm text-blue-400">
-        {payment.id.slice(0, 8)}...
-      </td>
-      <td className="text-white">
-        <div className="space-y-1">
-          <div>
-            {formatPaymentAmount(
-              payment.amount,
-              payment.currency,
-              payment.rate,
-              payment.base_currency || "EUR",
+        <span className="inline-flex items-center gap-1">
+          <span title={payment.id}>{payment.id.slice(0, 8)}...</span>
+          <button
+            type="button"
+            onClick={() => handleCopyPaymentId(payment.id)}
+            className="text-gray-400 hover:text-blue-400 transition-colors cursor-pointer"
+            title={copiedPaymentId === payment.id ? "Copied!" : "Copy payment ID"}
+          >
+            {copiedPaymentId === payment.id ? (
+              <CheckIcon className="h-3 w-3 text-green-400" />
+            ) : (
+              <ClipboardIcon className="h-3 w-3" />
             )}
-          </div>
-          {payment.rate && payment.rate !== 100 && (
-            <div className="text-xs text-gray-400">
-              Rate: {payment.rate.toLocaleString()}
-            </div>
-          )}
-        </div>
+          </button>
+        </span>
       </td>
       <td>
         <StatusBadge status={getPaymentMethodColor(payment.payment_method)}>
@@ -247,15 +247,11 @@ export function VMDetailPage() {
           </span>
         </div>
       </td>
-      <td className="text-gray-400 text-sm">
-        {new Date(payment.created).toLocaleString()}
-      </td>
+      <td className="text-gray-400 text-sm">{new Date(payment.created).toLocaleString()}</td>
     </tr>
   );
 
-  const getHistoryColorOverride = (
-    action: AdminVmHistoryActionType,
-  ): string => {
+  const getHistoryColorOverride = (action: AdminVmHistoryActionType): string => {
     switch (action) {
       case AdminVmHistoryActionType.STARTED:
         return "bg-green-900 text-green-300"; // Green for started
@@ -288,9 +284,7 @@ export function VMDetailPage() {
     return action.charAt(0).toUpperCase() + action.slice(1).replace(/_/g, " ");
   };
 
-  const getPaymentMethodColor = (
-    method: AdminPaymentMethod,
-  ): "running" | "stopped" | "unknown" => {
+  const getPaymentMethodColor = (method: AdminPaymentMethod): "running" | "stopped" | "unknown" => {
     switch (method) {
       case AdminPaymentMethod.LIGHTNING:
         return "running";
@@ -316,12 +310,7 @@ export function VMDetailPage() {
     }
   };
 
-  const formatPaymentAmount = (
-    amount: number,
-    currency: string,
-    rate: number,
-    base_currency: string,
-  ): string => {
+  const formatPaymentAmount = (amount: number, currency: string, rate: number, base_currency: string): string => {
     const primaryAmount = formatCurrency(amount, currency);
 
     if (rate && currency !== base_currency) {
@@ -345,9 +334,7 @@ export function VMDetailPage() {
     }
   };
 
-  const formatTimeUntilExpiry = (
-    expiryDate: string,
-  ): { text: string; isExpired: boolean; isExpiringSoon: boolean } => {
+  const formatTimeUntilExpiry = (expiryDate: string): { text: string; isExpired: boolean; isExpiringSoon: boolean } => {
     const now = new Date();
     const expiry = new Date(expiryDate);
     const diffMs = expiry.getTime() - now.getTime();
@@ -357,9 +344,7 @@ export function VMDetailPage() {
     }
 
     const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const hours = Math.floor(
-      (diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
-    );
+    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 
     if (days > 0) {
@@ -392,12 +377,7 @@ export function VMDetailPage() {
   }
 
   if (error || !vm) {
-    return (
-      <ErrorState
-        error={new Error(error || "VM not found")}
-        action="load VM details"
-      />
-    );
+    return <ErrorState error={new Error(error || "VM not found")} action="load VM details" />;
   }
 
   return (
@@ -423,9 +403,7 @@ export function VMDetailPage() {
             {lastRefresh && (
               <>
                 <span>•</span>
-                <span className="text-xs">
-                  Updated: {lastRefresh.toLocaleTimeString()}
-                </span>
+                <span className="text-xs">Updated: {lastRefresh.toLocaleTimeString()}</span>
               </>
             )}
           </div>
@@ -537,9 +515,7 @@ export function VMDetailPage() {
           </div>
           <div>
             <div className="text-gray-400 mb-1">Created</div>
-            <div className="text-white">
-              {new Date(vm.created).toLocaleString()}
-            </div>
+            <div className="text-white">{new Date(vm.created).toLocaleString()}</div>
             {vm.auto_renewal_enabled && (
               <StatusBadge status="running" className="mt-1">
                 Auto-Renew
@@ -549,13 +525,7 @@ export function VMDetailPage() {
           <div>
             <div className="text-gray-400 mb-1">Expires</div>
             <div className="space-y-1">
-              <div
-                className={
-                  new Date(vm.expires) < new Date()
-                    ? "text-red-400"
-                    : "text-white"
-                }
-              >
+              <div className={new Date(vm.expires) < new Date() ? "text-red-400" : "text-white"}>
                 {new Date(vm.expires).toLocaleString()}
               </div>
               {(() => {
@@ -583,12 +553,9 @@ export function VMDetailPage() {
       {vm.running_state && (
         <div className="bg-gray-800 rounded-lg p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-semibold text-white">
-              Real-time Metrics
-            </h3>
+            <h3 className="text-lg font-semibold text-white">Real-time Metrics</h3>
             <div className="text-xs text-gray-400">
-              Last updated:{" "}
-              {new Date(vm.running_state.timestamp * 1000).toLocaleString()}
+              Last updated: {new Date(vm.running_state.timestamp * 1000).toLocaleString()}
             </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 text-sm">
@@ -598,21 +565,15 @@ export function VMDetailPage() {
             </div>
             <div>
               <div className="text-gray-400 mb-1">CPU Usage</div>
-              <div className="text-white">
-                {(vm.running_state.cpu_usage * 100).toFixed(1)}%
-              </div>
+              <div className="text-white">{(vm.running_state.cpu_usage * 100).toFixed(1)}%</div>
             </div>
             <div>
               <div className="text-gray-400 mb-1">Memory Usage</div>
-              <div className="text-white">
-                {(vm.running_state.mem_usage * 100).toFixed(1)}%
-              </div>
+              <div className="text-white">{(vm.running_state.mem_usage * 100).toFixed(1)}%</div>
             </div>
             <div>
               <div className="text-gray-400 mb-1">Uptime</div>
-              <div className="text-white">
-                {formatUptime(vm.running_state.uptime)}
-              </div>
+              <div className="text-white">{formatUptime(vm.running_state.uptime)}</div>
             </div>
             <div>
               <div className="text-gray-400 mb-1">Network I/O</div>
@@ -635,9 +596,7 @@ export function VMDetailPage() {
       {vm.deleted && (
         <div className="bg-red-900/20 border border-red-500/20 rounded-lg p-3">
           <div className="text-red-400 font-semibold">⚠️ Deleted VM</div>
-          <div className="text-gray-400 text-sm">
-            This virtual machine has been marked as deleted.
-          </div>
+          <div className="text-gray-400 text-sm">This virtual machine has been marked as deleted.</div>
         </div>
       )}
 
@@ -657,8 +616,7 @@ export function VMDetailPage() {
           dependencies={[vm.id, historyRefreshKey]}
           calculateStats={(_, total) => (
             <div className="text-sm text-gray-400">
-              Total history entries:{" "}
-              <span className="text-white font-medium">{total}</span>
+              Total history entries: <span className="text-white font-medium">{total}</span>
             </div>
           )}
         />
@@ -689,20 +647,13 @@ export function VMDetailPage() {
           calculateStats={(payments, total) => (
             <div className="flex gap-4 text-sm text-gray-400">
               <span>
-                Total payments:{" "}
-                <span className="text-white font-medium">{total}</span>
+                Total payments: <span className="text-white font-medium">{total}</span>
               </span>
               <span>
-                Paid:{" "}
-                <span className="text-green-400 font-medium">
-                  {payments.filter((p) => p.is_paid).length}
-                </span>
+                Paid: <span className="text-green-400 font-medium">{payments.filter((p) => p.is_paid).length}</span>
               </span>
               <span>
-                Pending:{" "}
-                <span className="text-red-400 font-medium">
-                  {payments.filter((p) => !p.is_paid).length}
-                </span>
+                Pending: <span className="text-red-400 font-medium">{payments.filter((p) => !p.is_paid).length}</span>
               </span>
             </div>
           )}

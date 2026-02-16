@@ -1,28 +1,27 @@
+import {
+  DocumentDuplicateIcon,
+  GlobeAltIcon,
+  PencilIcon,
+  PlusIcon,
+  ServerIcon,
+  TrashIcon,
+} from "@heroicons/react/24/outline";
 import { useState } from "react";
-import { useAdminApi } from "../hooks/useAdminApi";
-import { PaginatedTable } from "../components/PaginatedTable";
-import { StatusBadge } from "../components/StatusBadge";
 import { Button } from "../components/Button";
 import { CreatePricingModal } from "../components/CreatePricingModal";
 import { EditPricingModal } from "../components/EditPricingModal";
+import { PaginatedTable } from "../components/PaginatedTable";
+import { StatusBadge } from "../components/StatusBadge";
+import { useAdminApi } from "../hooks/useAdminApi";
 import type { AdminCustomPricingInfo } from "../lib/api";
-import { formatBytes } from "../utils/formatBytes";
-import {
-  PlusIcon,
-  DocumentDuplicateIcon,
-  TrashIcon,
-  PencilIcon,
-  ServerIcon,
-  GlobeAltIcon,
-} from "@heroicons/react/24/outline";
 import { formatCurrency } from "../utils/currency";
+import { formatBytes } from "../utils/formatBytes";
 
 export function CustomPricingPage() {
   const adminApi = useAdminApi();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editingPricing, setEditingPricing] =
-    useState<AdminCustomPricingInfo | null>(null);
+  const [editingPricing, setEditingPricing] = useState<AdminCustomPricingInfo | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const handleCreateSuccess = () => {
@@ -43,10 +42,7 @@ export function CustomPricingPage() {
   };
 
   const handleCopy = async (id: number, name: string) => {
-    const newName = prompt(
-      "Enter name for the copied pricing model:",
-      `${name} (Copy)`,
-    );
+    const newName = prompt("Enter name for the copied pricing model:", `${name} (Copy)`);
     if (!newName) return;
 
     try {
@@ -80,8 +76,8 @@ export function CustomPricingPage() {
   );
 
   const renderRow = (pricing: AdminCustomPricingInfo, index: number) => {
-    const mul = pricing.currency === "BTC" ? 1e9 : 100;
-    const maxDigits = pricing.currency === "BTC" ? 11 : 5;
+    // API returns values in smallest units (cents/millisats), formatCurrency handles conversion
+    const maxDigits = pricing.currency === "BTC" ? 3 : 2;
     return (
       <tr key={pricing.id || index}>
         <td className="whitespace-nowrap text-white">{pricing.id}</td>
@@ -97,43 +93,19 @@ export function CustomPricingPage() {
         <td className="text-gray-300">
           <div className="space-y-0.5 text-sm">
             <div>
-              CPU:{" "}
-              {formatCurrency(
-                pricing.cpu_cost * mul,
-                pricing.currency,
-                undefined,
-                maxDigits,
-              )}
+              CPU: {formatCurrency(pricing.cpu_cost, pricing.currency, undefined, maxDigits)}
               /core
             </div>
             <div>
-              RAM:{" "}
-              {formatCurrency(
-                pricing.memory_cost * mul,
-                pricing.currency,
-                undefined,
-                maxDigits,
-              )}
+              RAM: {formatCurrency(pricing.memory_cost, pricing.currency, undefined, maxDigits)}
               /GB
             </div>
             <div>
-              IPv4:{" "}
-              {formatCurrency(
-                pricing.ip4_cost * mul,
-                pricing.currency,
-                undefined,
-                maxDigits,
-              )}
+              IPv4: {formatCurrency(pricing.ip4_cost, pricing.currency, undefined, maxDigits)}
               /IP
             </div>
             <div>
-              IPv6:{" "}
-              {formatCurrency(
-                pricing.ip6_cost * mul,
-                pricing.currency,
-                undefined,
-                maxDigits,
-              )}
+              IPv6: {formatCurrency(pricing.ip6_cost, pricing.currency, undefined, maxDigits)}
               /IP
             </div>
           </div>
@@ -144,8 +116,7 @@ export function CustomPricingPage() {
               CPU: {pricing.min_cpu}-{pricing.max_cpu} cores
             </div>
             <div>
-              RAM: {formatBytes(pricing.min_memory)}-
-              {formatBytes(pricing.max_memory)}
+              RAM: {formatBytes(pricing.min_memory)}-{formatBytes(pricing.max_memory)}
             </div>
           </div>
         </td>
@@ -155,17 +126,11 @@ export function CustomPricingPage() {
               <div key={idx}>
                 <div>
                   {disk.kind.toUpperCase()} {disk.interface.toUpperCase()}:{" "}
-                  {formatCurrency(
-                    disk.cost * mul,
-                    pricing.currency,
-                    undefined,
-                    maxDigits,
-                  )}
+                  {formatCurrency(disk.cost, pricing.currency, undefined, maxDigits)}
                   /GB
                 </div>
                 <div className="text-xs text-gray-400">
-                  {formatBytes(disk.min_disk_size)}-
-                  {formatBytes(disk.max_disk_size)}
+                  {formatBytes(disk.min_disk_size)}-{formatBytes(disk.max_disk_size)}
                 </div>
               </div>
             ))}
@@ -216,56 +181,35 @@ export function CustomPricingPage() {
     );
   };
 
-  const calculateStats = (
-    pricingModels: AdminCustomPricingInfo[],
-    totalItems: number,
-  ) => {
+  const calculateStats = (pricingModels: AdminCustomPricingInfo[], totalItems: number) => {
     const stats = {
       total: totalItems,
       enabled: pricingModels.filter((p) => p.enabled).length,
       disabled: pricingModels.filter((p) => !p.enabled).length,
-      expired: pricingModels.filter(
-        (p) => p.expires && new Date(p.expires) < new Date(),
-      ).length,
-      totalTemplates: pricingModels.reduce(
-        (sum, p) => sum + p.template_count,
-        0,
-      ),
+      expired: pricingModels.filter((p) => p.expires && new Date(p.expires) < new Date()).length,
+      totalTemplates: pricingModels.reduce((sum, p) => sum + p.template_count, 0),
     };
 
     return (
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">
-            Custom Pricing Models
-          </h1>
+          <h1 className="text-2xl font-bold text-white">Custom Pricing Models</h1>
           <div className="mt-2 flex gap-4 text-sm text-gray-400">
             <span>
-              Total:{" "}
-              <span className="text-white font-medium">{stats.total}</span>
+              Total: <span className="text-white font-medium">{stats.total}</span>
             </span>
             <span>
-              Enabled:{" "}
-              <span className="text-green-400 font-medium">
-                {stats.enabled}
-              </span>
+              Enabled: <span className="text-green-400 font-medium">{stats.enabled}</span>
             </span>
             <span>
-              Disabled:{" "}
-              <span className="text-red-400 font-medium">{stats.disabled}</span>
+              Disabled: <span className="text-red-400 font-medium">{stats.disabled}</span>
             </span>
             <span>
-              Templates:{" "}
-              <span className="text-blue-400 font-medium">
-                {stats.totalTemplates}
-              </span>
+              Templates: <span className="text-blue-400 font-medium">{stats.totalTemplates}</span>
             </span>
           </div>
         </div>
-        <Button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2"
-        >
+        <Button onClick={() => setShowCreateModal(true)} className="flex items-center gap-2">
           <PlusIcon className="h-4 w-4" />
           Create Pricing Model
         </Button>

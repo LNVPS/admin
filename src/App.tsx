@@ -19,6 +19,7 @@ import { JobHistoryPage } from "./pages/JobHistoryPage";
 // Import pages (we'll create these next)
 import { LoginPage } from "./pages/LoginPage";
 import { OsImagesPage } from "./pages/OsImagesPage";
+import { PaymentMethodsPage } from "./pages/PaymentMethodsPage";
 import { ReferralsReportPage } from "./pages/ReferralsReportPage";
 import { RegionsPage } from "./pages/RegionsPage";
 import { RolesPage } from "./pages/RolesPage";
@@ -284,6 +285,14 @@ function AppContent() {
               element={
                 <PermissionGuard requiredPermissions={["subscriptions::view"]}>
                   <SubscriptionDetailPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="payment-methods"
+              element={
+                <PermissionGuard requiredPermissions={["payment_method_config::view"]}>
+                  <PaymentMethodsPage />
                 </PermissionGuard>
               }
             />

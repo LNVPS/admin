@@ -12,6 +12,7 @@ import {
   DiskInterface,
   DiskType,
 } from "../lib/api";
+import { fromSmallestUnits, toSmallestUnits } from "../utils/currency";
 import { formatBytes } from "../utils/formatBytes";
 
 export function VmTemplatesPage() {
@@ -301,7 +302,8 @@ function CreateVmTemplateModal({ isOpen, onClose, onSuccess, regions, costPlans 
       if (createNewCostPlan) {
         // Auto-create cost plan
         submitData.cost_plan_name = formData.cost_plan_name || `${formData.name} Cost Plan`;
-        submitData.cost_plan_amount = formData.cost_plan_amount;
+        // Convert from human-readable to smallest units (cents/millisats)
+        submitData.cost_plan_amount = toSmallestUnits(formData.cost_plan_amount, formData.cost_plan_currency);
         submitData.cost_plan_currency = formData.cost_plan_currency;
         submitData.cost_plan_interval_amount = formData.cost_plan_interval_amount;
         submitData.cost_plan_interval_type = formData.cost_plan_interval_type;
@@ -494,11 +496,13 @@ function CreateVmTemplateModal({ isOpen, onClose, onSuccess, regions, costPlans 
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Amount *</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Amount ({formData.cost_plan_currency === "BTC" ? "sats" : formData.cost_plan_currency}) *
+                  </label>
                   <input
                     type="number"
                     min="0"
-                    step="0.01"
+                    step={formData.cost_plan_currency === "BTC" ? "1" : "0.01"}
                     required
                     value={formData.cost_plan_amount}
                     onChange={(e) =>
@@ -526,6 +530,7 @@ function CreateVmTemplateModal({ isOpen, onClose, onSuccess, regions, costPlans 
                     <option value="USD">USD</option>
                     <option value="EUR">EUR</option>
                     <option value="GBP">GBP</option>
+                    <option value="BTC">BTC</option>
                   </select>
                 </div>
                 <div>
@@ -657,7 +662,8 @@ function EditVmTemplateModal({ isOpen, onClose, template, onSuccess, regions }: 
           setFormData((prev) => ({
             ...prev,
             cost_plan_name: plan.name,
-            cost_plan_amount: plan.amount,
+            // Convert from smallest units (cents/millisats) to human-readable
+            cost_plan_amount: fromSmallestUnits(plan.amount, plan.currency),
             cost_plan_currency: plan.currency,
             cost_plan_interval_amount: plan.interval_amount,
             cost_plan_interval_type: plan.interval_type,
@@ -688,7 +694,8 @@ function EditVmTemplateModal({ isOpen, onClose, template, onSuccess, regions }: 
         disk_interface: formData.disk_interface,
         region_id: formData.region_id,
         cost_plan_name: formData.cost_plan_name,
-        cost_plan_amount: formData.cost_plan_amount,
+        // Convert from human-readable to smallest units (cents/millisats)
+        cost_plan_amount: toSmallestUnits(formData.cost_plan_amount, formData.cost_plan_currency),
         cost_plan_currency: formData.cost_plan_currency,
         cost_plan_interval_amount: formData.cost_plan_interval_amount,
         cost_plan_interval_type: formData.cost_plan_interval_type,
@@ -853,11 +860,13 @@ function EditVmTemplateModal({ isOpen, onClose, template, onSuccess, regions }: 
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Amount *</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Amount ({formData.cost_plan_currency === "BTC" ? "sats" : formData.cost_plan_currency}) *
+                  </label>
                   <input
                     type="number"
                     min="0"
-                    step="0.01"
+                    step={formData.cost_plan_currency === "BTC" ? "1" : "0.01"}
                     required
                     value={formData.cost_plan_amount}
                     onChange={(e) =>

@@ -1,28 +1,20 @@
-import { useState, useEffect } from "react";
-import { Card } from "../components/Card";
-import { Button } from "../components/Button";
-import { Table } from "../components/Table";
-import { useAdminApi } from "../hooks/useAdminApi";
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import {
-  CalendarIcon,
-  CurrencyDollarIcon,
-  ChartBarIcon,
-  ExclamationTriangleIcon,
+  ArrowDownTrayIcon,
   ArrowPathIcon,
+  CalendarIcon,
+  ChartBarIcon,
+  CurrencyDollarIcon,
   DocumentChartBarIcon,
   DocumentDuplicateIcon,
-  ArrowDownTrayIcon,
+  ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
-import type { TimeSeriesReportData, AdminCompanyInfo } from "../lib/api";
+import { useEffect, useState } from "react";
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Button } from "../components/Button";
+import { Card } from "../components/Card";
+import { Table } from "../components/Table";
+import { useAdminApi } from "../hooks/useAdminApi";
+import type { AdminCompanyInfo, TimeSeriesReportData } from "../lib/api";
 import { formatCurrency } from "../utils/currency";
 
 const INTERVALS = [
@@ -36,9 +28,7 @@ const INTERVALS = [
 const CURRENCIES = ["USD", "EUR", "GBP", "CAD", "CHF", "AUD", "JPY", "BTC"];
 
 export function SalesReportPage() {
-  const [reportData, setReportData] = useState<TimeSeriesReportData | null>(
-    null,
-  );
+  const [reportData, setReportData] = useState<TimeSeriesReportData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [companies, setCompanies] = useState<AdminCompanyInfo[]>([]);
@@ -54,9 +44,7 @@ export function SalesReportPage() {
   const [endDate, setEndDate] = useState(() => {
     return new Date().toISOString().split("T")[0];
   });
-  const [interval, setInterval] = useState<
-    "daily" | "weekly" | "monthly" | "quarterly" | "yearly"
-  >("monthly");
+  const [interval, setInterval] = useState<"daily" | "weekly" | "monthly" | "quarterly" | "yearly">("monthly");
   const [companyId, setCompanyId] = useState<number | null>(null);
   const [currency, setCurrency] = useState<string>("");
 
@@ -99,9 +87,7 @@ export function SalesReportPage() {
       const data = await api.getTimeSeriesReport(params);
       setReportData(data);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load time-series data",
-      );
+      setError(err instanceof Error ? err.message : "Failed to load time-series data");
     } finally {
       setLoading(false);
     }
@@ -202,10 +188,7 @@ export function SalesReportPage() {
     // Calculate exchange rates from the payment data
     const exchangeRates: Record<string, number> = {};
     reportData.payments.forEach((payment) => {
-      if (
-        payment.currency !== baseCurrency &&
-        !exchangeRates[`${payment.currency}_${baseCurrency}`]
-      ) {
+      if (payment.currency !== baseCurrency && !exchangeRates[`${payment.currency}_${baseCurrency}`]) {
         exchangeRates[`${payment.currency}_${baseCurrency}`] = payment.rate;
       }
     });
@@ -264,9 +247,7 @@ export function SalesReportPage() {
     if (!salesReportData) return;
 
     try {
-      await navigator.clipboard.writeText(
-        JSON.stringify(salesReportData, null, 2),
-      );
+      await navigator.clipboard.writeText(JSON.stringify(salesReportData, null, 2));
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     } catch (err) {
@@ -293,30 +274,21 @@ export function SalesReportPage() {
       payment.period,
       payment.vm_id,
       new Date(payment.created).toISOString(),
-      payment.currency === "BTC"
-        ? (payment.amount / 1e11).toFixed(8)
-        : (payment.amount / 100).toFixed(2),
+      payment.currency === "BTC" ? (payment.amount / 1e11).toFixed(8) : (payment.amount / 100).toFixed(2),
       payment.currency,
       payment.payment_method,
-      payment.currency === "BTC"
-        ? (payment.tax / 1e11).toFixed(8)
-        : (payment.tax / 100).toFixed(2),
+      payment.currency === "BTC" ? (payment.tax / 1e11).toFixed(8) : (payment.tax / 100).toFixed(2),
       payment.is_paid ? "Yes" : "No",
       payment.rate,
     ]);
 
-    const csvContent = [csvHeaders, ...csvRows]
-      .map((row) => row.map((cell) => `"${cell}"`).join(","))
-      .join("\n");
+    const csvContent = [csvHeaders, ...csvRows].map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
-    link.setAttribute(
-      "download",
-      `payments-${reportData.start_date}-to-${reportData.end_date}.csv`,
-    );
+    link.setAttribute("download", `payments-${reportData.start_date}-to-${reportData.end_date}.csv`);
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
@@ -328,33 +300,21 @@ export function SalesReportPage() {
     {
       header: "Payments",
       key: "payment_count",
-      render: (item: any) => (
-        <span className="text-blue-400">
-          {item.payment_count.toLocaleString()}
-        </span>
-      ),
+      render: (item: any) => <span className="text-blue-400">{item.payment_count.toLocaleString()}</span>,
     },
     { header: "Currency", key: "currency" },
     {
       header: `Net (${baseCurrency})`,
       key: "net_total_base",
       render: (item: any) => {
-        return (
-          <span className="text-green-400">
-            {formatCurrency(item.net_total_base, baseCurrency)}
-          </span>
-        );
+        return <span className="text-green-400">{formatCurrency(item.net_total_base, baseCurrency)}</span>;
       },
     },
     {
       header: `Tax (${baseCurrency})`,
       key: "tax_total_base",
       render: (item: any) => {
-        return (
-          <span className="text-yellow-400">
-            {formatCurrency(item.tax_total_base, baseCurrency)}
-          </span>
-        );
+        return <span className="text-yellow-400">{formatCurrency(item.tax_total_base, baseCurrency)}</span>;
       },
     },
     {
@@ -362,9 +322,7 @@ export function SalesReportPage() {
       key: "gross_total_base",
       render: (item: any) => {
         return (
-          <span className="text-blue-400 font-semibold">
-            {formatCurrency(item.gross_total_base, baseCurrency)}
-          </span>
+          <span className="text-blue-400 font-semibold">{formatCurrency(item.gross_total_base, baseCurrency)}</span>
         );
       },
     },
@@ -390,21 +348,11 @@ export function SalesReportPage() {
           </Button>
           {reportData && (
             <>
-              <Button
-                onClick={exportPaymentsToCSV}
-                variant="secondary"
-                size="sm"
-                className="flex items-center gap-2"
-              >
+              <Button onClick={exportPaymentsToCSV} variant="secondary" size="sm" className="flex items-center gap-2">
                 <ArrowDownTrayIcon className="h-4 w-4" />
                 Export Payments CSV
               </Button>
-              <Button
-                onClick={copyToClipboard}
-                variant="primary"
-                size="sm"
-                className="flex items-center gap-2"
-              >
+              <Button onClick={copyToClipboard} variant="primary" size="sm" className="flex items-center gap-2">
                 <DocumentDuplicateIcon className="h-4 w-4" />
                 {copySuccess ? "Copied!" : "Copy Sales Format"}
               </Button>
@@ -417,9 +365,7 @@ export function SalesReportPage() {
       <Card>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Start Date
-            </label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Start Date</label>
             <input
               type="date"
               value={startDate}
@@ -429,9 +375,7 @@ export function SalesReportPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              End Date
-            </label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">End Date</label>
             <input
               type="date"
               value={endDate}
@@ -441,9 +385,7 @@ export function SalesReportPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Interval
-            </label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Interval</label>
             <select
               value={interval}
               onChange={(e) => setInterval(e.target.value as any)}
@@ -458,14 +400,10 @@ export function SalesReportPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Company
-            </label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Company</label>
             <select
               value={companyId || ""}
-              onChange={(e) =>
-                setCompanyId(e.target.value ? parseInt(e.target.value) : null)
-              }
+              onChange={(e) => setCompanyId(e.target.value ? parseInt(e.target.value) : null)}
               className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none"
               disabled={companiesLoading}
             >
@@ -485,9 +423,7 @@ export function SalesReportPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Currency (Optional)
-            </label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Currency (Optional)</label>
             <select
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
@@ -503,12 +439,7 @@ export function SalesReportPage() {
           </div>
 
           <div className="flex items-end">
-            <Button
-              onClick={loadTimeSeriesData}
-              variant="primary"
-              className="w-full"
-              disabled={loading || !companyId}
-            >
+            <Button onClick={loadTimeSeriesData} variant="primary" className="w-full" disabled={loading || !companyId}>
               {loading ? "Loading..." : "Load Data"}
             </Button>
           </div>
@@ -520,9 +451,7 @@ export function SalesReportPage() {
         <Card>
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-            <span className="ml-3 text-gray-300">
-              Loading time-series data...
-            </span>
+            <span className="ml-3 text-gray-300">Loading time-series data...</span>
           </div>
         </Card>
       )}
@@ -535,12 +464,7 @@ export function SalesReportPage() {
             <div>
               <div className="font-semibold">Failed to load data</div>
               <div className="text-sm text-red-300 mt-1">{error}</div>
-              <Button
-                onClick={loadTimeSeriesData}
-                variant="secondary"
-                size="sm"
-                className="mt-3"
-              >
+              <Button onClick={loadTimeSeriesData} variant="secondary" size="sm" className="mt-3">
                 Retry
               </Button>
             </div>
@@ -558,12 +482,10 @@ export function SalesReportPage() {
                 <div>
                   <p className="text-gray-400 text-sm">Company</p>
                   <p className="text-white font-semibold">
-                    {companies.find((c) => c.id === companyId)?.name ||
-                      "Unknown"}
+                    {companies.find((c) => c.id === companyId)?.name || "Unknown"}
                   </p>
                   <p className="text-blue-400 text-sm">
-                    Base:{" "}
-                    {reportData.payments[0]?.company_base_currency || "USD"}
+                    Base: {reportData.payments[0]?.company_base_currency || "USD"}
                   </p>
                 </div>
                 <ChartBarIcon className="h-8 w-8 text-blue-500" />
@@ -574,9 +496,7 @@ export function SalesReportPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-400 text-sm">Total Periods</p>
-                  <p className="text-white font-semibold">
-                    {calculateTotalsByPeriod().length}
-                  </p>
+                  <p className="text-white font-semibold">{calculateTotalsByPeriod().length}</p>
                   <p className="text-blue-400 text-sm">{interval}</p>
                 </div>
                 <CalendarIcon className="h-8 w-8 text-green-500" />
@@ -587,9 +507,7 @@ export function SalesReportPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-400 text-sm">Total Payments</p>
-                  <p className="text-white font-semibold">
-                    {reportData.payments.length.toLocaleString()}
-                  </p>
+                  <p className="text-white font-semibold">{reportData.payments.length.toLocaleString()}</p>
                   <p className="text-blue-400 text-sm">Individual records</p>
                 </div>
                 <CurrencyDollarIcon className="h-8 w-8 text-yellow-500" />
@@ -602,19 +520,12 @@ export function SalesReportPage() {
                   <p className="text-gray-400 text-sm">Total Amount</p>
                   <p className="text-white font-semibold">
                     {(() => {
-                      const baseCurrency =
-                        reportData.payments[0]?.company_base_currency || "USD";
-                      const total = calculateTotalsByPeriod().reduce(
-                        (sum, p) => sum + p.gross_total_base,
-                        0,
-                      );
+                      const baseCurrency = reportData.payments[0]?.company_base_currency || "USD";
+                      const total = calculateTotalsByPeriod().reduce((sum, p) => sum + p.gross_total_base, 0);
                       return formatCurrency(total, baseCurrency);
                     })()}
                   </p>
-                  <p className="text-blue-400 text-sm">
-                    {reportData.payments[0]?.company_base_currency || "USD"}{" "}
-                    Base
-                  </p>
+                  <p className="text-blue-400 text-sm">{reportData.payments[0]?.company_base_currency || "USD"} Base</p>
                 </div>
                 <CurrencyDollarIcon className="h-8 w-8 text-purple-500" />
               </div>
@@ -622,9 +533,7 @@ export function SalesReportPage() {
           </div>
 
           {/* Revenue Chart */}
-          <Card
-            title={`Revenue Trend (${reportData.payments[0]?.company_base_currency || "USD"})`}
-          >
+          <Card title={`Revenue Trend (${reportData.payments[0]?.company_base_currency || "USD"})`}>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={prepareChartData()}>
@@ -645,10 +554,7 @@ export function SalesReportPage() {
                       color: "#F9FAFB",
                     }}
                     formatter={(value: number) => {
-                      return [
-                        formatCurrency(value, baseCurrency),
-                        "Total Revenue",
-                      ];
+                      return [formatCurrency(value, baseCurrency), "Total Revenue"];
                     }}
                   />
                   <Line
@@ -665,9 +571,7 @@ export function SalesReportPage() {
           </Card>
 
           {/* Period Overview */}
-          <Card
-            title={`Period Overview (${reportData.payments[0]?.company_base_currency || "USD"} Base Currency)`}
-          >
+          <Card title={`Period Overview (${reportData.payments[0]?.company_base_currency || "USD"} Base Currency)`}>
             <Table columns={overviewColumns} data={calculateTotalsByPeriod()} />
           </Card>
 
@@ -679,26 +583,21 @@ export function SalesReportPage() {
                 {
                   header: "Created",
                   key: "created",
-                  render: (item: any) =>
-                    new Date(item.created).toLocaleDateString(),
+                  render: (item: any) => new Date(item.created).toLocaleDateString(),
                 },
                 { header: "Currency", key: "currency" },
                 {
                   header: "Amount",
                   key: "amount",
                   render: (item: any) => (
-                    <span className="text-green-400">
-                      {formatCurrency(item.amount, item.currency)}
-                    </span>
+                    <span className="text-green-400">{formatCurrency(item.amount, item.currency)}</span>
                   ),
                 },
                 {
                   header: "Tax",
                   key: "tax",
                   render: (item: any) => (
-                    <span className="text-yellow-400">
-                      {formatCurrency(item.tax, item.currency)}
-                    </span>
+                    <span className="text-yellow-400">{formatCurrency(item.tax, item.currency)}</span>
                   ),
                 },
                 { header: "Payment Method", key: "payment_method" },
@@ -707,11 +606,16 @@ export function SalesReportPage() {
                   key: "rate",
                   render: (item: any) => {
                     if (item.rate === 1) return "";
-                    return formatCurrency(
-                      item.rate *
-                        (item.company_base_currency === "BTC" ? 1e9 : 100),
-                      item.company_base_currency,
-                      0,
+                    // Rate is already in human-readable form (e.g., 58000 EUR/BTC)
+                    // Display as currency using the base currency
+                    return (
+                      <span className="text-gray-300">
+                        {new Intl.NumberFormat("en-US", {
+                          style: "currency",
+                          currency: item.company_base_currency || "USD",
+                          maximumFractionDigits: 2,
+                        }).format(item.rate)}
+                      </span>
                     );
                   },
                 },

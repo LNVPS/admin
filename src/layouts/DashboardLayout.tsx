@@ -8,6 +8,7 @@ import {
   ChevronRightIcon,
   CommandLineIcon,
   ComputerDesktopIcon,
+  CreditCardIcon,
   CurrencyDollarIcon,
   DocumentDuplicateIcon,
   DocumentTextIcon,
@@ -154,10 +155,23 @@ const navigation: SidebarItem[] = [
     requiredPermissions: ["subscriptions::view"],
   },
   {
-    name: "Companies",
-    to: "/companies",
-    icon: BuildingOfficeIcon,
-    requiredPermissions: ["company::view"],
+    name: "Billing",
+    icon: BanknotesIcon,
+    requiredPermissions: ["company::view", "payment_method_config::view"],
+    children: [
+      {
+        name: "Companies",
+        to: "/companies",
+        icon: BuildingOfficeIcon,
+        requiredPermissions: ["company::view"],
+      },
+      {
+        name: "Payment Methods",
+        to: "/payment-methods",
+        icon: CreditCardIcon,
+        requiredPermissions: ["payment_method_config::view"],
+      },
+    ],
   },
   {
     name: "Analytics",

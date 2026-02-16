@@ -311,10 +311,28 @@ export function VMDetailPage() {
   };
 
   const formatPaymentAmount = (amount: number, currency: string, rate: number, base_currency: string): string => {
+    // amount is in smallest units (cents for fiat, millisats for BTC)
+    // formatCurrency handles conversion to human-readable
     const primaryAmount = formatCurrency(amount, currency);
 
     if (rate && currency !== base_currency) {
-      return `${primaryAmount} (${formatCurrency(amount * (rate / (currency === "BTC" ? 1e9 : 100)), base_currency)})`;
+      // rate is the exchange rate (e.g., 58000 EUR per BTC)
+      // Convert amount to base currency smallest units
+      let baseAmount: number;
+      if (currency === "BTC") {
+        // amount is in millisats, rate is base_currency/BTC
+        // 1 BTC = 1e11 millisats, result should be in cents
+        // baseAmount = (amount / 1e11) * rate * 100 = amount * rate / 1e9
+        baseAmount = Math.round((amount * rate) / 1e9);
+      } else if (base_currency === "BTC") {
+        // amount is in cents, rate is BTC/fiat, result should be in millisats
+        // This case is unusual but handle it
+        baseAmount = Math.round(amount * rate * 1e9);
+      } else {
+        // fiat to fiat conversion
+        baseAmount = Math.round(amount * rate);
+      }
+      return `${primaryAmount} (${formatCurrency(baseAmount, base_currency)})`;
     }
 
     return primaryAmount;

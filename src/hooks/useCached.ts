@@ -45,15 +45,19 @@ export function useCached<T>(key: string, loader: () => Promise<T>, expires?: nu
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error>();
   const [data, setData] = useState<CachedObj<T> | undefined>(() => (local ? undefined : loadData<T>(key)));
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
     const now = unixNow();
-    if (
-      loading === false &&
-      error === undefined &&
-      (local || data === undefined || data.cached < now - (expires ?? 120))
-    ) {
+    // On localhost, only load once per mount (don't use cache but don't infinite loop)
+    // In production, use the cache expiration logic
+    const shouldLoad = local
+      ? !hasLoaded && loading === false && error === undefined
+      : loading === false && error === undefined && (data === undefined || data.cached < now - (expires ?? 120));
+
+    if (shouldLoad) {
       setLoading(true);
+      setHasLoaded(true);
       storeObj<T>(key, loader)
         .then(setData)
         .catch((e) => {
@@ -65,7 +69,7 @@ export function useCached<T>(key: string, loader: () => Promise<T>, expires?: nu
         })
         .finally(() => setLoading(false));
     }
-  }, [key, loading, error, data, loader, expires]);
+  }, [key, loading, error, data, loader, expires, local, hasLoaded]);
 
   return {
     data: data?.object,

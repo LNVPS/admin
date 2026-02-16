@@ -1,30 +1,22 @@
-import { useState, useEffect } from "react";
-import { Card } from "../components/Card";
-import { Button } from "../components/Button";
-import { Table } from "../components/Table";
-import { useAdminApi } from "../hooks/useAdminApi";
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import {
+  ArrowDownTrayIcon,
+  ArrowPathIcon,
   CalendarIcon,
   ChartBarIcon,
   ExclamationTriangleIcon,
-  ArrowPathIcon,
   UserGroupIcon,
-  ArrowDownTrayIcon,
 } from "@heroicons/react/24/outline";
+import { useEffect, useState } from "react";
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Button } from "../components/Button";
+import { Card } from "../components/Card";
+import { Table } from "../components/Table";
+import { useAdminApi } from "../hooks/useAdminApi";
 import type {
-  ReferralUsageTimeSeriesReportData,
+  AdminCompanyInfo,
   ReferralPeriodSummary,
   ReferralRecord,
-  AdminCompanyInfo,
+  ReferralUsageTimeSeriesReportData,
 } from "../lib/api";
 import { formatCurrency } from "../utils/currency";
 
@@ -37,8 +29,7 @@ const INTERVALS = [
 ] as const;
 
 export function ReferralsReportPage() {
-  const [reportData, setReportData] =
-    useState<ReferralUsageTimeSeriesReportData | null>(null);
+  const [reportData, setReportData] = useState<ReferralUsageTimeSeriesReportData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [companies, setCompanies] = useState<AdminCompanyInfo[]>([]);
@@ -53,9 +44,7 @@ export function ReferralsReportPage() {
   const [endDate, setEndDate] = useState(() => {
     return new Date().toISOString().split("T")[0];
   });
-  const [interval, setInterval] = useState<
-    "daily" | "weekly" | "monthly" | "quarterly" | "yearly"
-  >("monthly");
+  const [interval, setInterval] = useState<"daily" | "weekly" | "monthly" | "quarterly" | "yearly">("monthly");
   const [refCode, setRefCode] = useState<string>("");
   const [companyId, setCompanyId] = useState<number | null>(null);
   const [refSplitPercent, setRefSplitPercent] = useState<number>(33);
@@ -99,9 +88,7 @@ export function ReferralsReportPage() {
       const data = await api.getReferralUsageTimeSeriesReport(params);
       setReportData(data);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load referral data",
-      );
+      setError(err instanceof Error ? err.message : "Failed to load referral data");
     } finally {
       setLoading(false);
     }
@@ -171,9 +158,7 @@ export function ReferralsReportPage() {
     });
 
     return Array.from(summaries.values()).sort(
-      (a, b) =>
-        a.period.localeCompare(b.period) ||
-        a.ref_code.localeCompare(b.ref_code),
+      (a, b) => a.period.localeCompare(b.period) || a.ref_code.localeCompare(b.ref_code),
     );
   };
 
@@ -185,18 +170,14 @@ export function ReferralsReportPage() {
       header: "Referrals",
       key: "referral_count",
       render: (item: ReferralPeriodSummary) => (
-        <span className="text-blue-400">
-          {item.referral_count.toLocaleString()}
-        </span>
+        <span className="text-blue-400">{item.referral_count.toLocaleString()}</span>
       ),
     },
     {
       header: "Total Amount",
       key: "total_amount",
       render: (item: ReferralPeriodSummary) => (
-        <span className="text-green-400">
-          {formatCurrency(item.total_amount, item.currency)}
-        </span>
+        <span className="text-green-400">{formatCurrency(item.total_amount, item.currency)}</span>
       ),
     },
   ];
@@ -267,9 +248,7 @@ export function ReferralsReportPage() {
       });
     });
 
-    return Array.from(periodTotals.values()).sort((a, b) =>
-      a.period.localeCompare(b.period),
-    );
+    return Array.from(periodTotals.values()).sort((a, b) => a.period.localeCompare(b.period));
   };
 
   const exportReferralsToCSV = () => {
@@ -304,18 +283,13 @@ export function ReferralsReportPage() {
       referral.base_currency,
     ]);
 
-    const csvContent = [csvHeaders, ...csvRows]
-      .map((row) => row.map((cell) => `"${cell}"`).join(","))
-      .join("\n");
+    const csvContent = [csvHeaders, ...csvRows].map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
-    link.setAttribute(
-      "download",
-      `referrals-${reportData.start_date}-to-${reportData.end_date}.csv`,
-    );
+    link.setAttribute("download", `referrals-${reportData.start_date}-to-${reportData.end_date}.csv`);
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
@@ -328,16 +302,14 @@ export function ReferralsReportPage() {
     {
       header: "Created",
       key: "created",
-      render: (item: ReferralRecord) => (
-        <span>{new Date(item.created).toLocaleString()}</span>
-      ),
+      render: (item: ReferralRecord) => <span>{new Date(item.created).toLocaleString()}</span>,
     },
     {
       header: "Amount",
       key: "amount",
       render: (item: ReferralRecord) => (
         <span className="text-green-400">
-          {formatCurrency(item.amount * (refSplitPercent / 100), item.currency)}
+          {formatCurrency(Math.round(item.amount * (refSplitPercent / 100)), item.currency)}
         </span>
       ),
     },
@@ -346,27 +318,32 @@ export function ReferralsReportPage() {
       key: "rate",
       render: (item: ReferralRecord) => (
         <span className="text-gray-300">
-          {formatCurrency(
-            item.rate * (item.base_currency === "BTC" ? 1e9 : 100),
-            item.base_currency,
-            0,
-          )}
+          {new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: item.base_currency || "USD",
+            maximumFractionDigits: 2,
+          }).format(item.rate)}
         </span>
       ),
     },
     {
       header: "Base Amount",
       key: "base_amount",
-      render: (item: ReferralRecord) => (
-        <span className="text-blue-400">
-          {formatCurrency(
-            item.amount *
-              (item.rate / (item.currency === "BTC" ? 1e9 : 100)) *
-              (refSplitPercent / 100),
-            item.base_currency,
-          )}
-        </span>
-      ),
+      render: (item: ReferralRecord) => {
+        // Convert amount to base currency smallest units
+        let baseAmount: number;
+        if (item.currency === "BTC") {
+          // amount is in millisats, rate is base_currency/BTC
+          baseAmount = Math.round(((item.amount * item.rate) / 1e9) * (refSplitPercent / 100));
+        } else if (item.base_currency === "BTC") {
+          // amount is in cents, result should be in millisats
+          baseAmount = Math.round(item.amount * item.rate * 1e9 * (refSplitPercent / 100));
+        } else {
+          // fiat to fiat
+          baseAmount = Math.round(item.amount * item.rate * (refSplitPercent / 100));
+        }
+        return <span className="text-blue-400">{formatCurrency(baseAmount, item.base_currency)}</span>;
+      },
     },
     { header: "Base Currency", key: "base_currency" },
   ];
@@ -390,12 +367,7 @@ export function ReferralsReportPage() {
             Refresh
           </Button>
           {reportData && (
-            <Button
-              onClick={exportReferralsToCSV}
-              variant="secondary"
-              size="sm"
-              className="flex items-center gap-2"
-            >
+            <Button onClick={exportReferralsToCSV} variant="secondary" size="sm" className="flex items-center gap-2">
               <ArrowDownTrayIcon className="h-4 w-4" />
               Export CSV
             </Button>
@@ -407,9 +379,7 @@ export function ReferralsReportPage() {
       <Card>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Start Date
-            </label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Start Date</label>
             <input
               type="date"
               value={startDate}
@@ -419,9 +389,7 @@ export function ReferralsReportPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              End Date
-            </label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">End Date</label>
             <input
               type="date"
               value={endDate}
@@ -431,9 +399,7 @@ export function ReferralsReportPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Interval
-            </label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Interval</label>
             <select
               value={interval}
               onChange={(e) => setInterval(e.target.value as any)}
@@ -448,14 +414,10 @@ export function ReferralsReportPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Company
-            </label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Company</label>
             <select
               value={companyId || ""}
-              onChange={(e) =>
-                setCompanyId(e.target.value ? parseInt(e.target.value) : null)
-              }
+              onChange={(e) => setCompanyId(e.target.value ? parseInt(e.target.value) : null)}
               className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none"
               disabled={companiesLoading}
             >
@@ -475,9 +437,7 @@ export function ReferralsReportPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Ref Code (Optional)
-            </label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Ref Code (Optional)</label>
             <input
               type="text"
               value={refCode}
@@ -488,17 +448,11 @@ export function ReferralsReportPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Commission Amount %
-            </label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Commission Amount %</label>
             <input
               type="number"
               value={refSplitPercent}
-              onChange={(e) =>
-                setRefSplitPercent(
-                  Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)),
-                )
-              }
+              onChange={(e) => setRefSplitPercent(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
               placeholder="33"
               min="0"
               max="100"
@@ -508,12 +462,7 @@ export function ReferralsReportPage() {
           </div>
 
           <div className="flex items-end">
-            <Button
-              onClick={loadReferralData}
-              variant="primary"
-              className="w-full"
-              disabled={loading || !companyId}
-            >
+            <Button onClick={loadReferralData} variant="primary" className="w-full" disabled={loading || !companyId}>
               {loading ? "Loading..." : "Load Data"}
             </Button>
           </div>
@@ -538,12 +487,7 @@ export function ReferralsReportPage() {
             <div>
               <div className="font-semibold">Failed to load data</div>
               <div className="text-sm text-red-300 mt-1">{error}</div>
-              <Button
-                onClick={loadReferralData}
-                variant="secondary"
-                size="sm"
-                className="mt-3"
-              >
+              <Button onClick={loadReferralData} variant="secondary" size="sm" className="mt-3">
                 Retry
               </Button>
             </div>
@@ -562,20 +506,25 @@ export function ReferralsReportPage() {
                   <p className="text-gray-400 text-sm">Total Amount</p>
                   <p className="text-white font-semibold">
                     {formatCurrency(
-                      reportData.referrals.reduce(
-                        (sum, r) =>
-                          sum +
-                          r.amount *
-                            (r.rate / (r.currency === "BTC" ? 1e9 : 100)) *
-                            (refSplitPercent / 100),
-                        0,
+                      Math.round(
+                        reportData.referrals.reduce((sum, r) => {
+                          // Convert each referral amount to base currency smallest units
+                          let baseAmount: number;
+                          if (r.currency === "BTC") {
+                            baseAmount = (r.amount * r.rate) / 1e9;
+                          } else if (r.base_currency === "BTC") {
+                            baseAmount = r.amount * r.rate * 1e9;
+                          } else {
+                            baseAmount = r.amount * r.rate;
+                          }
+                          return sum + baseAmount * (refSplitPercent / 100);
+                        }, 0),
                       ),
                       reportData.referrals[0]?.base_currency || "USD",
                     )}
                   </p>
                   <p className="text-blue-400 text-sm">
-                    {reportData.referrals[0]?.base_currency || "USD"} Base
-                    Currency
+                    {reportData.referrals[0]?.base_currency || "USD"} Base Currency
                   </p>
                 </div>
                 <CalendarIcon className="h-8 w-8 text-green-500" />
@@ -586,12 +535,8 @@ export function ReferralsReportPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-400 text-sm">Total Referrals</p>
-                  <p className="text-white font-semibold">
-                    {reportData.referrals.length.toLocaleString()}
-                  </p>
-                  <p className="text-blue-400 text-sm">
-                    Successful conversions
-                  </p>
+                  <p className="text-white font-semibold">{reportData.referrals.length.toLocaleString()}</p>
+                  <p className="text-blue-400 text-sm">Successful conversions</p>
                 </div>
                 <UserGroupIcon className="h-8 w-8 text-yellow-500" />
               </div>
@@ -612,19 +557,13 @@ export function ReferralsReportPage() {
           </div>
 
           {/* Referrals Chart */}
-          <Card
-            title={`Referral Amount by Ref Code (${reportData.referrals[0]?.base_currency || "USD"})`}
-          >
+          <Card title={`Referral Amount by Ref Code (${reportData.referrals[0]?.base_currency || "USD"})`}>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={prepareChartData()}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                   <XAxis dataKey="period" stroke="#9CA3AF" fontSize={12} />
-                  <YAxis
-                    stroke="#9CA3AF"
-                    fontSize={12}
-                    tickFormatter={(value) => value.toFixed(0)}
-                  />
+                  <YAxis stroke="#9CA3AF" fontSize={12} tickFormatter={(value) => value.toFixed(0)} />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "#1F2937",
@@ -638,9 +577,7 @@ export function ReferralsReportPage() {
                     ]}
                   />
                   {reportData &&
-                    Array.from(
-                      new Set(reportData.referrals.map((r) => r.ref_code)),
-                    ).map((refCode, index) => {
+                    Array.from(new Set(reportData.referrals.map((r) => r.ref_code))).map((refCode, index) => {
                       const colors = [
                         "#3B82F6", // blue
                         "#EF4444", // red

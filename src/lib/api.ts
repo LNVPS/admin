@@ -94,6 +94,14 @@ export enum AdminPaymentMethod {
   STRIPE = "stripe",
 }
 
+export enum PaymentProviderType {
+  LND = "lnd",
+  BITVORA = "bitvora",
+  REVOLUT = "revolut",
+  STRIPE = "stripe",
+  PAYPAL = "paypal",
+}
+
 export enum SubscriptionPaymentType {
   PURCHASE = "purchase",
   RENEWAL = "renewal",
@@ -705,6 +713,110 @@ export interface AdminSubscriptionPaymentInfo {
   company_id: number | null;
   company_name: string | null;
   company_base_currency: string | null;
+}
+
+// Payment Method Config Provider Types for CREATE/UPDATE requests (with actual secrets)
+export interface LndProviderConfig {
+  type: "lnd";
+  url: string;
+  cert_path?: string | null;
+  macaroon_path?: string | null;
+}
+
+export interface BitvoraProviderConfig {
+  type: "bitvora";
+  token?: string;
+  webhook_secret?: string | null;
+}
+
+export interface RevolutProviderConfig {
+  type: "revolut";
+  url: string;
+  token?: string;
+  api_version?: string | null;
+  public_key?: string | null;
+  webhook_secret?: string | null;
+}
+
+export interface StripeProviderConfig {
+  type: "stripe";
+  secret_key?: string;
+  publishable_key?: string | null;
+  webhook_secret?: string | null;
+}
+
+export interface PaypalProviderConfig {
+  type: "paypal";
+  client_id: string;
+  client_secret?: string;
+  mode?: string | null;
+}
+
+export type ProviderConfig =
+  | LndProviderConfig
+  | BitvoraProviderConfig
+  | RevolutProviderConfig
+  | StripeProviderConfig
+  | PaypalProviderConfig;
+
+// Sanitized Provider Config Types (what API returns - secrets replaced with boolean indicators)
+export interface SanitizedLndProviderConfig {
+  type: "lnd";
+  url: string;
+  cert_path: string | null;
+  has_macaroon: boolean;
+}
+
+export interface SanitizedBitvoraProviderConfig {
+  type: "bitvora";
+  has_token: boolean;
+  has_webhook_secret: boolean;
+}
+
+export interface SanitizedRevolutProviderConfig {
+  type: "revolut";
+  url: string;
+  has_token: boolean;
+  api_version: string | null;
+  public_key: string | null;
+  has_webhook_secret: boolean;
+}
+
+export interface SanitizedStripeProviderConfig {
+  type: "stripe";
+  has_secret_key: boolean;
+  publishable_key: string | null;
+  has_webhook_secret: boolean;
+}
+
+export interface SanitizedPaypalProviderConfig {
+  type: "paypal";
+  client_id: string;
+  has_client_secret: boolean;
+  mode: string | null;
+}
+
+export type SanitizedProviderConfig =
+  | SanitizedLndProviderConfig
+  | SanitizedBitvoraProviderConfig
+  | SanitizedRevolutProviderConfig
+  | SanitizedStripeProviderConfig
+  | SanitizedPaypalProviderConfig;
+
+export interface AdminPaymentMethodConfigInfo {
+  id: number;
+  company_id: number;
+  company_name: string | null;
+  payment_method: AdminPaymentMethod;
+  name: string;
+  enabled: boolean;
+  provider_type: PaymentProviderType;
+  config: SanitizedProviderConfig | null;
+  processing_fee_rate: number | null;
+  processing_fee_base: number | null;
+  processing_fee_currency: string | null;
+  created: string;
+  modified: string;
 }
 
 function getConfiguredServerUrl(): string {
@@ -2184,6 +2296,61 @@ export class AdminApi {
       await this.req(`/api/admin/v1/subscription_payments/${hexId}`, "GET"),
     );
     return result.data;
+  }
+
+  // Payment Method Config Management
+  async getPaymentMethodConfigs(params?: { limit?: number; offset?: number; company_id?: number }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminPaymentMethodConfigInfo>>(
+      await this.req("/api/admin/v1/payment_methods", "GET", undefined, params),
+    );
+  }
+
+  async getPaymentMethodConfig(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminPaymentMethodConfigInfo>>(
+      await this.req(`/api/admin/v1/payment_methods/${id}`, "GET"),
+    );
+    return result.data;
+  }
+
+  async createPaymentMethodConfig(data: {
+    company_id: number;
+    payment_method: AdminPaymentMethod;
+    name: string;
+    enabled?: boolean;
+    provider_type: PaymentProviderType;
+    config?: ProviderConfig | null;
+    processing_fee_rate?: number | null;
+    processing_fee_base?: number | null;
+    processing_fee_currency?: string | null;
+  }) {
+    const result = await this.handleResponse<ApiResponse<AdminPaymentMethodConfigInfo>>(
+      await this.req("/api/admin/v1/payment_methods", "POST", data),
+    );
+    return result.data;
+  }
+
+  async updatePaymentMethodConfig(
+    id: number,
+    updates: Partial<{
+      company_id: number;
+      payment_method: AdminPaymentMethod;
+      name: string;
+      enabled: boolean;
+      provider_type: PaymentProviderType;
+      config: ProviderConfig | null;
+      processing_fee_rate: number | null;
+      processing_fee_base: number | null;
+      processing_fee_currency: string | null;
+    }>,
+  ) {
+    const result = await this.handleResponse<ApiResponse<AdminPaymentMethodConfigInfo>>(
+      await this.req(`/api/admin/v1/payment_methods/${id}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
+  async deletePaymentMethodConfig(id: number) {
+    await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/payment_methods/${id}`, "DELETE"));
   }
 }
 

@@ -48,6 +48,7 @@ export function VMDetailPage() {
   const [showIpAssignModal, setShowIpAssignModal] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [copiedPaymentId, setCopiedPaymentId] = useState<string | null>(null);
+  const [copiedExternalId, setCopiedExternalId] = useState<string | null>(null);
 
   const vmId = id ? parseInt(id, 10) : null;
 
@@ -173,6 +174,16 @@ export function VMDetailPage() {
     }
   };
 
+  const handleCopyExternalId = async (externalId: string) => {
+    try {
+      await navigator.clipboard.writeText(externalId);
+      setCopiedExternalId(externalId);
+      setTimeout(() => setCopiedExternalId(null), 2000);
+    } catch (err) {
+      console.error("Failed to copy external ID:", err);
+    }
+  };
+
   const renderHistoryHeader = () => (
     <>
       <th>Action</th>
@@ -205,6 +216,9 @@ export function VMDetailPage() {
     <>
       <th>ID</th>
       <th>Amount</th>
+      <th>Tax</th>
+      <th>Processing Fee</th>
+      <th>External ID</th>
       <th>Method</th>
       <th>Status</th>
       <th>Date</th>
@@ -229,6 +243,40 @@ export function VMDetailPage() {
             )}
           </button>
         </span>
+      </td>
+      <td className="text-white">
+        {formatPaymentAmount(payment.amount, payment.currency, payment.rate, payment.base_currency)}
+      </td>
+      <td className="text-yellow-400 text-sm">
+        {payment.tax > 0 ? formatCurrency(payment.tax, payment.currency) : <span className="text-gray-600">—</span>}
+      </td>
+      <td className="text-orange-400 text-sm">
+        {payment.processing_fee > 0 ? (
+          formatCurrency(payment.processing_fee, payment.currency)
+        ) : (
+          <span className="text-gray-600">—</span>
+        )}
+      </td>
+      <td className="font-mono text-sm text-gray-300">
+        {payment.external_id ? (
+          <span className="inline-flex items-center gap-1">
+            <span title={payment.external_id}>{payment.external_id.slice(0, 12)}...</span>
+            <button
+              type="button"
+              onClick={() => handleCopyExternalId(payment.external_id!)}
+              className="text-gray-400 hover:text-blue-400 transition-colors cursor-pointer"
+              title={copiedExternalId === payment.external_id ? "Copied!" : "Copy external ID"}
+            >
+              {copiedExternalId === payment.external_id ? (
+                <CheckIcon className="h-3 w-3 text-green-400" />
+              ) : (
+                <ClipboardIcon className="h-3 w-3" />
+              )}
+            </button>
+          </span>
+        ) : (
+          <span className="text-gray-600">—</span>
+        )}
       </td>
       <td>
         <StatusBadge status={getPaymentMethodColor(payment.payment_method)}>
@@ -311,11 +359,16 @@ export function VMDetailPage() {
   };
 
   const formatPaymentAmount = (amount: number, currency: string, rate: number, base_currency: string): string => {
+    // Handle missing currency
+    if (!currency) {
+      return amount?.toString() ?? "-";
+    }
+
     // amount is in smallest units (cents for fiat, millisats for BTC)
     // formatCurrency handles conversion to human-readable
     const primaryAmount = formatCurrency(amount, currency);
 
-    if (rate && currency !== base_currency) {
+    if (rate && base_currency && currency !== base_currency) {
       // rate is the exchange rate (e.g., 58000 EUR per BTC)
       // Convert amount to base currency smallest units
       let baseAmount: number;

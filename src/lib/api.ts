@@ -502,6 +502,8 @@ export interface AdminVmPaymentInfo {
   created: string;
   expires: string;
   amount: number;
+  tax: number;
+  processing_fee: number;
   currency: string;
   payment_method: AdminPaymentMethod;
   external_id: string | null;

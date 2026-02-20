@@ -154,10 +154,20 @@ export function SalesReportPage() {
       const total = periodTotals.get(period);
       total.payment_count += 1;
 
-      // Convert payment amounts to base currency
-      const mul = payment.currency === "BTC" ? 1e9 : 100;
-      const netAmount = payment.amount * (payment.rate / mul);
-      const taxAmount = payment.tax * (payment.rate / mul);
+      // Convert payment amounts to base currency smallest units (cents for fiat, millisats for BTC).
+      // amount/tax are already in smallest units of payment currency.
+      // rate is the exchange rate to base currency (e.g. 1.0 for same currency, 58000 for BTC→EUR).
+      // For BTC (millisats → base fiat cents): (millisats * rate) / 1e9
+      // For fiat (cents * fiat/fiat rate): cents * rate (stays as cents of base currency)
+      let netAmount: number;
+      let taxAmount: number;
+      if (payment.currency === "BTC") {
+        netAmount = Math.round((payment.amount * payment.rate) / 1e9);
+        taxAmount = Math.round((payment.tax * payment.rate) / 1e9);
+      } else {
+        netAmount = Math.round(payment.amount * payment.rate);
+        taxAmount = Math.round(payment.tax * payment.rate);
+      }
 
       total.net_total_base += netAmount;
       total.tax_total_base += taxAmount;
@@ -193,7 +203,7 @@ export function SalesReportPage() {
       }
     });
 
-    // Group payments by currency and create items
+    // Group payments by currency and create items (accumulate in smallest units, convert for output)
     const currencyTotals: Record<string, { net: number; tax: number }> = {};
 
     reportData.payments.forEach((payment) => {
@@ -214,23 +224,28 @@ export function SalesReportPage() {
     }> = [];
 
     Object.entries(currencyTotals).forEach(([currency, totals]) => {
+      // Convert smallest units to human-readable amounts for the export format
+      const divisor = currency === "BTC" ? 1e11 : 100;
+      const netHuman = totals.net / divisor;
+      const taxHuman = totals.tax / divisor;
+
       // Add sales item (net amount)
-      if (totals.net > 0) {
+      if (netHuman > 0) {
         items.push({
           description: "LNVPS Sales",
           currency: currency,
           qty: 1,
-          rate: totals.net,
+          rate: netHuman,
         });
       }
 
       // Add tax item if there's tax
-      if (totals.tax > 0) {
+      if (taxHuman > 0) {
         items.push({
           description: "Tax Collected",
           currency: currency,
           qty: 1,
-          rate: totals.tax,
+          rate: taxHuman,
         });
       }
     });

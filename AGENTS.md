@@ -1,4 +1,36 @@
-# LNVPS Admin Dashboard - Agent Guidelines
+# AGENTS.md - Coding Agent Guidelines for LNVPS Admin Dashboard
+
+This file is an index. Load only the specific doc(s) relevant to your task to minimize context usage.
+
+**Always load [agents/common.md](agents/common.md) first** — it contains essential guidelines for task sizing, git commits, and git push that apply to all tasks.
+
+<!-- Uncomment and populate when you have active work files:
+| File | Description |
+|---|---|
+| [work/example-task.md](work/example-task.md) | Description of the task |
+-->
+
+## Generic Docs
+
+These docs apply to all projects using this agent structure:
+
+| Doc | When to load |
+|---|---|
+| [agents/bug-fixes.md](agents/bug-fixes.md) | Resolving bugs (includes regression test requirement) |
+| [agents/coverage.md](agents/coverage.md) | Any edit that adds or modifies functions (100% function coverage required) |
+| [agents/incremental-work.md](agents/incremental-work.md) | Managing a work file for a multi-increment task |
+
+### Language-Specific Docs
+
+Load the appropriate language-specific doc alongside the generic one:
+
+| Doc | When to load |
+|---|---|
+| [agents/typescript/coverage.md](agents/typescript/coverage.md) | TypeScript projects: coverage tooling commands |
+
+---
+
+## Project Overview
 
 This is a React 19 + TypeScript admin dashboard for the LNVPS (Lightning VPS) service using Nostr protocol for authentication.
 

@@ -1,16 +1,13 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useApiCall } from "../hooks/useApiCall";
-import { ErrorState } from "./ErrorState";
-import { Card } from "./Card";
-import { Pagination } from "./Table";
 import type { PaginatedApiResponse } from "../lib/api";
+import { Card } from "./Card";
+import { ErrorState } from "./ErrorState";
+import { Pagination } from "./Table";
 
 interface PaginatedTableProps<T> {
   // API function that returns paginated data
-  apiCall: (params: {
-    limit: number;
-    offset: number;
-  }) => Promise<PaginatedApiResponse<T>>;
+  apiCall: (params: { limit: number; offset: number }) => Promise<PaginatedApiResponse<T>>;
 
   // Rendering functions
   renderHeader: () => React.ReactNode;
@@ -77,7 +74,7 @@ export function PaginatedTable<T>({
 
   if (loading && !inlineError) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center">
+      <div className="flex py-4 items-center justify-center">
         <div className="text-white">{loadingMessage}</div>
       </div>
     );
@@ -102,12 +99,14 @@ export function PaginatedTable<T>({
       <Card>
         <div className="p-0">
           {inlineError && loading ? (
-            <div className="flex min-h-[200px] items-center justify-center">
+            <div className="flex py-4 items-center justify-center">
               <div className="text-white">{loadingMessage}</div>
             </div>
           ) : inlineError && error ? (
-            <div className="flex min-h-[200px] items-center justify-center">
-              <div className="text-red-400">Failed to {errorAction}: {error.message}</div>
+            <div className="flex py-4 items-center justify-center">
+              <div className="text-red-400">
+                Failed to {errorAction}: {error.message}
+              </div>
             </div>
           ) : items.length === 0 ? (
             renderEmptyState ? (
@@ -117,10 +116,7 @@ export function PaginatedTable<T>({
             )
           ) : (
             <div className="overflow-x-auto">
-              <table
-                className={`w-full divide-y divide-gray-700 ${tableClassName}`}
-                style={{ minWidth }}
-              >
+              <table className={`w-full divide-y divide-gray-700 ${tableClassName}`} style={{ minWidth }}>
                 <thead>
                   <tr className="[&>th]:px-1 [&>th]:py-1 [&>th]:text-left [&>th]:text-xs [&>th]:font-medium [&>th]:text-gray-300 [&>th]:uppercase [&>th]:tracking-wider">
                     {renderHeader()}
@@ -135,11 +131,7 @@ export function PaginatedTable<T>({
         </div>
 
         {totalPages > 1 && (
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
+          <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
         )}
       </Card>
     </div>

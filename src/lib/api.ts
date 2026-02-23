@@ -127,6 +127,78 @@ export enum InternetRegistry {
   AFRINIC = 4,
 }
 
+export enum CpuMfg {
+  UNKNOWN = "unknown",
+  INTEL = "intel",
+  AMD = "amd",
+  APPLE = "apple",
+  NVIDIA = "nvidia",
+  ARM = "arm",
+}
+
+export enum CpuArch {
+  UNKNOWN = "unknown",
+  X86_64 = "x86_64",
+  ARM64 = "arm64",
+}
+
+export enum CpuFeature {
+  SSE = "SSE",
+  SSE2 = "SSE2",
+  SSE3 = "SSE3",
+  SSSE3 = "SSSE3",
+  SSE4_1 = "SSE4_1",
+  SSE4_2 = "SSE4_2",
+  AVX = "AVX",
+  AVX2 = "AVX2",
+  FMA = "FMA",
+  F16C = "F16C",
+  AVX512F = "AVX512F",
+  AVX512VNNI = "AVX512VNNI",
+  AVX512BF16 = "AVX512BF16",
+  AVXVNNI = "AVXVNNI",
+  NEON = "NEON",
+  SVE = "SVE",
+  SVE2 = "SVE2",
+  AES = "AES",
+  SHA = "SHA",
+  SHA512 = "SHA512",
+  PCLMULQDQ = "PCLMULQDQ",
+  RNG = "RNG",
+  GFNI = "GFNI",
+  VAES = "VAES",
+  VPCLMULQDQ = "VPCLMULQDQ",
+  VMX = "VMX",
+  NESTED_VIRT = "NestedVirt",
+  AMX = "AMX",
+  SME = "SME",
+  SGX = "SGX",
+  SEV = "SEV",
+  TDX = "TDX",
+  ENCODE_H264 = "EncodeH264",
+  ENCODE_HEVC = "EncodeHEVC",
+  ENCODE_AV1 = "EncodeAV1",
+  ENCODE_VP9 = "EncodeVP9",
+  ENCODE_JPEG = "EncodeJPEG",
+  DECODE_H264 = "DecodeH264",
+  DECODE_HEVC = "DecodeHEVC",
+  DECODE_AV1 = "DecodeAV1",
+  DECODE_VP9 = "DecodeVP9",
+  DECODE_JPEG = "DecodeJPEG",
+  DECODE_MPEG2 = "DecodeMPEG2",
+  DECODE_VC1 = "DecodeVC1",
+  VIDEO_SCALING = "VideoScaling",
+  VIDEO_DEINTERLACE = "VideoDeinterlace",
+  VIDEO_CSC = "VideoCSC",
+  VIDEO_COMPOSITION = "VideoComposition",
+}
+
+export enum GpuMfg {
+  NONE = "none",
+  NVIDIA = "nvidia",
+  AMD = "amd",
+}
+
 // Helper function to get registry name from number
 export function getRegistryName(registry: number): string {
   const names = ["ARIN", "RIPE", "APNIC", "LACNIC", "AFRINIC"];
@@ -224,6 +296,9 @@ export interface AdminVmInfo {
   running_state: VmRunningState | null;
   auto_renewal_enabled: boolean;
   cpu: number;
+  cpu_mfg: string | null;
+  cpu_arch: string | null;
+  cpu_features: string[];
   memory: number;
   disk_size: number;
   disk_type: DiskType;
@@ -236,6 +311,7 @@ export interface AdminVmInfo {
   region_id: number;
   region_name: string;
   deleted: boolean;
+  disabled: boolean;
   ref_code: string | null;
 }
 
@@ -278,12 +354,16 @@ export interface AdminHostInfo {
   };
   ip: string;
   cpu: number;
+  cpu_mfg: string | null;
+  cpu_arch: string | null;
+  cpu_features: string[];
   memory: number;
   enabled: boolean;
   load_cpu: number; // CPU load factor: 0-1 (e.g., 0.75 = 75% load)
   load_memory: number; // Memory load factor: 0-1 (e.g., 0.75 = 75% load)
   load_disk: number; // Disk load factor: 0-1 (e.g., 0.75 = 75% load)
   vlan_id: number | null;
+  mtu: number | null;
   disks: {
     id: number;
     name: string;
@@ -301,6 +381,8 @@ export interface AdminHostInfo {
     available_memory: number; // Available memory in bytes
     active_vms: number; // Number of active VMs on this host
   };
+  ssh_user: string | null;
+  ssh_key_configured: boolean;
 }
 
 export interface AdminHostStats {
@@ -360,6 +442,9 @@ export interface AdminVmTemplateInfo {
   created: string;
   expires: string | null;
   cpu: number;
+  cpu_mfg: string | null;
+  cpu_arch: string | null;
+  cpu_features: string[];
   memory: number;
   disk_size: number;
   disk_type: DiskType;
@@ -380,6 +465,9 @@ export interface AdminCustomPricingInfo {
   region_id: number;
   region_name: string | null;
   currency: string;
+  cpu_mfg: string | null;
+  cpu_arch: string | null;
+  cpu_features: string[];
   cpu_cost: number;
   memory_cost: number;
   ip4_cost: number;
@@ -508,6 +596,7 @@ export interface AdminVmPaymentInfo {
   payment_method: AdminPaymentMethod;
   external_id: string | null;
   is_paid: boolean;
+  paid_at: string | null;
   rate: number;
   base_currency: string;
 }
@@ -516,6 +605,8 @@ export interface AdminRefundAmountInfo {
   amount: number;
   currency: string;
   rate: number;
+  expires: string;
+  seconds_remaining: number;
 }
 
 export interface AdminAccessPolicyInfo {
@@ -571,7 +662,11 @@ export interface TimeSeriesPayment {
   company_id: number;
   company_name: string;
   company_base_currency: string;
-  period: string;
+  user_id: number;
+  host_id: number;
+  host_name: string;
+  region_id: number;
+  region_name: string;
 }
 
 export interface TimeSeriesReportData {
@@ -708,9 +803,11 @@ export interface AdminSubscriptionPaymentInfo {
   payment_method: AdminPaymentMethod;
   payment_type: SubscriptionPaymentType;
   is_paid: boolean;
+  paid_at: string | null;
   rate: number | null;
   time_value: number;
   tax: number;
+  processing_fee: number;
   external_id: string | null;
   company_id: number | null;
   company_name: string | null;
@@ -817,6 +914,7 @@ export interface AdminPaymentMethodConfigInfo {
   processing_fee_rate: number | null;
   processing_fee_base: number | null;
   processing_fee_currency: string | null;
+  supported_currencies: string[];
   created: string;
   modified: string;
 }
@@ -1059,6 +1157,18 @@ export class AdminApi {
     return result.data;
   }
 
+  async updateVM(
+    id: number,
+    updates: {
+      disabled?: boolean;
+    },
+  ) {
+    const result = await this.handleResponse<ApiResponse<{ job_id: string }>>(
+      await this.req(`/api/admin/v1/vms/${id}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
   async deleteVM(id: number, reason?: string) {
     const body = { reason };
     const result = await this.handleResponse<ApiResponse<{ job_id: string }>>(
@@ -1212,10 +1322,21 @@ export class AdminApi {
     id: number,
     updates: {
       name?: string;
+      ip?: string;
+      api_token?: string;
+      region_id?: number;
+      kind?: string;
+      vlan_id?: number | null;
+      mtu?: number | null;
       enabled?: boolean;
+      cpu_mfg?: string;
+      cpu_arch?: string;
+      cpu_features?: string[];
       load_cpu?: number;
       load_memory?: number;
       load_disk?: number;
+      ssh_user?: string;
+      ssh_key?: string | null;
     },
   ) {
     const result = await this.handleResponse<ApiResponse<AdminHostInfo>>(
@@ -1285,12 +1406,18 @@ export class AdminApi {
     region_id: number;
     kind: string;
     vlan_id?: number | null;
+    mtu?: number;
     cpu: number;
+    cpu_mfg?: string;
+    cpu_arch?: string;
+    cpu_features?: string[];
     memory: number;
     enabled?: boolean;
     load_cpu?: number;
     load_memory?: number;
     load_disk?: number;
+    ssh_user?: string;
+    ssh_key?: string;
   }) {
     const result = await this.handleResponse<ApiResponse<AdminHostInfo>>(
       await this.req("/api/admin/v1/hosts", "POST", data),
@@ -1425,6 +1552,9 @@ export class AdminApi {
     enabled?: boolean;
     expires?: string | null;
     cpu: number;
+    cpu_mfg?: string;
+    cpu_arch?: string;
+    cpu_features?: string[];
     memory: number;
     disk_size: number;
     disk_type: string;
@@ -1451,6 +1581,9 @@ export class AdminApi {
       enabled: boolean;
       expires: string | null;
       cpu: number;
+      cpu_mfg: string;
+      cpu_arch: string;
+      cpu_features: string[];
       memory: number;
       disk_size: number;
       disk_type: string;
@@ -1502,6 +1635,9 @@ export class AdminApi {
     expires?: string | null;
     region_id: number;
     currency: string;
+    cpu_mfg?: string;
+    cpu_arch?: string;
+    cpu_features?: string[];
     cpu_cost: number;
     memory_cost: number;
     ip4_cost: number;
@@ -1532,6 +1668,9 @@ export class AdminApi {
       expires: string | null;
       region_id: number;
       currency: string;
+      cpu_mfg: string;
+      cpu_arch: string;
+      cpu_features: string[];
       cpu_cost: number;
       memory_cost: number;
       ip4_cost: number;
@@ -1765,6 +1904,13 @@ export class AdminApi {
     await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/ip_ranges/${id}`, "DELETE"));
   }
 
+  async getFreeIps(id: number) {
+    const result = await this.handleResponse<ApiResponse<string[]>>(
+      await this.req(`/api/admin/v1/ip_ranges/${id}/free_ips`, "GET"),
+    );
+    return result.data;
+  }
+
   // Access Policy Management
   async getAccessPolicies(params?: { limit?: number; offset?: number }) {
     return await this.handleResponse<PaginatedApiResponse<AdminAccessPolicyDetail>>(
@@ -1942,7 +2088,7 @@ export class AdminApi {
     dns_forward?: string | null;
     dns_reverse?: string | null;
   }) {
-    const result = await this.handleResponse<ApiResponse<AdminVmIpAssignmentInfo>>(
+    const result = await this.handleResponse<ApiResponse<{ job_dispatched: boolean; job_id: string }>>(
       await this.req("/api/admin/v1/vm_ip_assignments", "POST", data),
     );
     return result.data;
@@ -1957,14 +2103,17 @@ export class AdminApi {
       dns_reverse: string | null;
     }>,
   ) {
-    const result = await this.handleResponse<ApiResponse<AdminVmIpAssignmentInfo>>(
+    const result = await this.handleResponse<ApiResponse<{ job_dispatched: boolean; job_id: string }>>(
       await this.req(`/api/admin/v1/vm_ip_assignments/${id}`, "PATCH", updates),
     );
     return result.data;
   }
 
   async deleteVmIpAssignment(id: number) {
-    await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/vm_ip_assignments/${id}`, "DELETE"));
+    const result = await this.handleResponse<ApiResponse<{ job_id: string }>>(
+      await this.req(`/api/admin/v1/vm_ip_assignments/${id}`, "DELETE"),
+    );
+    return result.data;
   }
 
   async getVmIpAssignmentsByVm(
@@ -2324,6 +2473,7 @@ export class AdminApi {
     processing_fee_rate?: number | null;
     processing_fee_base?: number | null;
     processing_fee_currency?: string | null;
+    supported_currencies?: string[] | null;
   }) {
     const result = await this.handleResponse<ApiResponse<AdminPaymentMethodConfigInfo>>(
       await this.req("/api/admin/v1/payment_methods", "POST", data),
@@ -2343,6 +2493,7 @@ export class AdminApi {
       processing_fee_rate: number | null;
       processing_fee_base: number | null;
       processing_fee_currency: string | null;
+      supported_currencies: string[] | null;
     }>,
   ) {
     const result = await this.handleResponse<ApiResponse<AdminPaymentMethodConfigInfo>>(

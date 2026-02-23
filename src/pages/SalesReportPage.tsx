@@ -47,6 +47,8 @@ export function SalesReportPage() {
   const [interval, setInterval] = useState<"daily" | "weekly" | "monthly" | "quarterly" | "yearly">("monthly");
   const [companyId, setCompanyId] = useState<number | null>(null);
   const [currency, setCurrency] = useState<string>("");
+  const [regionId, setRegionId] = useState<number | null>(null);
+  const [hostId, setHostId] = useState<number | null>(null);
 
   const api = useAdminApi();
 
@@ -93,6 +95,43 @@ export function SalesReportPage() {
     }
   };
 
+  // Extract unique regions from payment data
+  const availableRegions = reportData
+    ? Array.from(
+        new Map(reportData.payments.map((p) => [p.region_id, { id: p.region_id, name: p.region_name }])).values(),
+      ).sort((a, b) => a.name.localeCompare(b.name))
+    : [];
+
+  // Extract unique hosts from payment data, filtered by selected region
+  const availableHosts = reportData
+    ? Array.from(
+        new Map(
+          reportData.payments
+            .filter((p) => !regionId || p.region_id === regionId)
+            .map((p) => [p.host_id, { id: p.host_id, name: p.host_name, region_id: p.region_id }]),
+        ).values(),
+      ).sort((a, b) => a.name.localeCompare(b.name))
+    : [];
+
+  // Filter payments based on selected region and host
+  const filteredPayments = reportData
+    ? reportData.payments.filter((p) => {
+        if (regionId && p.region_id !== regionId) return false;
+        if (hostId && p.host_id !== hostId) return false;
+        return true;
+      })
+    : [];
+
+  // Reset host filter when region changes (if selected host is not in new region)
+  useEffect(() => {
+    if (hostId && regionId) {
+      const hostInRegion = availableHosts.some((h) => h.id === hostId);
+      if (!hostInRegion) {
+        setHostId(null);
+      }
+    }
+  }, [regionId, availableHosts, hostId]);
+
   // Load companies on component mount
   useEffect(() => {
     loadCompanies();
@@ -108,11 +147,11 @@ export function SalesReportPage() {
   const baseCurrency = reportData?.payments[0]?.company_base_currency || "USD";
 
   const calculateTotalsByPeriod = () => {
-    if (!reportData) return [];
+    if (!reportData || filteredPayments.length === 0) return [];
 
     const periodTotals = new Map();
 
-    reportData.payments.forEach((payment) => {
+    filteredPayments.forEach((payment) => {
       // Generate period key based on interval and created date
       let period = "";
       const date = new Date(payment.created);
@@ -191,13 +230,13 @@ export function SalesReportPage() {
   };
 
   const generateSalesReportFormat = () => {
-    if (!reportData) return null;
+    if (!reportData || filteredPayments.length === 0) return null;
 
     const baseCurrency = reportData.payments[0]?.company_base_currency || "USD";
 
     // Calculate exchange rates from the payment data
     const exchangeRates: Record<string, number> = {};
-    reportData.payments.forEach((payment) => {
+    filteredPayments.forEach((payment) => {
       if (payment.currency !== baseCurrency && !exchangeRates[`${payment.currency}_${baseCurrency}`]) {
         exchangeRates[`${payment.currency}_${baseCurrency}`] = payment.rate;
       }
@@ -206,7 +245,7 @@ export function SalesReportPage() {
     // Group payments by currency and create items (accumulate in smallest units, convert for output)
     const currencyTotals: Record<string, { net: number; tax: number }> = {};
 
-    reportData.payments.forEach((payment) => {
+    filteredPayments.forEach((payment) => {
       if (!currencyTotals[payment.currency]) {
         currencyTotals[payment.currency] = { net: 0, tax: 0 };
       }
@@ -271,7 +310,7 @@ export function SalesReportPage() {
   };
 
   const exportPaymentsToCSV = () => {
-    if (!reportData) return;
+    if (!reportData || filteredPayments.length === 0) return;
 
     const csvHeaders = [
       "Period",
@@ -283,9 +322,11 @@ export function SalesReportPage() {
       "Tax (Main Unit)",
       "Is Paid",
       "Rate",
+      "Region",
+      "Host",
     ];
 
-    const csvRows = reportData.payments.map((payment) => [
+    const csvRows = filteredPayments.map((payment) => [
       payment.period,
       payment.vm_id,
       new Date(payment.created).toISOString(),
@@ -295,6 +336,8 @@ export function SalesReportPage() {
       payment.currency === "BTC" ? (payment.tax / 1e11).toFixed(8) : (payment.tax / 100).toFixed(2),
       payment.is_paid ? "Yes" : "No",
       payment.rate,
+      payment.region_name,
+      payment.host_name,
     ]);
 
     const csvContent = [csvHeaders, ...csvRows].map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\n");
@@ -378,7 +421,7 @@ export function SalesReportPage() {
 
       {/* Filter Controls */}
       <Card>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">Start Date</label>
             <input
@@ -438,7 +481,7 @@ export function SalesReportPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Currency (Optional)</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Currency</label>
             <select
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
@@ -448,6 +491,40 @@ export function SalesReportPage() {
               {CURRENCIES.map((curr) => (
                 <option key={curr} value={curr}>
                   {curr}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Region</label>
+            <select
+              value={regionId || ""}
+              onChange={(e) => setRegionId(e.target.value ? parseInt(e.target.value, 10) : null)}
+              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none"
+              disabled={!reportData}
+            >
+              <option value="">All Regions</option>
+              {availableRegions.map((region) => (
+                <option key={region.id} value={region.id}>
+                  {region.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Host</label>
+            <select
+              value={hostId || ""}
+              onChange={(e) => setHostId(e.target.value ? parseInt(e.target.value, 10) : null)}
+              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none"
+              disabled={!reportData}
+            >
+              <option value="">All Hosts</option>
+              {availableHosts.map((host) => (
+                <option key={host.id} value={host.id}>
+                  {host.name}
                 </option>
               ))}
             </select>
@@ -522,8 +599,12 @@ export function SalesReportPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-400 text-sm">Total Payments</p>
-                  <p className="text-white font-semibold">{reportData.payments.length.toLocaleString()}</p>
-                  <p className="text-blue-400 text-sm">Individual records</p>
+                  <p className="text-white font-semibold">{filteredPayments.length.toLocaleString()}</p>
+                  <p className="text-blue-400 text-sm">
+                    {filteredPayments.length !== reportData.payments.length
+                      ? `of ${reportData.payments.length} total`
+                      : "Individual records"}
+                  </p>
                 </div>
                 <CurrencyDollarIcon className="h-8 w-8 text-yellow-500" />
               </div>
@@ -634,8 +715,10 @@ export function SalesReportPage() {
                     );
                   },
                 },
+                { header: "Region", key: "region_name" },
+                { header: "Host", key: "host_name" },
               ]}
-              data={reportData.payments.map((item, index) => ({
+              data={filteredPayments.map((item, index) => ({
                 ...item,
                 id: index,
               }))}

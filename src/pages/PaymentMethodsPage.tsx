@@ -167,6 +167,9 @@ export function PaymentMethodsPage() {
             </span>
           )}
         </div>
+        {config.supported_currencies && config.supported_currencies.length > 0 && (
+          <div className="mt-1 text-xs text-gray-400">{config.supported_currencies.join(", ")}</div>
+        )}
       </td>
       <td className="text-gray-300">
         {config.processing_fee_rate !== null || config.processing_fee_base !== null ? (
@@ -636,6 +639,7 @@ function CreatePaymentMethodModal({
     processing_fee_rate: "",
     processing_fee_base: "",
     processing_fee_currency: "",
+    supported_currencies: [] as string[],
   });
   const [providerConfig, setProviderConfig] = useState<ProviderConfig | null>(null);
 
@@ -693,6 +697,7 @@ function CreatePaymentMethodModal({
         processing_fee_rate: parseRate(formData.processing_fee_rate),
         processing_fee_base: baseFeeInSmallestUnits,
         processing_fee_currency: formData.processing_fee_currency || null,
+        supported_currencies: formData.supported_currencies.length > 0 ? formData.supported_currencies : null,
       };
 
       await adminApi.createPaymentMethodConfig(data);
@@ -708,6 +713,7 @@ function CreatePaymentMethodModal({
         processing_fee_rate: "",
         processing_fee_base: "",
         processing_fee_currency: "",
+        supported_currencies: [],
       });
       setProviderConfig(null);
     } catch (err) {
@@ -872,6 +878,36 @@ function CreatePaymentMethodModal({
           </div>
         </div>
 
+        {/* Supported Currencies */}
+        <div className="border-t border-slate-700 pt-4">
+          <h3 className="text-sm font-medium text-white mb-4">Supported Currencies (Optional)</h3>
+          <p className="text-xs text-gray-400 mb-3">
+            Select which currencies this payment method can accept. Leave empty for all currencies.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {CURRENCIES.map((currency) => (
+              <label key={currency} className="flex items-center gap-1.5 px-2 py-1 bg-slate-700 rounded cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.supported_currencies.includes(currency)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setFormData({ ...formData, supported_currencies: [...formData.supported_currencies, currency] });
+                    } else {
+                      setFormData({
+                        ...formData,
+                        supported_currencies: formData.supported_currencies.filter((c) => c !== currency),
+                      });
+                    }
+                  }}
+                  className="rounded"
+                />
+                <span className="text-sm text-white">{currency}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
         <div className="flex justify-end space-x-3 pt-4">
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
@@ -918,6 +954,7 @@ function EditPaymentMethodModal({
     processing_fee_rate: config.processing_fee_rate?.toString() || "",
     processing_fee_base: getInitialBaseFee(),
     processing_fee_currency: config.processing_fee_currency || "",
+    supported_currencies: config.supported_currencies || [],
   });
 
   // Initialize provider config with non-secret fields from sanitized config
@@ -1023,6 +1060,7 @@ function EditPaymentMethodModal({
         processing_fee_rate: parseRate(formData.processing_fee_rate),
         processing_fee_base: baseFeeInSmallestUnits,
         processing_fee_currency: formData.processing_fee_currency || null,
+        supported_currencies: formData.supported_currencies.length > 0 ? formData.supported_currencies : null,
       };
 
       await adminApi.updatePaymentMethodConfig(config.id, updates);
@@ -1190,6 +1228,36 @@ function EditPaymentMethodModal({
                 ))}
               </select>
             </div>
+          </div>
+        </div>
+
+        {/* Supported Currencies */}
+        <div className="border-t border-slate-700 pt-4">
+          <h3 className="text-sm font-medium text-white mb-4">Supported Currencies (Optional)</h3>
+          <p className="text-xs text-gray-400 mb-3">
+            Select which currencies this payment method can accept. Leave empty for all currencies.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {CURRENCIES.map((currency) => (
+              <label key={currency} className="flex items-center gap-1.5 px-2 py-1 bg-slate-700 rounded cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.supported_currencies.includes(currency)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setFormData({ ...formData, supported_currencies: [...formData.supported_currencies, currency] });
+                    } else {
+                      setFormData({
+                        ...formData,
+                        supported_currencies: formData.supported_currencies.filter((c) => c !== currency),
+                      });
+                    }
+                  }}
+                  className="rounded"
+                />
+                <span className="text-sm text-white">{currency}</span>
+              </label>
+            ))}
           </div>
         </div>
 

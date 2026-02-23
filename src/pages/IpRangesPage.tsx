@@ -1,5 +1,6 @@
-import { GlobeAltIcon, PencilIcon, PlusIcon, TrashIcon, WifiIcon } from "@heroicons/react/24/outline";
+import { EyeIcon, GlobeAltIcon, PencilIcon, PlusIcon, TrashIcon, WifiIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
 import { PaginatedTable } from "../components/PaginatedTable";
@@ -17,6 +18,7 @@ export function IpRangesPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showFreeIpsModal, setShowFreeIpsModal] = useState(false);
   const [selectedIpRange, setSelectedIpRange] = useState<AdminIpRangeInfo | null>(null);
 
   const refreshData = () => {
@@ -26,6 +28,11 @@ export function IpRangesPage() {
   const handleEdit = (ipRange: AdminIpRangeInfo) => {
     setSelectedIpRange(ipRange);
     setShowEditModal(true);
+  };
+
+  const handleViewFreeIps = (ipRange: AdminIpRangeInfo) => {
+    setSelectedIpRange(ipRange);
+    setShowFreeIpsModal(true);
   };
 
   const handleDelete = async (ipRange: AdminIpRangeInfo) => {
@@ -89,7 +96,8 @@ export function IpRangesPage() {
         </div>
       </td>
       <td className="text-gray-300">
-        <span className="font-medium">{ipRange.assignment_count}
+        <span className="font-medium">
+          {ipRange.assignment_count}
           {ipRange.available_ips && <> ({ipRange.available_ips?.toLocaleString()})</>}
         </span>
       </td>
@@ -98,6 +106,15 @@ export function IpRangesPage() {
       </td>
       <td className="text-right">
         <div className="flex justify-end space-x-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => handleViewFreeIps(ipRange)}
+            className="p-1"
+            title="View free IPs"
+          >
+            <EyeIcon className="h-4 w-4" />
+          </Button>
           <Button size="sm" variant="secondary" onClick={() => handleEdit(ipRange)} className="p-1">
             <PencilIcon className="h-4 w-4" />
           </Button>
@@ -177,6 +194,18 @@ export function IpRangesPage() {
           }}
           ipRange={selectedIpRange}
           onSuccess={refreshData}
+        />
+      )}
+
+      {/* Free IPs Modal */}
+      {selectedIpRange && (
+        <FreeIpsModal
+          isOpen={showFreeIpsModal}
+          onClose={() => {
+            setShowFreeIpsModal(false);
+            setSelectedIpRange(null);
+          }}
+          ipRange={selectedIpRange}
         />
       )}
     </div>
@@ -621,6 +650,88 @@ function EditIpRangeModal({
           </Button>
         </div>
       </form>
+    </Modal>
+  );
+}
+
+// Free IPs Modal Component
+function FreeIpsModal({
+  isOpen,
+  onClose,
+  ipRange,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  ipRange: AdminIpRangeInfo;
+}) {
+  const adminApi = useAdminApi();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [freeIps, setFreeIps] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchFreeIps();
+    }
+  }, [isOpen, ipRange.id]);
+
+  const fetchFreeIps = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const ips = await adminApi.getFreeIps(ipRange.id);
+      setFreeIps(ips);
+    } catch (err) {
+      console.error("Failed to fetch free IPs:", err);
+      setError(err instanceof Error ? err.message : "Failed to fetch free IPs");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title={`Free IPs in ${ipRange.cidr}`} size="lg">
+      <div className="space-y-4">
+        {error && (
+          <div className="bg-red-900/20 border border-red-500/30 text-red-400 px-3 py-2 rounded text-sm">{error}</div>
+        )}
+
+        {loading ? (
+          <div className="text-center py-8 text-gray-400">Loading free IPs...</div>
+        ) : freeIps.length === 0 ? (
+          <div className="text-center py-8 text-gray-400">
+            <WifiIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>No free IPs available in this range</p>
+          </div>
+        ) : (
+          <>
+            <div className="text-sm text-gray-400 mb-2">
+              Found <span className="text-white font-medium">{freeIps.length}</span> free IP address(es). Click an IP to
+              view assignment history.
+            </div>
+            <div className="max-h-96 overflow-y-auto bg-slate-800 rounded-lg p-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                {freeIps.map((ip, index) => (
+                  <Link
+                    key={index}
+                    to={`/ip-address/${encodeURIComponent(ip)}`}
+                    className="font-mono text-xs px-2 py-1 rounded transition-colors truncate text-center block bg-slate-700 text-green-400 hover:bg-slate-600"
+                    title={ip}
+                  >
+                    {ip}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        <div className="flex justify-end pt-4">
+          <Button variant="secondary" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+      </div>
     </Modal>
   );
 }

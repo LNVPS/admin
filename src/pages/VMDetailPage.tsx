@@ -7,6 +7,7 @@ import {
   ClockIcon,
   CreditCardIcon,
   GlobeAltIcon,
+  NoSymbolIcon,
   PlayIcon,
   PlusIcon,
   StopIcon,
@@ -45,6 +46,7 @@ export function VMDetailPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+  const [paymentsRefreshKey, setPaymentsRefreshKey] = useState(0);
   const [showIpAssignModal, setShowIpAssignModal] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [copiedPaymentId, setCopiedPaymentId] = useState<string | null>(null);
@@ -159,6 +161,28 @@ export function VMDetailPage() {
       setHistoryRefreshKey((prev) => prev + 1);
     } catch (error) {
       console.error("Failed to extend VM:", error);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleToggleDisabled = async () => {
+    if (!vm) return;
+    const currentlyDisabled = (vm as { disabled?: boolean }).disabled ?? false;
+    const action = currentlyDisabled ? "enable" : "disable";
+
+    if (!confirm(`Are you sure you want to ${action} this VM?`)) return;
+
+    try {
+      setActionLoading("toggle-disabled");
+      const result = await adminApi.updateVM(vm.id, { disabled: !currentlyDisabled });
+      if (result.job_id) {
+        console.log(`${action} VM job dispatched:`, result.job_id);
+      }
+      await loadVM(true);
+      setHistoryRefreshKey((prev) => prev + 1);
+    } catch (error) {
+      console.error(`Failed to ${action} VM:`, error);
     } finally {
       setActionLoading(null);
     }
@@ -295,7 +319,14 @@ export function VMDetailPage() {
           </span>
         </div>
       </td>
-      <td className="text-gray-400 text-sm">{new Date(payment.created).toLocaleString()}</td>
+      <td className="text-gray-400 text-sm">
+        <div className="space-y-0.5">
+          <div>{new Date(payment.created).toLocaleString()}</div>
+          {payment.paid_at && (
+            <div className="text-green-400 text-xs">Paid: {new Date(payment.paid_at).toLocaleString()}</div>
+          )}
+        </div>
+      </td>
     </tr>
   );
 
@@ -477,6 +508,14 @@ export function VMDetailPage() {
                 <span className="text-xs">Updated: {lastRefresh.toLocaleTimeString()}</span>
               </>
             )}
+            <span>•</span>
+            {vm.disabled ? (
+              <span className="text-red-400 text-xs font-medium">Disabled</span>
+            ) : vm.deleted ? (
+              <span className="text-red-400 text-xs font-medium">Deleted</span>
+            ) : (
+              <span className="text-green-400 text-xs font-medium">Enabled</span>
+            )}
           </div>
         </div>
         <div className="flex items-center space-x-2">
@@ -535,6 +574,17 @@ export function VMDetailPage() {
             title="Process refund"
           >
             <BanknotesIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={handleToggleDisabled}
+            disabled={actionLoading === "toggle-disabled"}
+            className={
+              vm.disabled ? "text-green-400 hover:text-green-300 p-2" : "text-gray-400 hover:text-gray-300 p-2"
+            }
+            title={vm.disabled ? "Enable VM" : "Disable VM"}
+          >
+            <NoSymbolIcon className="h-4 w-4" />
           </Button>
           <Button
             variant="secondary"
@@ -673,9 +723,20 @@ export function VMDetailPage() {
 
       {/* VM History */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold text-white flex items-center space-x-2">
-          <ClockIcon className="h-5 w-5" />
-          <span>History</span>
+        <h2 className="text-xl font-semibold text-white flex items-center justify-between">
+          <span className="flex items-center space-x-2">
+            <ClockIcon className="h-5 w-5" />
+            <span>History</span>
+          </span>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setHistoryRefreshKey((k) => k + 1)}
+            className="p-1"
+            title="Refresh history"
+          >
+            <ArrowPathIcon className="h-4 w-4" />
+          </Button>
         </h2>
         <PaginatedTable
           apiCall={(params) => adminApi.getVMHistory(vm.id, params)}
@@ -695,9 +756,20 @@ export function VMDetailPage() {
 
       {/* VM Payments */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold text-white flex items-center space-x-2">
-          <CreditCardIcon className="h-5 w-5" />
-          <span>Payments</span>
+        <h2 className="text-xl font-semibold text-white flex items-center justify-between">
+          <span className="flex items-center space-x-2">
+            <CreditCardIcon className="h-5 w-5" />
+            <span>Payments</span>
+          </span>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setPaymentsRefreshKey((k) => k + 1)}
+            className="p-1"
+            title="Refresh payments"
+          >
+            <ArrowPathIcon className="h-4 w-4" />
+          </Button>
         </h2>
         <PaginatedTable
           apiCall={async () => {
@@ -714,7 +786,7 @@ export function VMDetailPage() {
           itemsPerPage={10}
           errorAction="load VM payments"
           loadingMessage="Loading VM payments..."
-          dependencies={[vm.id]}
+          dependencies={[vm.id, paymentsRefreshKey]}
           calculateStats={(payments, total) => (
             <div className="flex gap-4 text-sm text-gray-400">
               <span>

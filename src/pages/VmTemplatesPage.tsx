@@ -2,6 +2,7 @@ import { PencilIcon, PlusIcon, ServerIcon, TrashIcon } from "@heroicons/react/24
 import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
+import { MultiSelect } from "../components/MultiSelect";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
@@ -9,6 +10,9 @@ import {
   type AdminCostPlanInfo,
   type AdminRegionInfo,
   type AdminVmTemplateInfo,
+  CpuArch,
+  CpuFeature,
+  CpuMfg,
   DiskInterface,
   DiskType,
 } from "../lib/api";
@@ -71,6 +75,7 @@ export function VmTemplatesPage() {
       <th>Template Name</th>
       <th>Resources</th>
       <th>Storage</th>
+      <th>Constraints</th>
       <th>Region</th>
       <th>Active VMs</th>
       <th>Status</th>
@@ -107,6 +112,39 @@ export function VmTemplatesPage() {
             {template.disk_type.toUpperCase()} • {template.disk_interface.toUpperCase()}
           </div>
         </div>
+      </td>
+      <td className="text-gray-300">
+        {(template.cpu_mfg && template.cpu_mfg !== "unknown") ||
+        (template.cpu_arch && template.cpu_arch !== "unknown") ||
+        (template.cpu_features && template.cpu_features.length > 0) ? (
+          <div className="space-y-0.5">
+            {(template.cpu_mfg && template.cpu_mfg !== "unknown") ||
+            (template.cpu_arch && template.cpu_arch !== "unknown") ? (
+              <div className="text-gray-400 text-xs">
+                {[
+                  template.cpu_mfg && template.cpu_mfg !== "unknown" ? template.cpu_mfg : null,
+                  template.cpu_arch && template.cpu_arch !== "unknown" ? template.cpu_arch : null,
+                ]
+                  .filter(Boolean)
+                  .join(" / ")}
+              </div>
+            ) : null}
+            {template.cpu_features && template.cpu_features.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {template.cpu_features.slice(0, 3).map((feature, idx) => (
+                  <span key={idx} className="text-xs bg-gray-700 text-gray-300 px-1 py-0.5 rounded">
+                    {feature}
+                  </span>
+                ))}
+                {template.cpu_features.length > 3 && (
+                  <span className="text-xs text-gray-500">+{template.cpu_features.length - 3}</span>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          <span className="text-gray-500">—</span>
+        )}
       </td>
       <td className="text-gray-300">
         <div className="text-white">{template.region_name || `Region ${template.region_id}`}</div>
@@ -258,6 +296,9 @@ function CreateVmTemplateModal({ isOpen, onClose, onSuccess, regions, costPlans 
     enabled: true,
     expires: "",
     cpu: 1,
+    cpu_mfg: "",
+    cpu_arch: "",
+    cpu_features: [] as string[],
     memory: 1073741824, // 1GB in bytes
     disk_size: 21474836480, // 20GB in bytes
     disk_type: DiskType.SSD,
@@ -299,6 +340,16 @@ function CreateVmTemplateModal({ isOpen, onClose, onSuccess, regions, costPlans 
         region_id: formData.region_id,
       };
 
+      if (formData.cpu_mfg) {
+        submitData.cpu_mfg = formData.cpu_mfg;
+      }
+      if (formData.cpu_arch) {
+        submitData.cpu_arch = formData.cpu_arch;
+      }
+      if (formData.cpu_features.length > 0) {
+        submitData.cpu_features = formData.cpu_features;
+      }
+
       if (createNewCostPlan) {
         // Auto-create cost plan
         submitData.cost_plan_name = formData.cost_plan_name || `${formData.name} Cost Plan`;
@@ -321,6 +372,9 @@ function CreateVmTemplateModal({ isOpen, onClose, onSuccess, regions, costPlans 
         enabled: true,
         expires: "",
         cpu: 1,
+        cpu_mfg: "",
+        cpu_arch: "",
+        cpu_features: [],
         memory: 1073741824,
         disk_size: 21474836480,
         disk_type: DiskType.SSD,
@@ -393,6 +447,48 @@ function CreateVmTemplateModal({ isOpen, onClose, onSuccess, regions, costPlans 
                 })
               }
               className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">CPU Manufacturer</label>
+            <select
+              value={formData.cpu_mfg}
+              onChange={(e) => setFormData({ ...formData, cpu_mfg: e.target.value })}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
+            >
+              <option value="">Any</option>
+              {Object.values(CpuMfg).map((mfg) => (
+                <option key={mfg} value={mfg}>
+                  {mfg.charAt(0).toUpperCase() + mfg.slice(1)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">CPU Architecture</label>
+            <select
+              value={formData.cpu_arch}
+              onChange={(e) => setFormData({ ...formData, cpu_arch: e.target.value })}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
+            >
+              <option value="">Any</option>
+              {Object.values(CpuArch).map((arch) => (
+                <option key={arch} value={arch}>
+                  {arch}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">CPU Features</label>
+            <MultiSelect
+              options={Object.values(CpuFeature)}
+              selected={formData.cpu_features}
+              onChange={(features) => setFormData({ ...formData, cpu_features: features })}
+              placeholder="Any"
             />
           </div>
         </div>
@@ -625,6 +721,9 @@ function EditVmTemplateModal({ isOpen, onClose, template, onSuccess, regions }: 
     enabled: true,
     expires: "",
     cpu: 1,
+    cpu_mfg: "",
+    cpu_arch: "",
+    cpu_features: [] as string[],
     memory: 1073741824,
     disk_size: 21474836480,
     disk_type: DiskType.SSD,
@@ -646,6 +745,9 @@ function EditVmTemplateModal({ isOpen, onClose, template, onSuccess, regions }: 
         enabled: template.enabled,
         expires: template.expires ? new Date(template.expires).toISOString().slice(0, 16) : "",
         cpu: template.cpu,
+        cpu_mfg: template.cpu_mfg || "",
+        cpu_arch: template.cpu_arch || "",
+        cpu_features: template.cpu_features || [],
         memory: template.memory,
         disk_size: template.disk_size,
         disk_type: template.disk_type,
@@ -683,7 +785,7 @@ function EditVmTemplateModal({ isOpen, onClose, template, onSuccess, regions }: 
     setIsSubmitting(true);
 
     try {
-      await adminApi.updateVmTemplate(template.id, {
+      const updates: any = {
         name: formData.name,
         enabled: formData.enabled,
         expires: formData.expires || null,
@@ -699,7 +801,12 @@ function EditVmTemplateModal({ isOpen, onClose, template, onSuccess, regions }: 
         cost_plan_currency: formData.cost_plan_currency,
         cost_plan_interval_amount: formData.cost_plan_interval_amount,
         cost_plan_interval_type: formData.cost_plan_interval_type,
-      });
+      };
+      // Always send cpu_mfg/cpu_arch - empty string or null to clear
+      updates.cpu_mfg = formData.cpu_mfg || null;
+      updates.cpu_arch = formData.cpu_arch || null;
+      updates.cpu_features = formData.cpu_features.length > 0 ? formData.cpu_features : [];
+      await adminApi.updateVmTemplate(template.id, updates);
       onSuccess();
       onClose();
     } catch (error) {
@@ -761,6 +868,48 @@ function EditVmTemplateModal({ isOpen, onClose, template, onSuccess, regions }: 
                 })
               }
               className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">CPU Manufacturer</label>
+            <select
+              value={formData.cpu_mfg}
+              onChange={(e) => setFormData({ ...formData, cpu_mfg: e.target.value })}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
+            >
+              <option value="">Any</option>
+              {Object.values(CpuMfg).map((mfg) => (
+                <option key={mfg} value={mfg}>
+                  {mfg.charAt(0).toUpperCase() + mfg.slice(1)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">CPU Architecture</label>
+            <select
+              value={formData.cpu_arch}
+              onChange={(e) => setFormData({ ...formData, cpu_arch: e.target.value })}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
+            >
+              <option value="">Any</option>
+              {Object.values(CpuArch).map((arch) => (
+                <option key={arch} value={arch}>
+                  {arch}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">CPU Features</label>
+            <MultiSelect
+              options={Object.values(CpuFeature)}
+              selected={formData.cpu_features}
+              onChange={(features) => setFormData({ ...formData, cpu_features: features })}
+              placeholder="Any"
             />
           </div>
         </div>

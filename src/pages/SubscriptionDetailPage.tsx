@@ -261,7 +261,14 @@ function SubscriptionPaymentsTable({ subscriptionId, currency }: { subscriptionI
         )}
       </td>
       <td className="text-gray-300 capitalize">{payment.payment_method}</td>
-      <td className="text-gray-300 text-sm">{new Date(payment.created).toLocaleString()}</td>
+      <td className="text-gray-300 text-sm">
+        <div className="space-y-0.5">
+          <div>{new Date(payment.created).toLocaleString()}</div>
+          {payment.paid_at && (
+            <div className="text-green-400 text-xs">Paid: {new Date(payment.paid_at).toLocaleString()}</div>
+          )}
+        </div>
+      </td>
       <td>
         {payment.is_paid ? (
           <StatusBadge status="active">Paid</StatusBadge>

@@ -8,9 +8,8 @@ import {
 } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { Button } from "../components/Button";
-import { CreatePricingModal } from "../components/CreatePricingModal";
-import { EditPricingModal } from "../components/EditPricingModal";
 import { PaginatedTable } from "../components/PaginatedTable";
+import { PricingModal } from "../components/PricingModal";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import type { AdminCustomPricingInfo } from "../lib/api";
@@ -19,12 +18,11 @@ import { formatBytes } from "../utils/formatBytes";
 
 export function CustomPricingPage() {
   const adminApi = useAdminApi();
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [editingPricing, setEditingPricing] = useState<AdminCustomPricingInfo | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  const handleCreateSuccess = () => {
+  const handleSuccess = () => {
     setRefreshTrigger((prev) => prev + 1);
   };
 
@@ -53,13 +51,19 @@ export function CustomPricingPage() {
     }
   };
 
-  const handleEdit = (pricing: AdminCustomPricingInfo) => {
-    setEditingPricing(pricing);
-    setShowEditModal(true);
+  const handleCreate = () => {
+    setEditingPricing(null);
+    setShowModal(true);
   };
 
-  const handleEditSuccess = () => {
-    setRefreshTrigger((prev) => prev + 1);
+  const handleEdit = (pricing: AdminCustomPricingInfo) => {
+    setEditingPricing(pricing);
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingPricing(null);
   };
 
   const renderHeader = () => (
@@ -118,6 +122,10 @@ export function CustomPricingPage() {
             <div>
               RAM: {formatBytes(pricing.min_memory)}-{formatBytes(pricing.max_memory)}
             </div>
+            {(pricing.cpu_mfg || pricing.cpu_arch) && (
+              <div className="text-gray-400">{[pricing.cpu_mfg, pricing.cpu_arch].filter(Boolean).join(" / ")}</div>
+            )}
+            {pricing.cpu_features?.length > 0 && <div className="text-gray-400">{pricing.cpu_features.join(", ")}</div>}
           </div>
         </td>
         <td className="text-gray-300">
@@ -209,7 +217,7 @@ export function CustomPricingPage() {
             </span>
           </div>
         </div>
-        <Button onClick={() => setShowCreateModal(true)} className="flex items-center gap-2">
+        <Button onClick={handleCreate} className="flex items-center gap-2">
           <PlusIcon className="h-4 w-4" />
           Create Pricing Model
         </Button>
@@ -234,20 +242,7 @@ export function CustomPricingPage() {
         loadingMessage="Loading custom pricing models..."
       />
 
-      <CreatePricingModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onSuccess={handleCreateSuccess}
-      />
-
-      {editingPricing && (
-        <EditPricingModal
-          isOpen={showEditModal}
-          onClose={() => setShowEditModal(false)}
-          onSuccess={handleEditSuccess}
-          pricing={editingPricing}
-        />
-      )}
+      <PricingModal isOpen={showModal} onClose={handleCloseModal} onSuccess={handleSuccess} pricing={editingPricing} />
     </div>
   );
 }

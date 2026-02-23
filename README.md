@@ -1,69 +1,142 @@
-# React + TypeScript + Vite
+# LNVPS Admin Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern React admin dashboard for managing the [LNVPS](https://lnvps.net) Lightning VPS service. Built with React 19, TypeScript, and Tailwind CSS, featuring Nostr protocol authentication.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### User Management
+- View and manage user accounts
+- Role-based access control (Super Admin, Admin, Read Only)
+- User details with subscription history
+- Bulk messaging to users
 
-## Expanding the ESLint configuration
+### Virtual Machine Management
+- List and monitor all VMs across hosts
+- VM details with real-time status
+- IP assignment management
+- Subscription tracking and renewals
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Infrastructure Management
+- **Hosts** - Manage hypervisor hosts and their resources
+- **Regions** - Geographic region configuration
+- **Routers** - Network router management
+- **IP Spaces & Ranges** - IPv4/IPv6 address allocation
+- **OS Images** - Operating system template management
+- **VM Templates** - Predefined VM configurations
 
-```js
-export default tseslint.config([
-  globalIgnores(["dist"]),
-  {
-    files: ["**/*.{ts,tsx}"],
-    extends: [
-      // Other configs...
+### Billing & Payments
+- Payment method configuration
+- Custom pricing rules
+- Subscription management
+- Sales reports with filtering by region/host
+- Referral tracking and reports
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+### Administration
+- Audit logging
+- Job history and monitoring
+- Access policies
+- System configuration
+- Analytics dashboard
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
+## Tech Stack
+
+- **React 19** - UI framework
+- **TypeScript** - Type safety
+- **Vite** - Build tool and dev server
+- **Tailwind CSS v4** - Styling
+- **React Router v7** - Routing
+- **TanStack Query** - Server state management
+- **Recharts** - Data visualization
+- **Nostr (Snort)** - Authentication protocol
+
+## Prerequisites
+
+- Node.js 18+
+- Yarn (v4 Berry with PnP)
+
+## Getting Started
+
+### Install dependencies
+
+```bash
+yarn install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Start development server
 
-```js
-// eslint.config.js
-import reactX from "eslint-plugin-react-x";
-import reactDom from "eslint-plugin-react-dom";
-
-export default tseslint.config([
-  globalIgnores(["dist"]),
-  {
-    files: ["**/*.{ts,tsx}"],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs["recommended-typescript"],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
+```bash
+yarn dev
 ```
+
+The app will be available at `http://localhost:5173`
+
+### Build for production
+
+```bash
+yarn build
+```
+
+### Preview production build
+
+```bash
+yarn preview
+```
+
+## Development
+
+### Code Quality
+
+```bash
+# TypeScript type checking
+yarn tsc --noEmit
+
+# Format and lint check
+yarn biome check
+
+# Format and auto-fix
+yarn biome check --write
+```
+
+### Project Structure
+
+```
+src/
+├── assets/           # Static assets
+├── components/       # Reusable UI components
+├── hooks/            # Custom React hooks
+├── layouts/          # Layout components
+├── lib/              # Core utilities (API client, auth)
+├── pages/            # Page components
+├── services/         # Business logic services
+├── types/            # TypeScript type definitions
+├── utils/            # Utility functions
+├── App.tsx           # Main app with routing
+└── main.tsx          # React entry point
+```
+
+### Authentication
+
+The dashboard uses Nostr protocol for authentication. Users sign in with their Nostr identity (nsec/extension), which is verified against the LNVPS admin API.
+
+### Permissions
+
+Access is controlled via a permission system with the format `resource::action`:
+
+- `users::view`, `users::edit`
+- `virtual_machines::view`, `virtual_machines::create`
+- `analytics::view`
+- etc.
+
+Protected routes use the `PermissionGuard` component to enforce access.
+
+## API
+
+The dashboard connects to the LNVPS Admin API. See [ADMIN_API_ENDPOINTS.md](https://github.com/LNVPS/api/blob/master/ADMIN_API_ENDPOINTS.md) for API documentation.
+
+## Contributing
+
+See [AGENTS.md](AGENTS.md) for coding guidelines and contribution standards.
+
+## License
+
+Proprietary - LNVPS

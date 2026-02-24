@@ -1,35 +1,35 @@
-import { useState, useEffect } from "react";
-import * as React from "react";
-import { useLocation, useNavigate, Link, useParams } from "react-router-dom";
-import { useAdminApi } from "../hooks/useAdminApi";
-import { useUserRoles } from "../hooks/useUserRoles";
-import { PaginatedTable } from "../components/PaginatedTable";
-import { Button } from "../components/Button";
-import { Modal } from "../components/Modal";
-import { StatusBadge } from "../components/StatusBadge";
-import { Profile } from "../components/Profile";
-import { PermissionGuard } from "../components/PermissionGuard";
-import { VmStatusBadge, getVmStatus } from "../components/VmStatusBadge";
-import { EditUserModal } from "../components/EditUserModal";
 import {
-  type AdminUserInfo,
-  type AdminVmInfo,
-  type UserRoleInfo,
-  type AdminRoleInfo,
-  VmRunningStates,
-  getCountryName,
-} from "../lib/api";
-import { formatBytes } from "../utils/formatBytes";
-import {
+  EnvelopeIcon,
+  MapPinIcon,
+  PencilIcon,
+  PlusIcon,
   ServerIcon,
   ShieldCheckIcon,
-  UserIcon,
-  MapPinIcon,
-  EnvelopeIcon,
-  PlusIcon,
   TrashIcon,
-  PencilIcon,
+  UserIcon,
 } from "@heroicons/react/24/outline";
+import * as React from "react";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Button } from "../components/Button";
+import { EditUserModal } from "../components/EditUserModal";
+import { Modal } from "../components/Modal";
+import { PaginatedTable } from "../components/PaginatedTable";
+import { PermissionGuard } from "../components/PermissionGuard";
+import { Profile } from "../components/Profile";
+import { StatusBadge } from "../components/StatusBadge";
+import { getVmStatus, VmStatusBadge } from "../components/VmStatusBadge";
+import { useAdminApi } from "../hooks/useAdminApi";
+import { useUserRoles } from "../hooks/useUserRoles";
+import {
+  type AdminRoleInfo,
+  type AdminUserInfo,
+  type AdminVmInfo,
+  getCountryName,
+  type UserRoleInfo,
+  VmRunningStates,
+} from "../lib/api";
+import { formatBytes } from "../utils/formatBytes";
 
 export function UserDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -94,11 +94,7 @@ export function UserDetailsPage() {
   };
 
   const handleRemoveRole = async (roleId: number, roleName: string) => {
-    if (
-      confirm(
-        `Are you sure you want to remove the "${roleName}" role from this user?`,
-      )
-    ) {
+    if (confirm(`Are you sure you want to remove the "${roleName}" role from this user?`)) {
       try {
         await adminApi.revokeUserRole(user.id, roleId);
         refreshRoles();
@@ -123,15 +119,9 @@ export function UserDetailsPage() {
   );
 
   const renderVMRow = (vm: AdminVmInfo, index: number) => (
-    <tr
-      key={vm.id || index}
-      className={`hover:bg-slate-700 ${vm.deleted ? "bg-gray-800/50 opacity-75" : ""}`}
-    >
+    <tr key={vm.id || index} className={`hover:bg-slate-700 ${vm.deleted ? "bg-gray-800/50 opacity-75" : ""}`}>
       <td className="whitespace-nowrap font-mono">
-        <Link
-          to={`/vms/${vm.id}`}
-          className="text-blue-400 hover:text-blue-300"
-        >
+        <Link to={`/vms/${vm.id}`} className="text-blue-400 hover:text-blue-300">
           #{vm.id}
         </Link>
       </td>
@@ -144,16 +134,13 @@ export function UserDetailsPage() {
         <VmStatusBadge vm={vm} />
       </td>
       <td className="text-gray-300">{vm.host_name || `#${vm.host_id}`}</td>
-      <td className="text-gray-400 text-sm">
-        {new Date(vm.created).toLocaleDateString()}
-      </td>
+      <td className="text-gray-400 text-sm">{new Date(vm.created).toLocaleDateString()}</td>
       <td className="text-gray-400 text-sm">
         <div
           className={
             new Date(vm.expires) < new Date()
               ? "text-red-400"
-              : new Date(vm.expires).getTime() - new Date().getTime() <
-                  24 * 60 * 60 * 1000
+              : new Date(vm.expires).getTime() - new Date().getTime() < 24 * 60 * 60 * 1000
                 ? "text-yellow-400"
                 : "text-gray-400"
           }
@@ -177,23 +164,19 @@ export function UserDetailsPage() {
   const renderRolesRow = (roleInfo: UserRoleInfo, index: number) => (
     <tr key={roleInfo.role.id || index}>
       <td className="font-semibold text-blue-400">{roleInfo.role.name}</td>
-      <td className="text-gray-300">
-        {roleInfo.role.description || "No description"}
-      </td>
+      <td className="text-gray-300">{roleInfo.role.description || "No description"}</td>
       <td className="text-gray-300">
         <div className="flex flex-wrap gap-1">
           {roleInfo.role.permissions && roleInfo.role.permissions.length > 0 ? (
             <>
-              {roleInfo.role.permissions
-                .slice(0, 3)
-                .map((permission: string, idx: number) => (
-                  <span
-                    key={idx}
-                    className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-900 text-blue-300"
-                  >
-                    {permission}
-                  </span>
-                ))}
+              {roleInfo.role.permissions.slice(0, 3).map((permission: string, idx: number) => (
+                <span
+                  key={idx}
+                  className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-900 text-blue-300"
+                >
+                  {permission}
+                </span>
+              ))}
               {roleInfo.role.permissions.length > 3 && (
                 <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-600 text-gray-300">
                   +{roleInfo.role.permissions.length - 3} more
@@ -206,9 +189,7 @@ export function UserDetailsPage() {
         </div>
       </td>
       <td>
-        <StatusBadge
-          status={roleInfo.role.is_system_role ? "running" : "unknown"}
-        >
+        <StatusBadge status={roleInfo.role.is_system_role ? "running" : "unknown"}>
           {roleInfo.role.is_system_role ? "System" : "Custom"}
         </StatusBadge>
       </td>
@@ -217,9 +198,7 @@ export function UserDetailsPage() {
           <Button
             size="sm"
             variant="secondary"
-            onClick={() =>
-              handleRemoveRole(roleInfo.role.id, roleInfo.role.name)
-            }
+            onClick={() => handleRemoveRole(roleInfo.role.id, roleInfo.role.name)}
             className="text-red-400 hover:text-red-300 p-1"
             title="Remove Role"
           >
@@ -258,9 +237,7 @@ export function UserDetailsPage() {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-400 text-lg mb-4">⚠️ User Not Found</div>
-          <div className="text-gray-300 mb-6">
-            The user with this ID does not exist.
-          </div>
+          <div className="text-gray-300 mb-6">The user with this ID does not exist.</div>
           <Link to="/users">
             <Button variant="primary">Back to Users List</Button>
           </Link>
@@ -278,19 +255,13 @@ export function UserDetailsPage() {
         </div>
         <div className="flex items-center space-x-2">
           <PermissionGuard requiredPermissions={["users::update"]}>
-            <Button
-              onClick={() => setShowEditUserModal(true)}
-              className="flex items-center space-x-2"
-            >
+            <Button onClick={() => setShowEditUserModal(true)} className="flex items-center space-x-2">
               <PencilIcon className="h-4 w-4" />
               <span>Edit User</span>
             </Button>
           </PermissionGuard>
           <Link to="/users">
-            <Button
-              variant="secondary"
-              className="text-gray-400 hover:text-gray-300"
-            >
+            <Button variant="secondary" className="text-gray-400 hover:text-gray-300">
               Back to Users
             </Button>
           </Link>
@@ -311,15 +282,11 @@ export function UserDetailsPage() {
             </div>
             <div>
               <div className="text-gray-400 text-sm">Public Key</div>
-              <div className="font-mono text-white text-sm break-all">
-                {user.pubkey}
-              </div>
+              <div className="font-mono text-white text-sm break-all">{user.pubkey}</div>
             </div>
             <div>
               <div className="text-gray-400 text-sm">Created</div>
-              <div className="text-white">
-                {new Date(user.created).toLocaleDateString()}
-              </div>
+              <div className="text-white">{new Date(user.created).toLocaleDateString()}</div>
             </div>
           </div>
         </div>
@@ -330,37 +297,24 @@ export function UserDetailsPage() {
             <EnvelopeIcon className="h-5 w-5 text-green-400" />
             <h3 className="text-lg font-semibold text-white">Contact</h3>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-3 text-sm">
             <div>
-              <div className="text-gray-400 text-sm">Email</div>
-              <div className="text-white">
-                {user.email || (
-                  <span className="text-gray-500">Not provided</span>
-                )}
-              </div>
+              <div className="text-gray-400">Email</div>
+              <div className="text-white">{user.email || <span className="text-gray-500">Not provided</span>}</div>
             </div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <div className="text-gray-400">NIP-17 Contact</div>
-                <StatusBadge
-                  status={user.contact_nip17 ? "running" : "stopped"}
-                >
-                  {user.contact_nip17 ? "Enabled" : "Disabled"}
-                </StatusBadge>
-              </div>
-              <div>
-                <div className="text-gray-400">Email Contact</div>
-                <StatusBadge
-                  status={user.contact_email ? "running" : "stopped"}
-                >
-                  {user.contact_email ? "Enabled" : "Disabled"}
-                </StatusBadge>
-              </div>
-              <div>
-                <div className="text-gray-400">NWC</div>
-                <StatusBadge status={user.has_nwc ? "running" : "stopped"}>
-                  {user.has_nwc ? "Yes" : "No"}
-                </StatusBadge>
+            <div>
+              <div className="text-gray-400">Contact Methods</div>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {user.email_verified ? (
+                  <StatusBadge status="running">Email Verified</StatusBadge>
+                ) : (
+                  <StatusBadge status="stopped">Email Not Verified</StatusBadge>
+                )}
+                {user.contact_nip17 && <StatusBadge status="running">NIP-17</StatusBadge>}
+                {user.contact_email && <StatusBadge status="running">Email Contact</StatusBadge>}
+                {!user.email_verified && !user.contact_nip17 && !user.contact_email && (
+                  <span className="text-gray-500">None enabled</span>
+                )}
               </div>
             </div>
           </div>
@@ -376,19 +330,13 @@ export function UserDetailsPage() {
             <div>
               <div className="text-gray-400">Country</div>
               <div className="text-white">
-                {user.country_code ? (
-                  getCountryName(user.country_code)
-                ) : (
-                  <span className="text-gray-500">Not set</span>
-                )}
+                {user.country_code ? getCountryName(user.country_code) : <span className="text-gray-500">Not set</span>}
               </div>
             </div>
             <div>
               <div className="text-gray-400">Name</div>
               <div className="text-white">
-                {user.billing_name || (
-                  <span className="text-gray-500">Not provided</span>
-                )}
+                {user.billing_name || <span className="text-gray-500">Not provided</span>}
               </div>
             </div>
             {user.billing_address_1 && (
@@ -396,27 +344,15 @@ export function UserDetailsPage() {
                 <div className="text-gray-400">Address</div>
                 <div className="text-white">
                   <div>{user.billing_address_1}</div>
-                  {user.billing_address_2 && (
-                    <div>{user.billing_address_2}</div>
-                  )}
-                  <div>
-                    {[
-                      user.billing_city,
-                      user.billing_state,
-                      user.billing_postcode,
-                    ]
-                      .filter(Boolean)
-                      .join(", ")}
-                  </div>
+                  {user.billing_address_2 && <div>{user.billing_address_2}</div>}
+                  <div>{[user.billing_city, user.billing_state, user.billing_postcode].filter(Boolean).join(", ")}</div>
                 </div>
               </div>
             )}
             {user.billing_tax_id && (
               <div>
                 <div className="text-gray-400">Tax ID</div>
-                <div className="text-white font-mono">
-                  {user.billing_tax_id}
-                </div>
+                <div className="text-white font-mono">{user.billing_tax_id}</div>
               </div>
             )}
           </div>
@@ -446,12 +382,8 @@ export function UserDetailsPage() {
           calculateStats={(vms, total) => {
             const stats = {
               total,
-              running: vms.filter(
-                (vm) => getVmStatus(vm) === VmRunningStates.RUNNING,
-              ).length,
-              stopped: vms.filter(
-                (vm) => getVmStatus(vm) === VmRunningStates.STOPPED,
-              ).length,
+              running: vms.filter((vm) => getVmStatus(vm) === VmRunningStates.RUNNING).length,
+              stopped: vms.filter((vm) => getVmStatus(vm) === VmRunningStates.STOPPED).length,
               new: vms.filter((vm) => getVmStatus(vm) === "new").length,
               deleted: vms.filter((vm) => vm.deleted).length,
             };
@@ -459,35 +391,22 @@ export function UserDetailsPage() {
             return (
               <div className="flex gap-4 text-sm text-gray-400">
                 <span>
-                  Total VMs:{" "}
-                  <span className="text-white font-medium">{stats.total}</span>
+                  Total VMs: <span className="text-white font-medium">{stats.total}</span>
                 </span>
                 <span>
-                  Running:{" "}
-                  <span className="text-green-400 font-medium">
-                    {stats.running}
-                  </span>
+                  Running: <span className="text-green-400 font-medium">{stats.running}</span>
                 </span>
                 <span>
-                  Stopped:{" "}
-                  <span className="text-red-400 font-medium">
-                    {stats.stopped}
-                  </span>
+                  Stopped: <span className="text-red-400 font-medium">{stats.stopped}</span>
                 </span>
                 {stats.new > 0 && (
                   <span>
-                    New:{" "}
-                    <span className="text-yellow-400 font-medium">
-                      {stats.new}
-                    </span>
+                    New: <span className="text-yellow-400 font-medium">{stats.new}</span>
                   </span>
                 )}
                 {stats.deleted > 0 && (
                   <span>
-                    Deleted:{" "}
-                    <span className="text-gray-400 font-medium">
-                      {stats.deleted}
-                    </span>
+                    Deleted: <span className="text-gray-400 font-medium">{stats.deleted}</span>
                   </span>
                 )}
               </div>
@@ -504,10 +423,7 @@ export function UserDetailsPage() {
             <span>Roles & Permissions</span>
           </h2>
           <PermissionGuard requiredPermissions={["users::update"]}>
-            <Button
-              onClick={() => setShowAddRoleModal(true)}
-              className="flex items-center space-x-2"
-            >
+            <Button onClick={() => setShowAddRoleModal(true)} className="flex items-center space-x-2">
               <PlusIcon className="h-4 w-4" />
               <span>Add Role</span>
             </Button>
@@ -532,20 +448,15 @@ export function UserDetailsPage() {
           calculateStats={(roles, total) => (
             <div className="flex gap-4 text-sm text-gray-400">
               <span>
-                Total roles:{" "}
-                <span className="text-white font-medium">{total}</span>
+                Total roles: <span className="text-white font-medium">{total}</span>
               </span>
               <span>
                 System roles:{" "}
-                <span className="text-blue-400 font-medium">
-                  {roles.filter((r) => r.role.is_system_role).length}
-                </span>
+                <span className="text-blue-400 font-medium">{roles.filter((r) => r.role.is_system_role).length}</span>
               </span>
               <span>
                 Custom roles:{" "}
-                <span className="text-green-400 font-medium">
-                  {roles.filter((r) => !r.role.is_system_role).length}
-                </span>
+                <span className="text-green-400 font-medium">{roles.filter((r) => !r.role.is_system_role).length}</span>
               </span>
             </div>
           )}
@@ -634,9 +545,7 @@ function AddRoleModal({
   };
 
   // Filter out roles that user already has
-  const assignableRoles = availableRoles.filter(
-    (role) => !userRoles.some((userRole) => userRole.role.id === role.id),
-  );
+  const assignableRoles = availableRoles.filter((role) => !userRoles.some((userRole) => userRole.role.id === role.id));
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Add Role" size="md">
@@ -647,22 +556,15 @@ function AddRoleModal({
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              Select Role to Add
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">Select Role to Add</label>
             {assignableRoles.length === 0 ? (
               <div className="text-gray-400 text-sm p-3 bg-slate-800 rounded border border-slate-600">
-                No additional roles available to assign. User has all available
-                roles.
+                No additional roles available to assign. User has all available roles.
               </div>
             ) : (
               <select
                 value={selectedRoleId || ""}
-                onChange={(e) =>
-                  setSelectedRoleId(
-                    e.target.value ? parseInt(e.target.value, 10) : null,
-                  )
-                }
+                onChange={(e) => setSelectedRoleId(e.target.value ? parseInt(e.target.value, 10) : null)}
                 className=""
                 required
               >
@@ -679,13 +581,9 @@ function AddRoleModal({
 
           {selectedRoleId && (
             <div className="p-3 bg-slate-800 rounded border border-slate-600">
-              <h4 className="text-sm font-medium text-white mb-2">
-                Role Details
-              </h4>
+              <h4 className="text-sm font-medium text-white mb-2">Role Details</h4>
               {(() => {
-                const selectedRole = assignableRoles.find(
-                  (r) => r.id === selectedRoleId,
-                );
+                const selectedRole = assignableRoles.find((r) => r.id === selectedRoleId);
                 if (!selectedRole) return null;
 
                 return (
@@ -697,44 +595,31 @@ function AddRoleModal({
                     {selectedRole.description && (
                       <div>
                         <span className="text-gray-400">Description:</span>{" "}
-                        <span className="text-white">
-                          {selectedRole.description}
-                        </span>
+                        <span className="text-white">{selectedRole.description}</span>
                       </div>
                     )}
                     <div>
                       <span className="text-gray-400">Type:</span>{" "}
-                      <span
-                        className={
-                          selectedRole.is_system_role
-                            ? "text-blue-400"
-                            : "text-green-400"
-                        }
-                      >
-                        {selectedRole.is_system_role
-                          ? "System Role"
-                          : "Custom Role"}
+                      <span className={selectedRole.is_system_role ? "text-blue-400" : "text-green-400"}>
+                        {selectedRole.is_system_role ? "System Role" : "Custom Role"}
                       </span>
                     </div>
                     <div>
                       <span className="text-gray-400">Permissions:</span>
                       <div className="mt-1 flex flex-wrap gap-1">
-                        {selectedRole.permissions
-                          ?.slice(0, 5)
-                          .map((permission, idx) => (
-                            <span
-                              key={idx}
-                              className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-900 text-blue-300"
-                            >
-                              {permission}
-                            </span>
-                          ))}
-                        {selectedRole.permissions &&
-                          selectedRole.permissions.length > 5 && (
-                            <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-600 text-gray-300">
-                              +{selectedRole.permissions.length - 5} more
-                            </span>
-                          )}
+                        {selectedRole.permissions?.slice(0, 5).map((permission, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-900 text-blue-300"
+                          >
+                            {permission}
+                          </span>
+                        ))}
+                        {selectedRole.permissions && selectedRole.permissions.length > 5 && (
+                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-600 text-gray-300">
+                            +{selectedRole.permissions.length - 5} more
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -747,12 +632,7 @@ function AddRoleModal({
             <Button type="button" variant="secondary" onClick={onClose}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={
-                loading || !selectedRoleId || assignableRoles.length === 0
-              }
-            >
+            <Button type="submit" disabled={loading || !selectedRoleId || assignableRoles.length === 0}>
               {loading ? "Adding..." : "Add Role"}
             </Button>
           </div>

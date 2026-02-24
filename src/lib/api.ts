@@ -247,6 +247,7 @@ export interface AdminUserInfo {
   pubkey: string;
   created: string;
   email: string | null;
+  email_verified: boolean;
   contact_nip17: boolean;
   contact_email: boolean;
   country_code: string | null;

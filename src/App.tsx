@@ -20,6 +20,7 @@ import { JobHistoryPage } from "./pages/JobHistoryPage";
 import { LoginPage } from "./pages/LoginPage";
 import { OsImagesPage } from "./pages/OsImagesPage";
 import { PaymentMethodsPage } from "./pages/PaymentMethodsPage";
+import { ReferralsPage } from "./pages/ReferralsPage";
 import { ReferralsReportPage } from "./pages/ReferralsReportPage";
 import { RegionsPage } from "./pages/RegionsPage";
 import { RolesPage } from "./pages/RolesPage";
@@ -237,6 +238,14 @@ function AppContent() {
               element={
                 <PermissionGuard requiredPermissions={["analytics::view"]}>
                   <SalesReportPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="referrals"
+              element={
+                <PermissionGuard requiredPermissions={["virtual_machines::view"]}>
+                  <ReferralsPage />
                 </PermissionGuard>
               }
             />

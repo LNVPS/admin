@@ -174,6 +174,25 @@ const navigation: SidebarItem[] = [
     ],
   },
   {
+    name: "Referrals",
+    icon: UserGroupIcon,
+    requiredPermissions: ["virtual_machines::view"],
+    children: [
+      {
+        name: "Management",
+        to: "/referrals",
+        icon: ListBulletIcon,
+        requiredPermissions: ["virtual_machines::view"],
+      },
+      {
+        name: "Report",
+        to: "/referrals-report",
+        icon: ChartBarIcon,
+        requiredPermissions: ["analytics::view"],
+      },
+    ],
+  },
+  {
     name: "Analytics",
     icon: ChartBarIcon,
     requiredPermissions: ["analytics::view"],
@@ -182,12 +201,6 @@ const navigation: SidebarItem[] = [
         name: "Sales Report",
         to: "/sales-report",
         icon: ChartBarIcon,
-        requiredPermissions: ["analytics::view"],
-      },
-      {
-        name: "Referrals Report",
-        to: "/referrals-report",
-        icon: UserGroupIcon,
         requiredPermissions: ["analytics::view"],
       },
     ],

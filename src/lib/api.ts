@@ -434,6 +434,8 @@ export interface AdminVmOsImageInfo {
   url: string;
   default_username: string | null;
   active_vm_count: number;
+  sha2: string | null;
+  sha2_url: string | null;
 }
 
 export interface AdminVmTemplateInfo {
@@ -1505,6 +1507,8 @@ export class AdminApi {
     release_date: string;
     url: string;
     default_username?: string;
+    sha2?: string;
+    sha2_url?: string;
   }) {
     const result = await this.handleResponse<ApiResponse<AdminVmOsImageInfo>>(
       await this.req("/api/admin/v1/vm_os_images", "POST", data),
@@ -1522,10 +1526,19 @@ export class AdminApi {
       release_date: string;
       url: string;
       default_username: string;
+      sha2: string;
+      sha2_url: string;
     }>,
   ) {
     const result = await this.handleResponse<ApiResponse<AdminVmOsImageInfo>>(
       await this.req(`/api/admin/v1/vm_os_images/${id}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
+  async downloadVmOsImage(id: number) {
+    const result = await this.handleResponse<ApiResponse<string>>(
+      await this.req(`/api/admin/v1/vm_os_images/${id}/download`, "POST"),
     );
     return result.data;
   }

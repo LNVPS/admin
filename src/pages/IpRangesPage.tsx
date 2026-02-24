@@ -98,7 +98,7 @@ export function IpRangesPage() {
       <td className="text-gray-300">
         <span className="font-medium">
           {ipRange.assignment_count}
-          {ipRange.available_ips && <> ({ipRange.available_ips?.toLocaleString()})</>}
+          {ipRange.available_ips !== undefined && <> ({ipRange.available_ips})</>}
         </span>
       </td>
       <td>

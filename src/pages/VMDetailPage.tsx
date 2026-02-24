@@ -33,7 +33,7 @@ import {
   type AdminVmPaymentInfo,
   VmRunningStates,
 } from "../lib/api";
-import { formatCurrency } from "../utils/currency";
+import { CURRENCIES, formatCurrency } from "../utils/currency";
 import { formatBytes } from "../utils/formatBytes";
 
 export function VMDetailPage() {
@@ -240,6 +240,7 @@ export function VMDetailPage() {
     <>
       <th>ID</th>
       <th>Amount</th>
+      <th>Rate</th>
       <th>Tax</th>
       <th>Processing Fee</th>
       <th>External ID</th>
@@ -270,6 +271,25 @@ export function VMDetailPage() {
       </td>
       <td className="text-white">
         {formatPaymentAmount(payment.amount, payment.currency, payment.rate, payment.base_currency)}
+      </td>
+      <td className="text-gray-400 text-sm">
+        {payment.rate ? (
+          <span className="font-mono">
+            {payment.base_currency ? (
+              <span className="text-gray-300">
+                {new Intl.NumberFormat("en-US", {
+                  style: "currency",
+                  currency: payment.base_currency,
+                  maximumFractionDigits: 2,
+                }).format(payment.rate)}
+              </span>
+            ) : (
+              <span className="text-gray-500">{payment.rate.toFixed(2)}</span>
+            )}
+          </span>
+        ) : (
+          <span className="text-gray-600">—</span>
+        )}
       </td>
       <td className="text-yellow-400 text-sm">
         {payment.tax > 0 ? formatCurrency(payment.tax, payment.currency) : <span className="text-gray-600">—</span>}

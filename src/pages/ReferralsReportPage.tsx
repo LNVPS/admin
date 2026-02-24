@@ -334,10 +334,10 @@ export function ReferralsReportPage() {
         let baseAmount: number;
         if (item.currency === "BTC") {
           // amount is in millisats, rate is base_currency/BTC
-          baseAmount = Math.round(((item.amount * item.rate) / 1e9) * (refSplitPercent / 100));
+          baseAmount = Math.round((item.amount / 1e11) * item.rate * (refSplitPercent / 100));
         } else if (item.base_currency === "BTC") {
           // amount is in cents, result should be in millisats
-          baseAmount = Math.round(item.amount * item.rate * 1e9 * (refSplitPercent / 100));
+          baseAmount = Math.round((item.amount / 100) * item.rate * 1e11 * (refSplitPercent / 100));
         } else {
           // fiat to fiat
           baseAmount = Math.round(item.amount * item.rate * (refSplitPercent / 100));

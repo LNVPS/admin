@@ -494,6 +494,12 @@ export interface AdminCustomPricingInfo {
     max_disk_size: number;
   }[];
   template_count: number;
+  disk_iops_read: number | null;
+  disk_iops_write: number | null;
+  disk_mbps_read: number | null;
+  disk_mbps_write: number | null;
+  network_mbps: number | null;
+  cpu_limit: number | null;
 }
 
 export interface AdminCustomTemplateInfo {
@@ -1687,6 +1693,12 @@ export class AdminApi {
       min_disk_size: number;
       max_disk_size: number;
     }[];
+    disk_iops_read?: number | null;
+    disk_iops_write?: number | null;
+    disk_mbps_read?: number | null;
+    disk_mbps_write?: number | null;
+    network_mbps?: number | null;
+    cpu_limit?: number | null;
   }) {
     const result = await this.handleResponse<ApiResponse<AdminCustomPricingInfo>>(
       await this.req("/api/admin/v1/custom_pricing", "POST", data),
@@ -1720,6 +1732,12 @@ export class AdminApi {
         min_disk_size: number;
         max_disk_size: number;
       }[];
+      disk_iops_read: number | null;
+      disk_iops_write: number | null;
+      disk_mbps_read: number | null;
+      disk_mbps_write: number | null;
+      network_mbps: number | null;
+      cpu_limit: number | null;
     }>,
   ) {
     const result = await this.handleResponse<ApiResponse<AdminCustomPricingInfo>>(

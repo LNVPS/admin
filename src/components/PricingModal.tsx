@@ -41,6 +41,12 @@ interface FormData {
   min_memory: string;
   max_memory: string;
   disk_pricing: DiskPricingFormData[];
+  cpu_limit: string;
+  network_mbps: string;
+  disk_iops_read: string;
+  disk_iops_write: string;
+  disk_mbps_read: string;
+  disk_mbps_write: string;
 }
 
 const DEFAULT_DISK_PRICING: DiskPricingFormData[] = [
@@ -65,6 +71,12 @@ const getDefaultFormData = (): FormData => ({
   min_memory: "1",
   max_memory: "128",
   disk_pricing: [...DEFAULT_DISK_PRICING],
+  cpu_limit: "",
+  network_mbps: "",
+  disk_iops_read: "",
+  disk_iops_write: "",
+  disk_mbps_read: "",
+  disk_mbps_write: "",
 });
 
 const getFormDataFromPricing = (pricing: AdminCustomPricingInfo): FormData => ({
@@ -90,6 +102,12 @@ const getFormDataFromPricing = (pricing: AdminCustomPricingInfo): FormData => ({
     min_disk_size: Math.round(disk.min_disk_size / (1024 * 1024 * 1024)).toString(),
     max_disk_size: Math.round(disk.max_disk_size / (1024 * 1024 * 1024)).toString(),
   })),
+  cpu_limit: pricing.cpu_limit != null ? pricing.cpu_limit.toString() : "",
+  network_mbps: pricing.network_mbps != null ? pricing.network_mbps.toString() : "",
+  disk_iops_read: pricing.disk_iops_read != null ? pricing.disk_iops_read.toString() : "",
+  disk_iops_write: pricing.disk_iops_write != null ? pricing.disk_iops_write.toString() : "",
+  disk_mbps_read: pricing.disk_mbps_read != null ? pricing.disk_mbps_read.toString() : "",
+  disk_mbps_write: pricing.disk_mbps_write != null ? pricing.disk_mbps_write.toString() : "",
 });
 
 export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingModalProps) {
@@ -144,6 +162,13 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
       if (formData.cpu_features.length > 0) {
         submitData.cpu_features = formData.cpu_features;
       }
+
+      submitData.cpu_limit = formData.cpu_limit !== "" ? parseFloat(formData.cpu_limit) : null;
+      submitData.network_mbps = formData.network_mbps !== "" ? parseFloat(formData.network_mbps) : null;
+      submitData.disk_iops_read = formData.disk_iops_read !== "" ? parseInt(formData.disk_iops_read) : null;
+      submitData.disk_iops_write = formData.disk_iops_write !== "" ? parseInt(formData.disk_iops_write) : null;
+      submitData.disk_mbps_read = formData.disk_mbps_read !== "" ? parseFloat(formData.disk_mbps_read) : null;
+      submitData.disk_mbps_write = formData.disk_mbps_write !== "" ? parseFloat(formData.disk_mbps_write) : null;
 
       if (isEditMode && pricing) {
         await adminApi.updateCustomPricing(pricing.id, submitData);
@@ -364,6 +389,78 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
                 max="9999"
                 value={formData.max_memory}
                 onChange={(e) => setFormData({ ...formData, max_memory: e.target.value })}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* VM resource throttle limits */}
+        <div>
+          <h4 className="text-lg font-medium text-white mb-1">VM Resource Limits</h4>
+          <p className="text-xs text-gray-400 mb-3">Leave blank for uncapped</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">CPU Limit (e.g. 0.5 = 50%)</label>
+              <input
+                type="number"
+                min="0"
+                max="1"
+                step="0.01"
+                value={formData.cpu_limit}
+                onChange={(e) => setFormData({ ...formData, cpu_limit: e.target.value })}
+                placeholder="Uncapped"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Network Bandwidth (Mbit/s)</label>
+              <input
+                type="number"
+                min="0"
+                value={formData.network_mbps}
+                onChange={(e) => setFormData({ ...formData, network_mbps: e.target.value })}
+                placeholder="Uncapped"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Disk Read IOPS</label>
+              <input
+                type="number"
+                min="0"
+                value={formData.disk_iops_read}
+                onChange={(e) => setFormData({ ...formData, disk_iops_read: e.target.value })}
+                placeholder="Uncapped"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Disk Write IOPS</label>
+              <input
+                type="number"
+                min="0"
+                value={formData.disk_iops_write}
+                onChange={(e) => setFormData({ ...formData, disk_iops_write: e.target.value })}
+                placeholder="Uncapped"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Disk Read MB/s</label>
+              <input
+                type="number"
+                min="0"
+                value={formData.disk_mbps_read}
+                onChange={(e) => setFormData({ ...formData, disk_mbps_read: e.target.value })}
+                placeholder="Uncapped"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Disk Write MB/s</label>
+              <input
+                type="number"
+                min="0"
+                value={formData.disk_mbps_write}
+                onChange={(e) => setFormData({ ...formData, disk_mbps_write: e.target.value })}
+                placeholder="Uncapped"
               />
             </div>
           </div>

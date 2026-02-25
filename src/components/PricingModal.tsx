@@ -122,16 +122,16 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
         memory_cost: toSmallestUnits(parseFloat(formData.memory_cost) || 0, formData.currency),
         ip4_cost: toSmallestUnits(parseFloat(formData.ip4_cost) || 0, formData.currency),
         ip6_cost: toSmallestUnits(parseFloat(formData.ip6_cost) || 0, formData.currency),
-        min_cpu: parseInt(formData.min_cpu) || 1,
-        max_cpu: parseInt(formData.max_cpu) || 64,
-        min_memory: (parseInt(formData.min_memory) || 1) * 1024 * 1024 * 1024,
-        max_memory: (parseInt(formData.max_memory) || 128) * 1024 * 1024 * 1024,
+        min_cpu: parseInt(formData.min_cpu) || 0,
+        max_cpu: parseInt(formData.max_cpu) || 0,
+        min_memory: (parseInt(formData.min_memory) || 0) * 1024 * 1024 * 1024,
+        max_memory: (parseInt(formData.max_memory) || 0) * 1024 * 1024 * 1024,
         disk_pricing: formData.disk_pricing.map((disk) => ({
           kind: disk.kind,
           interface: disk.interface,
           cost: toSmallestUnits(parseFloat(disk.cost) || 0, formData.currency),
-          min_disk_size: (parseInt(disk.min_disk_size) || 10) * 1024 * 1024 * 1024,
-          max_disk_size: (parseInt(disk.max_disk_size) || 1000) * 1024 * 1024 * 1024,
+          min_disk_size: (parseInt(disk.min_disk_size) || 0) * 1024 * 1024 * 1024,
+          max_disk_size: (parseInt(disk.max_disk_size) || 0) * 1024 * 1024 * 1024,
         })),
       };
 
@@ -334,7 +334,6 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
               <label className="block text-sm font-medium text-gray-300 mb-1">Min CPU Cores</label>
               <input
                 type="number"
-                min="1"
                 max="999"
                 value={formData.min_cpu}
                 onChange={(e) => setFormData({ ...formData, min_cpu: e.target.value })}
@@ -344,7 +343,6 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
               <label className="block text-sm font-medium text-gray-300 mb-1">Max CPU Cores</label>
               <input
                 type="number"
-                min="1"
                 max="999"
                 value={formData.max_cpu}
                 onChange={(e) => setFormData({ ...formData, max_cpu: e.target.value })}
@@ -354,7 +352,6 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
               <label className="block text-sm font-medium text-gray-300 mb-1">Min Memory (GB)</label>
               <input
                 type="number"
-                min="1"
                 max="9999"
                 value={formData.min_memory}
                 onChange={(e) => setFormData({ ...formData, min_memory: e.target.value })}
@@ -364,7 +361,6 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
               <label className="block text-sm font-medium text-gray-300 mb-1">Max Memory (GB)</label>
               <input
                 type="number"
-                min="1"
                 max="9999"
                 value={formData.max_memory}
                 onChange={(e) => setFormData({ ...formData, max_memory: e.target.value })}
@@ -429,7 +425,6 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
                   <label className="block text-sm font-medium text-gray-300 mb-1">Min (GB)</label>
                   <input
                     type="number"
-                    min="1"
                     value={disk.min_disk_size}
                     onChange={(e) => updateDiskPricing(index, "min_disk_size", e.target.value)}
                     className="w-full px-2 py-1 bg-slate-600 border border-slate-500 rounded text-white text-sm"
@@ -439,7 +434,6 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
                   <label className="block text-sm font-medium text-gray-300 mb-1">Max (GB)</label>
                   <input
                     type="number"
-                    min="1"
                     value={disk.max_disk_size}
                     onChange={(e) => updateDiskPricing(index, "max_disk_size", e.target.value)}
                     className="w-full px-2 py-1 bg-slate-600 border border-slate-500 rounded text-white text-sm"

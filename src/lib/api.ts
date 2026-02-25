@@ -457,6 +457,12 @@ export interface AdminVmTemplateInfo {
   region_name: string | null; // Populated with region name
   cost_plan_name: string | null; // Populated with cost plan name
   active_vm_count: number;
+  disk_iops_read: number | null;
+  disk_iops_write: number | null;
+  disk_mbps_read: number | null;
+  disk_mbps_write: number | null;
+  network_mbps: number | null;
+  cpu_limit: number | null;
 }
 
 export interface AdminCustomPricingInfo {
@@ -1581,6 +1587,13 @@ export class AdminApi {
     cost_plan_currency?: string;
     cost_plan_interval_amount?: number;
     cost_plan_interval_type?: "day" | "month" | "year";
+    // Resource limits (optional, null/omitted = uncapped)
+    disk_iops_read?: number | null;
+    disk_iops_write?: number | null;
+    disk_mbps_read?: number | null;
+    disk_mbps_write?: number | null;
+    network_mbps?: number | null;
+    cpu_limit?: number | null;
   }) {
     const result = await this.handleResponse<ApiResponse<AdminVmTemplateInfo>>(
       await this.req("/api/admin/v1/vm_templates", "POST", data),
@@ -1595,8 +1608,8 @@ export class AdminApi {
       enabled: boolean;
       expires: string | null;
       cpu: number;
-      cpu_mfg: string;
-      cpu_arch: string;
+      cpu_mfg: string | null;
+      cpu_arch: string | null;
       cpu_features: string[];
       memory: number;
       disk_size: number;
@@ -1609,6 +1622,13 @@ export class AdminApi {
       cost_plan_currency: string;
       cost_plan_interval_amount: number;
       cost_plan_interval_type: "day" | "month" | "year";
+      // Resource limits — set null to remove limit
+      disk_iops_read: number | null;
+      disk_iops_write: number | null;
+      disk_mbps_read: number | null;
+      disk_mbps_write: number | null;
+      network_mbps: number | null;
+      cpu_limit: number | null;
     }>,
   ) {
     const result = await this.handleResponse<ApiResponse<AdminVmTemplateInfo>>(

@@ -613,7 +613,7 @@ export interface AdminVmPaymentInfo {
   is_paid: boolean;
   paid_at: string | null;
   rate: number;
-  base_currency: string;
+  company_base_currency: string;
 }
 
 export interface AdminRefundAmountInfo {

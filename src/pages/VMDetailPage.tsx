@@ -241,6 +241,7 @@ export function VMDetailPage() {
       <th>ID</th>
       <th>Amount</th>
       <th>Rate</th>
+      <th>Base Amount</th>
       <th>Tax</th>
       <th>Processing Fee</th>
       <th>External ID</th>
@@ -269,32 +270,36 @@ export function VMDetailPage() {
           </button>
         </span>
       </td>
-      <td className="text-white">
-        {formatPaymentAmount(payment.amount, payment.currency, payment.rate, payment.base_currency)}
-      </td>
-      <td className="text-gray-400 text-sm">
-        {payment.rate ? (
+      <td>{formatCurrency(payment.amount, payment.currency)}</td>
+      <td className="text-sm">
+        {payment.rate && payment.rate !== 1 ? (
           <span className="font-mono">
-            {payment.base_currency ? (
-              <span className="text-gray-300">
-                {new Intl.NumberFormat("en-US", {
+            {payment.company_base_currency
+              ? new Intl.NumberFormat("en-US", {
                   style: "currency",
-                  currency: payment.base_currency,
+                  currency: payment.company_base_currency,
+                  minimumFractionDigits: 0,
                   maximumFractionDigits: 2,
-                }).format(payment.rate)}
-              </span>
-            ) : (
-              <span className="text-gray-500">{payment.rate.toFixed(2)}</span>
-            )}
+                }).format(payment.rate)
+              : Number.isInteger(payment.rate)
+                ? payment.rate.toString()
+                : payment.rate.toFixed(2)}
           </span>
         ) : (
           <span className="text-gray-600">—</span>
         )}
       </td>
-      <td className="text-yellow-400 text-sm">
+      <td className="text-sm">
+        {payment.rate && payment.company_base_currency && payment.currency !== payment.company_base_currency ? (
+          formatBaseAmount(payment.amount, payment.currency, payment.rate, payment.company_base_currency)
+        ) : (
+          <span className="text-gray-600">—</span>
+        )}
+      </td>
+      <td className="text-sm">
         {payment.tax > 0 ? formatCurrency(payment.tax, payment.currency) : <span className="text-gray-600">—</span>}
       </td>
-      <td className="text-orange-400 text-sm">
+      <td className="text-sm">
         {payment.processing_fee > 0 ? (
           formatCurrency(payment.processing_fee, payment.currency)
         ) : (
@@ -331,11 +336,21 @@ export function VMDetailPage() {
         <div className="flex items-center space-x-2">
           {payment.is_paid ? (
             <CheckCircleIcon className="h-4 w-4 text-green-400" />
+          ) : new Date(payment.expires) < new Date() ? (
+            <ClockIcon className="h-4 w-4 text-gray-400" />
           ) : (
             <XCircleIcon className="h-4 w-4 text-red-400" />
           )}
-          <span className={payment.is_paid ? "text-green-400" : "text-red-400"}>
-            {payment.is_paid ? "Paid" : "Pending"}
+          <span
+            className={
+              payment.is_paid
+                ? "text-green-400"
+                : new Date(payment.expires) < new Date()
+                  ? "text-gray-400"
+                  : "text-red-400"
+            }
+          >
+            {payment.is_paid ? "Paid" : new Date(payment.expires) < new Date() ? "Expired" : "Pending"}
           </span>
         </div>
       </td>
@@ -409,37 +424,27 @@ export function VMDetailPage() {
     }
   };
 
-  const formatPaymentAmount = (amount: number, currency: string, rate: number, base_currency: string): string => {
-    // Handle missing currency
-    if (!currency) {
-      return amount?.toString() ?? "-";
+  const formatBaseAmount = (amount: number, currency: string, rate: number, company_base_currency: string): string => {
+    if (!rate || !company_base_currency || currency === company_base_currency) {
+      return "—";
     }
 
-    // amount is in smallest units (cents for fiat, millisats for BTC)
-    // formatCurrency handles conversion to human-readable
-    const primaryAmount = formatCurrency(amount, currency);
-
-    if (rate && base_currency && currency !== base_currency) {
-      // rate is the exchange rate (e.g., 58000 EUR per BTC)
-      // Convert amount to base currency smallest units
-      let baseAmount: number;
-      if (currency === "BTC") {
-        // amount is in millisats, rate is base_currency/BTC
-        // 1 BTC = 1e11 millisats, result should be in cents
-        // baseAmount = (amount / 1e11) * rate * 100 = amount * rate / 1e9
-        baseAmount = Math.round((amount * rate) / 1e9);
-      } else if (base_currency === "BTC") {
-        // amount is in cents, rate is BTC/fiat, result should be in millisats
-        // This case is unusual but handle it
-        baseAmount = Math.round(amount * rate * 1e9);
-      } else {
-        // fiat to fiat conversion
-        baseAmount = Math.round(amount * rate);
-      }
-      return `${primaryAmount} (${formatCurrency(baseAmount, base_currency)})`;
+    // Convert amount (in smallest units) to base currency smallest units using the exchange rate.
+    // rate is expressed as base_currency per 1 BTC (e.g. 58000 EUR/BTC).
+    let baseAmount: number;
+    if (currency === "BTC") {
+      // amount is in millisats; 1 BTC = 1e11 millisats; result in cents
+      // baseAmount_cents = (amount_millisats / 1e11) * rate * 100 = amount * rate / 1e9
+      baseAmount = Math.round((amount * rate) / 1e9);
+    } else if (company_base_currency === "BTC") {
+      // amount is in cents; result in millisats
+      baseAmount = Math.round(amount * rate * 1e9);
+    } else {
+      // fiat to fiat: amount in cents, rate is e.g. EUR/USD
+      baseAmount = Math.round(amount * rate);
     }
 
-    return primaryAmount;
+    return formatCurrency(baseAmount, company_base_currency);
   };
 
   const formatUptime = (seconds: number): string => {

@@ -288,7 +288,11 @@ export function VmTemplatesPage() {
   return (
     <>
       <PaginatedTable
-        apiCall={(params) => adminApi.getVmTemplates(params)}
+        apiCall={async (params) => {
+          const result = await adminApi.getVmTemplates(params);
+          result.data.sort((a, b) => b.id - a.id);
+          return result;
+        }}
         renderHeader={renderHeader}
         renderRow={renderRow}
         calculateStats={calculateStats}

@@ -1,31 +1,21 @@
-import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import { useAdminApi } from "../hooks/useAdminApi";
+import { EyeIcon, FunnelIcon, PlayIcon, PlusIcon, StopIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { bech32ToHex } from "@snort/shared";
+import { tryParseNostrLink } from "@snort/system";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Button } from "../components/Button";
+import { CreateVmModal } from "../components/CreateVmModal";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { Profile } from "../components/Profile";
-import { Button } from "../components/Button";
-import { VmStatusBadge, getVmStatus } from "../components/VmStatusBadge";
-import { CreateVmModal } from "../components/CreateVmModal";
-import {
-  type AdminVmInfo,
-  VmRunningStates,
-  type AdminRegionInfo,
-  type AdminHostInfo,
-} from "../lib/api";
+import { getVmStatus, VmStatusBadge } from "../components/VmStatusBadge";
+import { useAdminApi } from "../hooks/useAdminApi";
+import { type AdminHostInfo, type AdminRegionInfo, type AdminVmInfo, VmRunningStates } from "../lib/api";
 import { formatBytes } from "../utils/formatBytes";
-import {
-  PlayIcon,
-  StopIcon,
-  FunnelIcon,
-  XMarkIcon,
-  EyeIcon,
-  PlusIcon,
-} from "@heroicons/react/24/outline";
-import { tryParseNostrLink } from "@snort/system";
-import { bech32ToHex } from "@snort/shared";
 
 export function VMsPage() {
   const adminApi = useAdminApi();
+  const navigate = useNavigate();
+  const [vmIdInput, setVmIdInput] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
   const [showCreateVmModal, setShowCreateVmModal] = useState(false);
@@ -45,7 +35,7 @@ export function VMsPage() {
 
   const handleVmCreated = (jobId: string) => {
     console.log("VM creation job dispatched:", jobId);
-    refreshData(); // Refresh VM list
+    refreshData();
   };
 
   useEffect(() => {
@@ -87,13 +77,10 @@ export function VMsPage() {
     if (!trimmedPubkey) return "";
 
     try {
-      if (
-        trimmedPubkey.startsWith("npub1") ||
-        trimmedPubkey.startsWith("nprofile1")
-      ) {
+      if (trimmedPubkey.startsWith("npub1") || trimmedPubkey.startsWith("nprofile1")) {
         const link = tryParseNostrLink(trimmedPubkey);
         if (link) {
-          return link.id; // This gives us the hex pubkey
+          return link.id;
         } else {
           return bech32ToHex(trimmedPubkey);
         }
@@ -158,15 +145,9 @@ export function VMsPage() {
   );
 
   const renderRow = (vmInfo: AdminVmInfo, index: number) => (
-    <tr
-      key={vmInfo.id || index}
-      className={vmInfo.deleted ? "bg-gray-800/50 opacity-75" : ""}
-    >
+    <tr key={vmInfo.id || index} className={vmInfo.deleted ? "bg-gray-800/50 opacity-75" : ""}>
       <td className="whitespace-nowrap">
-        <Link
-          to={`/vms/${vmInfo.id}`}
-          className="text-blue-400 hover:text-blue-300 font-medium"
-        >
+        <Link to={`/vms/${vmInfo.id}`} className="text-blue-400 hover:text-blue-300 font-medium">
           {vmInfo.id}
         </Link>
       </td>
@@ -175,9 +156,7 @@ export function VMsPage() {
           <div className="font-medium">{vmInfo.image_name}</div>
           <div className="text-blue-400">
             {vmInfo.template_name}
-            {vmInfo.host_name && (
-              <span className="text-gray-400"> · {vmInfo.host_name}</span>
-            )}
+            {vmInfo.host_name && <span className="text-gray-400"> · {vmInfo.host_name}</span>}
           </div>
         </div>
       </td>
@@ -186,15 +165,10 @@ export function VMsPage() {
           <div className="flex items-center space-x-2">
             <VmStatusBadge vm={vmInfo} />
           </div>
-          {vmInfo.cpu !== undefined &&
-          vmInfo.memory !== undefined &&
-          vmInfo.disk_size !== undefined ? (
+          {vmInfo.cpu !== undefined && vmInfo.memory !== undefined && vmInfo.disk_size !== undefined ? (
             <div className="text-sm font-mono text-gray-300">
-              {vmInfo.cpu}C · {formatBytes(vmInfo.memory)} ·{" "}
-              {formatBytes(vmInfo.disk_size)}{" "}
-              <span className="text-gray-400 uppercase">
-                {vmInfo.disk_type}
-              </span>
+              {vmInfo.cpu}C · {formatBytes(vmInfo.memory)} · {formatBytes(vmInfo.disk_size)}{" "}
+              <span className="text-gray-400 uppercase">{vmInfo.disk_type}</span>
             </div>
           ) : (
             <div className="text-gray-500 text-xs">No resource info</div>
@@ -220,7 +194,7 @@ export function VMsPage() {
           <Link
             to={`/users/${vmInfo.user_id}`}
             className="text-blue-400 hover:text-blue-300"
-            state={{ user: undefined }} // Navigate to user details page
+            state={{ user: undefined }}
           >
             <Profile pubkey={vmInfo.user_pubkey || ""} avatarSize="sm" />
           </Link>
@@ -230,49 +204,37 @@ export function VMsPage() {
       </td>
       <td>
         <div className="space-y-0.5">
-          <div className="text-gray-400">
-            {new Date(vmInfo.created).toLocaleDateString()}
-          </div>
-          <div className="text-gray-500">
-            Exp: {new Date(vmInfo.expires).toLocaleDateString()}
-          </div>
+          <div className="text-gray-400">{new Date(vmInfo.created).toLocaleDateString()}</div>
+          <div className="text-gray-500">Exp: {new Date(vmInfo.expires).toLocaleDateString()}</div>
         </div>
       </td>
       <td className="text-right">
         <div className="flex justify-end space-x-2">
           <Link to={`/vms/${vmInfo.id}`}>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="p-1 text-blue-400 hover:text-blue-300"
-            >
+            <Button size="sm" variant="secondary" className="p-1 text-blue-400 hover:text-blue-300">
               <EyeIcon className="h-4 w-4" />
             </Button>
           </Link>
-          {!vmInfo.deleted &&
-            getVmStatus(vmInfo) !== "new" &&
-            getVmStatus(vmInfo) === VmRunningStates.STOPPED && (
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => handleStartVM(vmInfo)}
-                className="p-1 text-green-400 hover:text-green-300"
-              >
-                <PlayIcon className="h-4 w-4" />
-              </Button>
-            )}
-          {!vmInfo.deleted &&
-            getVmStatus(vmInfo) !== "new" &&
-            getVmStatus(vmInfo) === VmRunningStates.RUNNING && (
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => handleStopVM(vmInfo)}
-                className="p-1 text-yellow-400 hover:text-yellow-300"
-              >
-                <StopIcon className="h-4 w-4" />
-              </Button>
-            )}
+          {!vmInfo.deleted && getVmStatus(vmInfo) !== "new" && getVmStatus(vmInfo) === VmRunningStates.STOPPED && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => handleStartVM(vmInfo)}
+              className="p-1 text-green-400 hover:text-green-300"
+            >
+              <PlayIcon className="h-4 w-4" />
+            </Button>
+          )}
+          {!vmInfo.deleted && getVmStatus(vmInfo) !== "new" && getVmStatus(vmInfo) === VmRunningStates.RUNNING && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => handleStopVM(vmInfo)}
+              className="p-1 text-yellow-400 hover:text-yellow-300"
+            >
+              <StopIcon className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </td>
     </tr>
@@ -291,10 +253,8 @@ export function VMsPage() {
   const calculateStats = (vms: AdminVmInfo[], totalItems: number) => {
     const stats = {
       total: totalItems,
-      running: vms.filter((vm) => getVmStatus(vm) === VmRunningStates.RUNNING)
-        .length,
-      stopped: vms.filter((vm) => getVmStatus(vm) === VmRunningStates.STOPPED)
-        .length,
+      running: vms.filter((vm) => getVmStatus(vm) === VmRunningStates.RUNNING).length,
+      stopped: vms.filter((vm) => getVmStatus(vm) === VmRunningStates.STOPPED).length,
       new: vms.filter((vm) => getVmStatus(vm) === "new").length,
       deleted: vms.filter((vm) => vm.deleted).length,
     };
@@ -307,45 +267,54 @@ export function VMsPage() {
           <h1 className="text-2xl font-bold text-white">Virtual Machines</h1>
           <div className="mt-2 flex gap-4 text-sm text-gray-400">
             <span>
-              Total:{" "}
-              <span className="text-white font-medium">{stats.total}</span>
+              Total: <span className="text-white font-medium">{stats.total}</span>
             </span>
             <span>
-              Running:{" "}
-              <span className="text-green-400 font-medium">
-                {stats.running}
-              </span>
+              Running: <span className="text-green-400 font-medium">{stats.running}</span>
             </span>
             <span>
-              Stopped:{" "}
-              <span className="text-red-400 font-medium">{stats.stopped}</span>
+              Stopped: <span className="text-red-400 font-medium">{stats.stopped}</span>
             </span>
             {stats.new > 0 && (
               <span>
-                New:{" "}
-                <span className="text-yellow-400 font-medium">{stats.new}</span>
+                New: <span className="text-yellow-400 font-medium">{stats.new}</span>
               </span>
             )}
             {filters.include_deleted && stats.deleted > 0 && (
               <span>
-                Deleted:{" "}
-                <span className="text-gray-400 font-medium">
-                  {stats.deleted}
-                </span>
+                Deleted: <span className="text-gray-400 font-medium">{stats.deleted}</span>
               </span>
             )}
           </div>
         </div>
         <div className="flex items-center space-x-2">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const id = vmIdInput.trim();
+              if (id && !isNaN(Number(id))) {
+                navigate(`/vms/${id}`);
+                setVmIdInput("");
+              }
+            }}
+            className="flex items-center space-x-1"
+          >
+            <input
+              type="number"
+              value={vmIdInput}
+              onChange={(e) => setVmIdInput(e.target.value)}
+              placeholder="Go to VM ID"
+              className="w-32 px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-md text-white text-sm focus:outline-none focus:border-blue-500"
+            />
+            <Button variant="secondary" type="submit" disabled={!vmIdInput.trim()}>
+              Go
+            </Button>
+          </form>
           <Button variant="primary" onClick={() => setShowCreateVmModal(true)}>
             <PlusIcon className="h-4 w-4 mr-2" />
             Create VM
           </Button>
-          <Button
-            variant="secondary"
-            onClick={() => setShowFilters(!showFilters)}
-            className="relative"
-          >
+          <Button variant="secondary" onClick={() => setShowFilters(!showFilters)} className="relative">
             <FunnelIcon className="h-4 w-4 mr-2" />
             Filters
             {activeFilters > 0 && (
@@ -366,20 +335,14 @@ export function VMsPage() {
         <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-white">Filters</h3>
-            <Button
-              variant="secondary"
-              onClick={() => setShowFilters(false)}
-              className="p-1"
-            >
+            <Button variant="secondary" onClick={() => setShowFilters(false)} className="p-1">
               <XMarkIcon className="h-4 w-4" />
             </Button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                User ID
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">User ID</label>
               <input
                 type="number"
                 value={filters.user_id}
@@ -390,9 +353,7 @@ export function VMsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Host
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Host</label>
               <select
                 value={filters.host_id}
                 onChange={(e) => handleFilterChange("host_id", e.target.value)}
@@ -408,14 +369,10 @@ export function VMsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Region
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Region</label>
               <select
                 value={filters.region_id}
-                onChange={(e) =>
-                  handleFilterChange("region_id", e.target.value)
-                }
+                onChange={(e) => handleFilterChange("region_id", e.target.value)}
                 className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
               >
                 <option value="">All regions</option>
@@ -428,9 +385,7 @@ export function VMsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Public Key
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Public Key</label>
               <input
                 type="text"
                 value={filters.pubkey}
@@ -445,25 +400,16 @@ export function VMsPage() {
                 type="checkbox"
                 id="include_deleted"
                 checked={filters.include_deleted}
-                onChange={(e) =>
-                  handleFilterChange("include_deleted", e.target.checked)
-                }
+                onChange={(e) => handleFilterChange("include_deleted", e.target.checked)}
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
-              <label
-                htmlFor="include_deleted"
-                className="ml-2 text-sm text-gray-300"
-              >
+              <label htmlFor="include_deleted" className="ml-2 text-sm text-gray-300">
                 Include deleted VMs
               </label>
             </div>
 
             <div className="flex items-end">
-              <Button
-                variant="secondary"
-                onClick={clearFilters}
-                className="w-full"
-              >
+              <Button variant="secondary" onClick={clearFilters} className="w-full">
                 Clear All Filters
               </Button>
             </div>
@@ -483,7 +429,6 @@ export function VMsPage() {
         minWidth="1200px"
       />
 
-      {/* Create VM Modal */}
       <CreateVmModal
         isOpen={showCreateVmModal}
         onClose={() => setShowCreateVmModal(false)}

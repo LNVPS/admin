@@ -44,6 +44,7 @@ export function UserDetailsPage() {
   const [loading, setLoading] = useState(!userFromState);
   const [error, setError] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [includeDeletedVms, setIncludeDeletedVms] = useState(false);
   const [showAddRoleModal, setShowAddRoleModal] = useState(false);
   const [showEditUserModal, setShowEditUserModal] = useState(false);
 
@@ -361,16 +362,27 @@ export function UserDetailsPage() {
 
       {/* User's VMs */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold text-white flex items-center space-x-2">
-          <ServerIcon className="h-5 w-5" />
-          <span>Virtual Machines</span>
+        <h2 className="text-xl font-semibold text-white flex items-center justify-between">
+          <span className="flex items-center space-x-2">
+            <ServerIcon className="h-5 w-5" />
+            <span>Virtual Machines</span>
+          </span>
+          <label className="flex items-center gap-2 text-sm font-normal text-gray-300 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={includeDeletedVms}
+              onChange={(e) => setIncludeDeletedVms(e.target.checked)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            Include deleted
+          </label>
         </h2>
         <PaginatedTable
           apiCall={(params) =>
             adminApi.getVMs({
               ...params,
               user_id: user.id,
-              include_deleted: true,
+              include_deleted: includeDeletedVms ? true : undefined,
             })
           }
           renderHeader={renderVMHeader}
@@ -378,7 +390,7 @@ export function UserDetailsPage() {
           itemsPerPage={10}
           errorAction="load user VMs"
           loadingMessage="Loading user VMs..."
-          dependencies={[user.id, refreshTrigger]}
+          dependencies={[user.id, refreshTrigger, includeDeletedVms]}
           calculateStats={(vms, total) => {
             const stats = {
               total,

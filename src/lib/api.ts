@@ -1210,16 +1210,22 @@ export class AdminApi {
     return result.data;
   }
 
-  async getVMPayments(vmId: number) {
-    const result = await this.handleResponse<ApiResponse<AdminVmPaymentInfo[]>>(
-      await this.req(`/api/admin/v1/vms/${vmId}/payments`, "GET"),
+  async getVMPayments(vmId: number, params?: { limit?: number; offset?: number }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminVmPaymentInfo>>(
+      await this.req(`/api/admin/v1/vms/${vmId}/payments`, "GET", undefined, params),
     );
-    return result.data;
   }
 
   async getVMPayment(vmId: number, paymentId: string) {
     const result = await this.handleResponse<ApiResponse<AdminVmPaymentInfo>>(
       await this.req(`/api/admin/v1/vms/${vmId}/payments/${paymentId}`, "GET"),
+    );
+    return result.data;
+  }
+
+  async completeVMPayment(vmId: number, paymentId: string) {
+    const result = await this.handleResponse<ApiResponse<AdminVmPaymentInfo>>(
+      await this.req(`/api/admin/v1/vms/${vmId}/payments/${paymentId}/complete`, "POST"),
     );
     return result.data;
   }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface UseApiCallResult<T> {
   data: T | null;
@@ -7,19 +7,22 @@ interface UseApiCallResult<T> {
   retry: () => void;
 }
 
-export function useApiCall<T>(
-  apiCall: () => Promise<T>,
-  dependencies: any[] = [],
-): UseApiCallResult<T> {
+export function useApiCall<T>(apiCall: () => Promise<T>, dependencies: any[] = []): UseApiCallResult<T> {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+
+  // Always keep a ref to the latest apiCall so executeCall never closes over a stale version
+  const apiCallRef = useRef(apiCall);
+  useEffect(() => {
+    apiCallRef.current = apiCall;
+  });
 
   const executeCall = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const result = await apiCall();
+      const result = await apiCallRef.current();
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Unknown error"));

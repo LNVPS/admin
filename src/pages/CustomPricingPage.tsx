@@ -225,8 +225,10 @@ export function CustomPricingPage() {
     );
   };
 
-  const apiCall = (params: any) => {
-    return adminApi.getCustomPricing(params);
+  const apiCall = async (params: any) => {
+    const result = await adminApi.getCustomPricing(params);
+    result.data.sort((a, b) => b.id - a.id);
+    return result;
   };
 
   return (

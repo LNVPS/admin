@@ -19,6 +19,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/Button";
 import { ErrorState } from "../components/ErrorState";
 import { PaginatedTable } from "../components/PaginatedTable";
+import { PermissionGuard } from "../components/PermissionGuard";
 import { Profile } from "../components/Profile";
 import { StatusBadge } from "../components/StatusBadge";
 import { VmIpAssignmentModal } from "../components/VmIpAssignmentModal";
@@ -208,6 +209,17 @@ export function VMDetailPage() {
     }
   };
 
+  const handleCompletePayment = async (payment: AdminVmPaymentInfo) => {
+    if (!vm) return;
+    if (!confirm(`Manually complete payment ${payment.id.slice(0, 8)}...?`)) return;
+    try {
+      await adminApi.completeVMPayment(vm.id, payment.id);
+      setPaymentsRefreshKey((k) => k + 1);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to complete payment");
+    }
+  };
+
   const renderHistoryHeader = () => (
     <>
       <th>Action</th>
@@ -248,6 +260,7 @@ export function VMDetailPage() {
       <th>Method</th>
       <th>Status</th>
       <th>Date</th>
+      <th></th>
     </>
   );
 
@@ -361,6 +374,20 @@ export function VMDetailPage() {
             <div className="text-green-400 text-xs">Paid: {new Date(payment.paid_at).toLocaleString()}</div>
           )}
         </div>
+      </td>
+      <td>
+        <PermissionGuard requiredPermissions={["payments::update"]}>
+          {!payment.is_paid && new Date(payment.expires) > new Date() && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => handleCompletePayment(payment)}
+              title="Manually mark this payment as paid"
+            >
+              Complete
+            </Button>
+          )}
+        </PermissionGuard>
       </td>
     </tr>
   );
@@ -638,8 +665,19 @@ export function VMDetailPage() {
             <div className="text-white">{vm.host_name || `#${vm.host_id}`}</div>
           </div>
           <div>
-            <div className="text-gray-400 mb-1">IPs</div>
+            <div className="text-gray-400 mb-1">Ref Code</div>
+            {vm.ref_code ? (
+              <span className="bg-blue-900 text-blue-200 px-2 py-0.5 rounded text-xs font-mono font-semibold">
+                {vm.ref_code}
+              </span>
+            ) : (
+              <span className="text-gray-500">—</span>
+            )}
+          </div>
+          <div>
+            <div className="text-gray-400 mb-1">Network</div>
             <div className="space-y-1">
+              <div className="font-mono text-gray-400 text-xs">{vm.mac_address}</div>
               {vm.ip_addresses.length > 0 ? (
                 vm.ip_addresses.map((ip, idx) => (
                   <Link
@@ -656,40 +694,38 @@ export function VMDetailPage() {
             </div>
           </div>
           <div>
-            <div className="text-gray-400 mb-1">MAC</div>
-            <div className="font-mono text-white text-xs">{vm.mac_address}</div>
-          </div>
-          <div>
-            <div className="text-gray-400 mb-1">Created</div>
-            <div className="text-white">{new Date(vm.created).toLocaleString()}</div>
-            {vm.auto_renewal_enabled && (
-              <StatusBadge status="running" className="mt-1">
-                Auto-Renew
-              </StatusBadge>
-            )}
-          </div>
-          <div>
-            <div className="text-gray-400 mb-1">Expires</div>
-            <div className="space-y-1">
-              <div className={new Date(vm.expires) < new Date() ? "text-red-400" : "text-white"}>
-                {new Date(vm.expires).toLocaleString()}
+            <div className="text-gray-400 mb-1">Dates</div>
+            <div className="space-y-1 text-xs">
+              <div className="text-gray-400">
+                Created: <span className="text-white">{new Date(vm.created).toLocaleString()}</span>
+              </div>
+              <div className="text-gray-400">
+                Expires:{" "}
+                <span className={new Date(vm.expires) < new Date() ? "text-red-400" : "text-white"}>
+                  {new Date(vm.expires).toLocaleString()}
+                </span>
               </div>
               {(() => {
                 const expiryInfo = formatTimeUntilExpiry(vm.expires);
                 return (
                   <div
-                    className={`text-xs ${
+                    className={
                       expiryInfo.isExpired
                         ? "text-red-400"
                         : expiryInfo.isExpiringSoon
                           ? "text-yellow-400"
                           : "text-gray-400"
-                    }`}
+                    }
                   >
                     {expiryInfo.text}
                   </div>
                 );
               })()}
+              {vm.auto_renewal_enabled && (
+                <StatusBadge status="running" className="mt-1">
+                  Auto-Renew
+                </StatusBadge>
+              )}
             </div>
           </div>
         </div>
@@ -797,15 +833,7 @@ export function VMDetailPage() {
           </Button>
         </h2>
         <PaginatedTable
-          apiCall={async () => {
-            const payments = await adminApi.getVMPayments(vm.id);
-            return {
-              data: payments,
-              total: payments.length,
-              limit: payments.length,
-              offset: 0,
-            };
-          }}
+          apiCall={(params) => adminApi.getVMPayments(vm.id, params)}
           renderHeader={renderPaymentsHeader}
           renderRow={renderPaymentsRow}
           itemsPerPage={10}

@@ -1,10 +1,17 @@
 import {
   ArrowLeftIcon,
+  ArrowPathIcon,
   BanknotesIcon,
+  CheckCircleIcon,
+  CheckIcon,
+  ClipboardIcon,
+  ClockIcon,
+  CreditCardIcon,
   DocumentTextIcon,
   PencilIcon,
   PlusIcon,
   TrashIcon,
+  XCircleIcon,
 } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -16,7 +23,12 @@ import { PaginatedTable } from "../components/PaginatedTable";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { useApiCall } from "../hooks/useApiCall";
-import type { AdminSubscriptionInfo, AdminSubscriptionLineItemInfo, AdminSubscriptionPaymentInfo } from "../lib/api";
+import {
+  AdminPaymentMethod,
+  type AdminSubscriptionInfo,
+  type AdminSubscriptionLineItemInfo,
+  type AdminSubscriptionPaymentInfo,
+} from "../lib/api";
 import { formatCurrency } from "../utils/currency";
 
 export function SubscriptionDetailPage() {
@@ -142,67 +154,74 @@ export function SubscriptionDetailPage() {
       </Card>
 
       {/* Line Items */}
-      <Card>
-        <div className="p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-white">Line Items</h2>
-            <Button size="sm" onClick={() => setShowAddLineItem(true)}>
-              <PlusIcon className="h-4 w-4 mr-1" />
-              Add Line Item
-            </Button>
-          </div>
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold text-white flex items-center justify-between">
+          <span className="flex items-center space-x-2">
+            <DocumentTextIcon className="h-5 w-5" />
+            <span>Line Items</span>
+          </span>
+          <Button size="sm" onClick={() => setShowAddLineItem(true)}>
+            <PlusIcon className="h-4 w-4 mr-1" />
+            Add Line Item
+          </Button>
+        </h2>
 
-          {subscription.line_items.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">No line items configured</div>
-          ) : (
-            <div className="space-y-2">
-              {subscription.line_items.map((item) => (
-                <div key={item.id} className="bg-gray-700 rounded-lg p-4 flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="font-medium text-white">{item.name}</div>
-                    {item.description && <div className="text-sm text-gray-400">{item.description}</div>}
-                    <div className="mt-1 flex gap-4 text-sm text-gray-300">
-                      <span>
-                        Recurring: {formatCurrency(item.amount, subscription.currency)}{" "}
-                        {formatInterval(subscription.interval_amount, subscription.interval_type)}
-                      </span>
-                      {item.setup_amount > 0 && (
-                        <span>Setup: {formatCurrency(item.setup_amount, subscription.currency)}</span>
-                      )}
-                    </div>
-                    {item.configuration && (
-                      <div className="mt-1">
-                        <details className="text-xs">
-                          <summary className="text-gray-400 cursor-pointer hover:text-gray-300">Configuration</summary>
-                          <pre className="mt-1 p-2 bg-gray-800 rounded text-gray-300 overflow-x-auto">
-                            {JSON.stringify(item.configuration, null, 2)}
-                          </pre>
-                        </details>
-                      </div>
+        {subscription.line_items.length === 0 ? (
+          <div className="text-center py-8 text-gray-400">No line items configured</div>
+        ) : (
+          <div className="space-y-2">
+            {subscription.line_items.map((item) => (
+              <div key={item.id} className="bg-gray-700 rounded-lg p-4 flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="font-medium text-white">{item.name}</div>
+                  {item.description && <div className="text-sm text-gray-400">{item.description}</div>}
+                  <div className="mt-1 flex gap-4 text-sm text-gray-300">
+                    <span>
+                      Recurring: {formatCurrency(item.amount, subscription.currency)}{" "}
+                      {formatInterval(subscription.interval_amount, subscription.interval_type)}
+                    </span>
+                    {item.setup_amount > 0 && (
+                      <span>Setup: {formatCurrency(item.setup_amount, subscription.currency)}</span>
                     )}
                   </div>
-                  <div className="flex gap-2 ml-4">
-                    <Button variant="ghost" size="sm" onClick={() => setEditingLineItem(item)}>
-                      <PencilIcon className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDeleteLineItem(item)}>
-                      <TrashIcon className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  {item.configuration && (
+                    <div className="mt-1">
+                      <details className="text-xs">
+                        <summary className="text-gray-400 cursor-pointer hover:text-gray-300">Configuration</summary>
+                        <pre className="mt-1 p-2 bg-gray-800 rounded text-gray-300 overflow-x-auto">
+                          {JSON.stringify(item.configuration, null, 2)}
+                        </pre>
+                      </details>
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </Card>
+                <div className="flex gap-2 ml-4">
+                  <Button variant="ghost" size="sm" onClick={() => setEditingLineItem(item)}>
+                    <PencilIcon className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleDeleteLineItem(item)}>
+                    <TrashIcon className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Payments */}
-      <Card>
-        <div className="p-4">
-          <h2 className="text-lg font-semibold text-white mb-4">Payments</h2>
-          <SubscriptionPaymentsTable subscriptionId={subscription.id} currency={subscription.currency} />
-        </div>
-      </Card>
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold text-white flex items-center justify-between">
+          <span className="flex items-center space-x-2">
+            <CreditCardIcon className="h-5 w-5" />
+            <span>Payments</span>
+          </span>
+          <Button variant="secondary" size="sm" onClick={refreshData} className="p-1" title="Refresh payments">
+            <ArrowPathIcon className="h-4 w-4" />
+          </Button>
+        </h2>
+        <SubscriptionPaymentsTable subscriptionId={subscription.id} refreshKey={refreshTrigger} />
+      </div>
 
       {/* Modals */}
       {showAddLineItem && (
@@ -232,49 +251,206 @@ export function SubscriptionDetailPage() {
   );
 }
 
-function SubscriptionPaymentsTable({ subscriptionId, currency }: { subscriptionId: number; currency: string }) {
+function SubscriptionPaymentsTable({ subscriptionId, refreshKey }: { subscriptionId: number; refreshKey: number }) {
   const adminApi = useAdminApi();
+  const [copiedPaymentId, setCopiedPaymentId] = useState<string | null>(null);
+  const [copiedExternalId, setCopiedExternalId] = useState<string | null>(null);
+
+  const handleCopyPaymentId = async (paymentId: string) => {
+    try {
+      await navigator.clipboard.writeText(paymentId);
+      setCopiedPaymentId(paymentId);
+      setTimeout(() => setCopiedPaymentId(null), 2000);
+    } catch (err) {
+      console.error("Failed to copy payment ID:", err);
+    }
+  };
+
+  const handleCopyExternalId = async (externalId: string) => {
+    try {
+      await navigator.clipboard.writeText(externalId);
+      setCopiedExternalId(externalId);
+      setTimeout(() => setCopiedExternalId(null), 2000);
+    } catch (err) {
+      console.error("Failed to copy external ID:", err);
+    }
+  };
+
+  const getPaymentMethodColor = (method: AdminPaymentMethod): "running" | "stopped" | "unknown" => {
+    switch (method) {
+      case AdminPaymentMethod.LIGHTNING:
+        return "running";
+      case AdminPaymentMethod.PAYPAL:
+        return "unknown";
+      case AdminPaymentMethod.REVOLUT:
+        return "stopped";
+      default:
+        return "unknown";
+    }
+  };
+
+  const formatPaymentMethod = (method: AdminPaymentMethod): string => {
+    switch (method) {
+      case AdminPaymentMethod.LIGHTNING:
+        return "Lightning";
+      case AdminPaymentMethod.PAYPAL:
+        return "PayPal";
+      case AdminPaymentMethod.REVOLUT:
+        return "Revolut";
+      default:
+        return method;
+    }
+  };
+
+  const formatBaseAmount = (
+    amount: number,
+    pmtCurrency: string,
+    rate: number,
+    companyBaseCurrency: string | null,
+  ): string => {
+    if (!rate || !companyBaseCurrency || pmtCurrency === companyBaseCurrency) return "—";
+    let baseAmount: number;
+    if (pmtCurrency === "BTC") {
+      baseAmount = Math.round((amount * rate) / 1e9);
+    } else if (companyBaseCurrency === "BTC") {
+      baseAmount = Math.round(amount * rate * 1e9);
+    } else {
+      baseAmount = Math.round(amount * rate);
+    }
+    return formatCurrency(baseAmount, companyBaseCurrency);
+  };
 
   const renderHeader = () => (
     <>
-      <th>Payment ID</th>
+      <th>ID</th>
       <th>Type</th>
       <th>Amount</th>
+      <th>Rate</th>
+      <th>Base Amount</th>
+      <th>Tax</th>
+      <th>Processing Fee</th>
+      <th>External ID</th>
       <th>Method</th>
-      <th>Created</th>
       <th>Status</th>
+      <th>Date</th>
     </>
   );
 
   const renderRow = (payment: AdminSubscriptionPaymentInfo, index: number) => (
     <tr key={payment.id || index}>
-      <td className="text-white font-mono text-xs">{payment.id.slice(0, 16)}...</td>
+      <td className="font-mono text-sm text-blue-400">
+        <span className="inline-flex items-center gap-1">
+          <span title={payment.id}>{payment.id.slice(0, 8)}...</span>
+          <button
+            type="button"
+            onClick={() => handleCopyPaymentId(payment.id)}
+            className="text-gray-400 hover:text-blue-400 transition-colors cursor-pointer"
+            title={copiedPaymentId === payment.id ? "Copied!" : "Copy payment ID"}
+          >
+            {copiedPaymentId === payment.id ? (
+              <CheckIcon className="h-3 w-3 text-green-400" />
+            ) : (
+              <ClipboardIcon className="h-3 w-3" />
+            )}
+          </button>
+        </span>
+      </td>
       <td>
         <StatusBadge status={payment.payment_type === "purchase" ? "info" : "active"}>
           {payment.payment_type}
         </StatusBadge>
       </td>
-      <td className="text-gray-300">
-        <div>{formatCurrency(payment.amount, payment.currency)}</div>
-        {payment.tax > 0 && (
-          <div className="text-xs text-gray-400">Tax: {formatCurrency(payment.tax, payment.currency)}</div>
+      <td>{formatCurrency(payment.amount, payment.currency)}</td>
+      <td className="text-sm">
+        {payment.rate && payment.rate !== 1 ? (
+          <span className="font-mono">
+            {new Intl.NumberFormat("en-US", {
+              style: payment.company_base_currency ? "currency" : "decimal",
+              currency: payment.company_base_currency ?? undefined,
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 2,
+            }).format(payment.rate)}
+          </span>
+        ) : (
+          <span className="text-gray-600">—</span>
         )}
       </td>
-      <td className="text-gray-300 capitalize">{payment.payment_method}</td>
-      <td className="text-gray-300 text-sm">
+      <td className="text-sm">
+        {payment.rate && payment.currency !== payment.company_base_currency ? (
+          formatBaseAmount(payment.amount, payment.currency, payment.rate, payment.company_base_currency)
+        ) : (
+          <span className="text-gray-600">—</span>
+        )}
+      </td>
+      <td className="text-sm">
+        {payment.tax > 0 ? formatCurrency(payment.tax, payment.currency) : <span className="text-gray-600">—</span>}
+      </td>
+      <td className="text-sm">
+        {payment.processing_fee > 0 ? (
+          formatCurrency(payment.processing_fee, payment.currency)
+        ) : (
+          <span className="text-gray-600">—</span>
+        )}
+      </td>
+      <td className="font-mono text-sm text-gray-300">
+        {payment.external_id ? (
+          <span className="inline-flex items-center gap-1">
+            <span title={payment.external_id}>{payment.external_id.slice(0, 12)}...</span>
+            <button
+              type="button"
+              onClick={() => handleCopyExternalId(payment.external_id!)}
+              className="text-gray-400 hover:text-blue-400 transition-colors cursor-pointer"
+              title={copiedExternalId === payment.external_id ? "Copied!" : "Copy external ID"}
+            >
+              {copiedExternalId === payment.external_id ? (
+                <CheckIcon className="h-3 w-3 text-green-400" />
+              ) : (
+                <ClipboardIcon className="h-3 w-3" />
+              )}
+            </button>
+          </span>
+        ) : (
+          <span className="text-gray-600">—</span>
+        )}
+      </td>
+      <td>
+        <StatusBadge status={getPaymentMethodColor(payment.payment_method)}>
+          {formatPaymentMethod(payment.payment_method)}
+        </StatusBadge>
+      </td>
+      <td>
+        <div className="flex items-center space-x-2">
+          {payment.is_paid ? (
+            <CheckCircleIcon className="h-4 w-4 text-green-400" />
+          ) : payment.expires && new Date(payment.expires) < new Date() ? (
+            <ClockIcon className="h-4 w-4 text-gray-400" />
+          ) : (
+            <XCircleIcon className="h-4 w-4 text-red-400" />
+          )}
+          <span
+            className={
+              payment.is_paid
+                ? "text-green-400"
+                : payment.expires && new Date(payment.expires) < new Date()
+                  ? "text-gray-400"
+                  : "text-red-400"
+            }
+          >
+            {payment.is_paid
+              ? "Paid"
+              : payment.expires && new Date(payment.expires) < new Date()
+                ? "Expired"
+                : "Pending"}
+          </span>
+        </div>
+      </td>
+      <td className="text-gray-400 text-sm">
         <div className="space-y-0.5">
           <div>{new Date(payment.created).toLocaleString()}</div>
           {payment.paid_at && (
             <div className="text-green-400 text-xs">Paid: {new Date(payment.paid_at).toLocaleString()}</div>
           )}
         </div>
-      </td>
-      <td>
-        {payment.is_paid ? (
-          <StatusBadge status="active">Paid</StatusBadge>
-        ) : (
-          <StatusBadge status="warning">Pending</StatusBadge>
-        )}
       </td>
     </tr>
   );
@@ -295,8 +471,22 @@ function SubscriptionPaymentsTable({ subscriptionId, currency }: { subscriptionI
       itemsPerPage={10}
       errorAction="load payments"
       loadingMessage="Loading payments..."
-      minWidth="800px"
+      minWidth="1100px"
       inlineError={true}
+      dependencies={[subscriptionId, refreshKey]}
+      calculateStats={(payments, total) => (
+        <div className="flex gap-4 text-sm text-gray-400">
+          <span>
+            Total: <span className="text-white font-medium">{total}</span>
+          </span>
+          <span>
+            Paid: <span className="text-green-400 font-medium">{payments.filter((p) => p.is_paid).length}</span>
+          </span>
+          <span>
+            Pending: <span className="text-red-400 font-medium">{payments.filter((p) => !p.is_paid).length}</span>
+          </span>
+        </div>
+      )}
     />
   );
 }

@@ -75,8 +75,16 @@ export function SubscriptionsPage() {
       </td>
       <td>
         <div className="text-sm text-gray-300">
-          <div>{formatCurrency(sub.setup_fee, sub.currency)} setup</div>
-          <div className="text-xs text-gray-400">{formatInterval(sub.interval_amount, sub.interval_type)}</div>
+          <div>
+            {formatCurrency(
+              sub.line_items.reduce((sum, item) => sum + item.amount, 0),
+              sub.currency,
+            )}{" "}
+            <span className="text-xs text-gray-400">{formatInterval(sub.interval_amount, sub.interval_type)}</span>
+          </div>
+          {sub.setup_fee > 0 && (
+            <div className="text-xs text-gray-400">{formatCurrency(sub.setup_fee, sub.currency)} setup</div>
+          )}
         </div>
       </td>
       <td className="text-gray-300">{sub.line_items.length}</td>

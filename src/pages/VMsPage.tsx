@@ -205,7 +205,13 @@ export function VMsPage() {
       <td>
         <div className="space-y-0.5">
           <div className="text-gray-400">{new Date(vmInfo.created).toLocaleDateString()}</div>
-          <div className="text-gray-500">Exp: {new Date(vmInfo.expires).toLocaleDateString()}</div>
+          {vmInfo.expires ? (
+            <div className={new Date(vmInfo.expires) < new Date() ? "text-red-500" : "text-gray-500"}>
+              Exp: {new Date(vmInfo.expires).toLocaleDateString()}
+            </div>
+          ) : (
+            <div className="text-yellow-500">Exp: N/A (pending)</div>
+          )}
         </div>
       </td>
       <td className="text-right">

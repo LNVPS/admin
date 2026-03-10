@@ -24,10 +24,10 @@ export enum VmState {
 }
 
 export enum VmRunningStates {
+  UNKNOWN = "unknown",
   RUNNING = "running",
   STOPPED = "stopped",
-  STARTING = "starting",
-  DELETING = "deleting",
+  CREATING = "creating",
 }
 
 export enum VmHostKind {
@@ -279,7 +279,7 @@ export interface VmRunningState {
 export interface AdminVmInfo {
   id: number;
   created: string;
-  expires: string;
+  expires: string | null;
   mac_address: string;
   image_id: number;
   image_name: string;
@@ -314,6 +314,39 @@ export interface AdminVmInfo {
   deleted: boolean;
   disabled: boolean;
   ref_code: string | null;
+  subscription: AdminSubscriptionInfo | null;
+}
+
+export interface CalculatedHostLoad {
+  overall_load: number;
+  cpu_load: number;
+  memory_load: number;
+  disk_load: number;
+  available_cpu: number;
+  available_memory: number;
+  active_vms: number;
+}
+
+export interface AdminHostRegion {
+  id: number;
+  name: string;
+  enabled: boolean;
+}
+
+export interface ReferralReport {
+  vm_id: number;
+  ref_code: string;
+  created: string;
+  amount: number;
+  currency: string;
+  rate: number;
+  base_currency: string;
+}
+
+export interface ReferralTimeSeriesReportData {
+  start_date: string;
+  end_date: string;
+  referrals: ReferralReport[];
 }
 
 export interface AdminRoleInfo {
@@ -797,6 +830,7 @@ export interface AdminSubscriptionInfo {
   created: string;
   expires: string | null;
   is_active: boolean;
+  is_setup: boolean;
   currency: string;
   interval_amount: number;
   interval_type: "day" | "month" | "year";

@@ -1,5 +1,5 @@
-import { StatusBadge } from "./StatusBadge";
 import { type AdminVmInfo, VmRunningStates } from "../lib/api";
+import { StatusBadge } from "./StatusBadge";
 
 interface VmStatusBadgeProps {
   vm: AdminVmInfo;
@@ -13,8 +13,8 @@ export function VmStatusBadge({ vm, className = "" }: VmStatusBadgeProps) {
       return "deleted";
     }
 
-    // Check if VM is new (created == expires, indicating no payment received yet)
-    if (vm.created === vm.expires) {
+    // Check if VM is new (subscription.is_setup === false)
+    if (!vm.subscription || !vm.subscription.is_setup) {
       return "new";
     }
 
@@ -30,8 +30,7 @@ export function VmStatusBadge({ vm, className = "" }: VmStatusBadgeProps) {
     if (status === "new") return "warning"; // Use light yellow for new VMs
     if (status === VmRunningStates.RUNNING) return "running";
     if (status === VmRunningStates.STOPPED) return "stopped";
-    if (status === VmRunningStates.STARTING) return "unknown";
-    if (status === VmRunningStates.DELETING) return "stopped";
+    if (status === VmRunningStates.CREATING) return "unknown";
     return "unknown";
   };
 
@@ -39,14 +38,16 @@ export function VmStatusBadge({ vm, className = "" }: VmStatusBadgeProps) {
     const status = getVmStatus(vm);
     if (status === "deleted") return "DELETED";
     if (status === "new") return "NEW";
+    if (status === VmRunningStates.UNKNOWN) return "UNKNOWN";
+    if (status === VmRunningStates.CREATING) return "CREATING";
+    if (status === VmRunningStates.RUNNING) return "RUNNING";
+    if (status === VmRunningStates.STOPPED) return "STOPPED";
     return status.toUpperCase();
   };
 
   return (
     <div className={className}>
-      <StatusBadge status={getVmStatusBadgeColor(vm)}>
-        {getVmStatusText(vm)}
-      </StatusBadge>
+      <StatusBadge status={getVmStatusBadgeColor(vm)}>{getVmStatusText(vm)}</StatusBadge>
     </div>
   );
 }
@@ -58,8 +59,8 @@ export const getVmStatus = (vm: AdminVmInfo) => {
     return "deleted";
   }
 
-  // Check if VM is new (created == expires, indicating no payment received yet)
-  if (vm.created === vm.expires) {
+  // Check if VM is new (subscription.is_setup === false)
+  if (!vm.subscription || !vm.subscription.is_setup) {
     return "new";
   }
 
@@ -75,7 +76,6 @@ export const getVmStatusBadgeColor = (vm: AdminVmInfo) => {
   if (status === "new") return "warning"; // Use light yellow for new VMs
   if (status === VmRunningStates.RUNNING) return "running";
   if (status === VmRunningStates.STOPPED) return "stopped";
-  if (status === VmRunningStates.STARTING) return "unknown";
-  if (status === VmRunningStates.DELETING) return "stopped";
+  if (status === VmRunningStates.CREATING) return "unknown";
   return "unknown";
 };

@@ -699,28 +699,35 @@ export function VMDetailPage() {
               <div className="text-gray-400">
                 Created: <span className="text-white">{new Date(vm.created).toLocaleString()}</span>
               </div>
-              <div className="text-gray-400">
-                Expires:{" "}
-                <span className={new Date(vm.expires) < new Date() ? "text-red-400" : "text-white"}>
-                  {new Date(vm.expires).toLocaleString()}
-                </span>
-              </div>
-              {(() => {
-                const expiryInfo = formatTimeUntilExpiry(vm.expires);
-                return (
-                  <div
-                    className={
-                      expiryInfo.isExpired
-                        ? "text-red-400"
-                        : expiryInfo.isExpiringSoon
-                          ? "text-yellow-400"
-                          : "text-gray-400"
-                    }
-                  >
-                    {expiryInfo.text}
-                  </div>
-                );
-              })()}
+              {vm.expires ? (
+                <div className="text-gray-400">
+                  Expires:{" "}
+                  <span className={new Date(vm.expires) < new Date() ? "text-red-400" : "text-white"}>
+                    {new Date(vm.expires).toLocaleString()}
+                  </span>
+                </div>
+              ) : (
+                <div className="text-gray-400">
+                  Expires: <span className="text-yellow-400">N/A (pending)</span>
+                </div>
+              )}
+              {vm.expires &&
+                (() => {
+                  const expiryInfo = formatTimeUntilExpiry(vm.expires);
+                  return (
+                    <div
+                      className={
+                        expiryInfo.isExpired
+                          ? "text-red-400"
+                          : expiryInfo.isExpiringSoon
+                            ? "text-yellow-400"
+                            : "text-gray-400"
+                      }
+                    >
+                      {expiryInfo.text}
+                    </div>
+                  );
+                })()}
               {vm.auto_renewal_enabled && (
                 <StatusBadge status="running" className="mt-1">
                   Auto-Renew

@@ -675,6 +675,20 @@ export function VMDetailPage() {
             )}
           </div>
           <div>
+            <div className="text-gray-400 mb-1">Subscription</div>
+            {vm.subscription ? (
+              <Link
+                to={`/subscriptions/${vm.subscription.id}`}
+                className="text-blue-400 hover:text-blue-300 hover:underline"
+                title={vm.subscription.name}
+              >
+                {vm.subscription.name || `#${vm.subscription.id}`}
+              </Link>
+            ) : (
+              <span className="text-gray-500">—</span>
+            )}
+          </div>
+          <div>
             <div className="text-gray-400 mb-1">Network</div>
             <div className="space-y-1">
               <div className="font-mono text-gray-400 text-xs">{vm.mac_address}</div>

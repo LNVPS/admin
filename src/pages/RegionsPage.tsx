@@ -65,44 +65,52 @@ export function RegionsPage() {
       <th className="w-12">ID</th>
       <th>Region</th>
       <th>Status</th>
-      <th>Hosts</th>
-      <th>VMs</th>
+      <th>Counts</th>
       <th>Resources</th>
-      <th>IPs</th>
       <th className="text-right">Actions</th>
     </>
   );
 
   const renderRow = (region: AdminRegionInfo, index: number) => (
     <tr key={region.id || index}>
-      <td className="whitespace-nowrap text-white">{region.id}</td>
-      <td className="text-gray-300">
-        <div className="space-y-0.5">
-          <div className="font-medium">{region.name}</div>
+      <td className="whitespace-nowrap align-top text-white">{region.id}</td>
+      <td className="align-top text-gray-300">
+        <div className="min-w-0 max-w-[16rem]">
+          <div className="truncate font-medium" title={region.name}>
+            {region.name}
+          </div>
           {region.company_id && (
-            <div className="text-gray-400">
-              Company: {getCompanyName(region.company_id)}
+            <div className="mt-0.5 truncate text-xs text-slate-400" title={getCompanyName(region.company_id) || ""}>
+              {getCompanyName(region.company_id)}
             </div>
           )}
         </div>
       </td>
-      <td className="whitespace-nowrap">
+      <td className="whitespace-nowrap align-top">
         <StatusBadge status={region.enabled ? "enabled" : "disabled"} />
       </td>
-      <td className="whitespace-nowrap text-white">{region.host_count}</td>
-      <td className="whitespace-nowrap text-white">{region.total_vms}</td>
-      <td className="text-gray-300">
-        <div className="space-y-0.5">
+      <td className="align-top text-gray-300">
+        <div className="text-xs space-y-0.5">
+          <div>
+            <span className="font-medium text-white">{region.host_count}</span> hosts
+          </div>
+          <div>
+            <span className="font-medium text-white">{region.total_vms}</span> VMs
+          </div>
+          <div>
+            <span className="font-medium text-purple-400">{region.total_ip_assignments}</span> IPs
+          </div>
+        </div>
+      </td>
+      <td className="align-top text-gray-300">
+        <div className="text-xs space-y-0.5">
           <div className="text-blue-400">{region.total_cpu_cores} cores</div>
           <div className="text-blue-300">
             {Math.round(region.total_memory_bytes / (1024 * 1024 * 1024))} GB
           </div>
         </div>
       </td>
-      <td className="whitespace-nowrap text-purple-400">
-        {region.total_ip_assignments}
-      </td>
-      <td className="whitespace-nowrap text-right">
+      <td className="whitespace-nowrap text-right align-top">
         <div className="flex justify-end space-x-1">
           <Button
             size="sm"

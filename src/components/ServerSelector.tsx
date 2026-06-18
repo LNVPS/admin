@@ -92,11 +92,11 @@ export function ServerSelector() {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="flex w-full items-center rounded-lg px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors cursor-pointer"
-        title="Switch API Server"
+        className="flex w-full min-w-0 items-center rounded-lg px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors cursor-pointer"
+        title={`Switch API Server (${getCurrentServerName()})`}
       >
-        <Cog6ToothIcon className="mr-3 h-5 w-5" />
-        <span>{getCurrentServerName()}</span>
+        <Cog6ToothIcon className="mr-3 h-5 w-5 shrink-0" />
+        <span className="truncate">{getCurrentServerName()}</span>
       </button>
 
       <SimpleModal

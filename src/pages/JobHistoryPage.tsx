@@ -184,7 +184,7 @@ export function JobHistoryPage() {
             onClick={() => setFilter(filterOption.key as any)}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               filter === filterOption.key
-                ? "bg-blue-600 text-white"
+                ? "bg-blue-500/10 text-blue-400 ring-1 ring-inset ring-blue-500/30"
                 : "bg-gray-700 text-gray-300 hover:bg-gray-600"
             }`}
           >

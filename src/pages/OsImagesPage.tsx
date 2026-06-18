@@ -54,37 +54,45 @@ export function OsImagesPage() {
   const renderHeader = () => (
     <>
       <th className="w-16">ID</th>
-      <th>Distribution</th>
-      <th>Version</th>
-      <th>Flavour</th>
+      <th>Image</th>
       <th>Status</th>
       <th>Active VMs</th>
-      <th>Release Date</th>
-      <th>Default User</th>
+      <th>Details</th>
       <th className="text-right">Actions</th>
     </>
   );
 
   const renderRow = (image: AdminVmOsImageInfo, index: number) => (
     <tr key={image.id || index}>
-      <td className="whitespace-nowrap text-white">{image.id}</td>
-      <td>
-        <div className="font-medium text-white capitalize">{image.distribution}</div>
+      <td className="whitespace-nowrap align-top text-white">{image.id}</td>
+      <td className="align-top">
+        <div className="min-w-0 max-w-[18rem]">
+          <div className="truncate font-medium text-white capitalize" title={`${image.distribution} ${image.version}`}>
+            <span className="capitalize">{image.distribution}</span> {image.version}
+          </div>
+          <div className="mt-0.5 truncate text-xs capitalize text-slate-400" title={image.flavour}>
+            {image.flavour}
+          </div>
+        </div>
       </td>
-      <td className="text-gray-300">{image.version}</td>
-      <td className="text-gray-300 capitalize">{image.flavour}</td>
-      <td>
+      <td className="align-top">
         <StatusBadge status={image.enabled ? "enabled" : "disabled"} />
       </td>
-      <td className="text-gray-300">
+      <td className="align-top text-gray-300">
         <div className="flex items-center">
           <ServerIcon className="h-4 w-4 mr-1 text-gray-400" />
           <span className="font-medium">{image.active_vm_count}</span>
         </div>
       </td>
-      <td className="text-gray-300">{formatDate(image.release_date)}</td>
-      <td className="text-gray-300">{image.default_username || "-"}</td>
-      <td className="text-right">
+      <td className="align-top text-gray-300">
+        <div className="text-xs space-y-0.5">
+          <div>Released {formatDate(image.release_date)}</div>
+          <div className="truncate text-slate-400" title={image.default_username || ""}>
+            User: {image.default_username || "-"}
+          </div>
+        </div>
+      </td>
+      <td className="text-right align-top">
         <div className="flex justify-end space-x-2">
           <Button
             size="sm"
@@ -169,7 +177,7 @@ export function OsImagesPage() {
         errorAction="view OS images"
         loadingMessage="Loading OS images..."
         dependencies={[refreshTrigger]}
-        minWidth="1000px"
+        minWidth="800px"
       />
 
       <OsImageModal

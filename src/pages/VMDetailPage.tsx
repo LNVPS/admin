@@ -231,20 +231,24 @@ export function VMDetailPage() {
 
   const renderHistoryRow = (history: AdminVmHistoryInfo, index: number) => (
     <tr key={history.id || index}>
-      <td>
+      <td className="align-top">
         <StatusBadge status="unknown" colorOverride={getHistoryColorOverride(history.action_type)}>
           {formatActionType(history.action_type)}
         </StatusBadge>
       </td>
-      <td className="text-gray-300 text-sm">{history.description || "-"}</td>
-      <td>
+      <td className="align-top text-gray-300 text-sm">
+        <div className="min-w-0 max-w-[24rem] break-words">{history.description || "-"}</div>
+      </td>
+      <td className="align-top">
         {history.initiated_by_user_pubkey ? (
           <Profile pubkey={history.initiated_by_user_pubkey} avatarSize="sm" />
         ) : (
           <span className="text-gray-400 text-sm">System</span>
         )}
       </td>
-      <td className="text-gray-400 text-sm">{new Date(history.timestamp).toLocaleString()}</td>
+      <td className="align-top whitespace-nowrap text-gray-400 text-sm">
+        {new Date(history.timestamp).toLocaleString()}
+      </td>
     </tr>
   );
 
@@ -252,21 +256,17 @@ export function VMDetailPage() {
     <>
       <th>ID</th>
       <th>Amount</th>
-      <th>Rate</th>
-      <th>Base Amount</th>
-      <th>Tax</th>
-      <th>Processing Fee</th>
       <th>External ID</th>
-      <th>Method</th>
-      <th>Status</th>
+      <th>Method &amp; Status</th>
       <th>Date</th>
-      <th></th>
+      <th className="text-right">Actions</th>
     </>
   );
 
   const renderPaymentsRow = (payment: AdminVmPaymentInfo, index: number) => (
     <tr key={payment.id || index}>
-      <td className="font-mono text-sm text-blue-400">
+      {/* ID */}
+      <td className="align-top font-mono text-sm text-blue-400">
         <span className="inline-flex items-center gap-1">
           <span title={payment.id}>{payment.id.slice(0, 8)}...</span>
           <button
@@ -283,43 +283,40 @@ export function VMDetailPage() {
           </button>
         </span>
       </td>
-      <td>{formatCurrency(payment.amount, payment.currency)}</td>
-      <td className="text-sm">
-        {payment.rate && payment.rate !== 1 ? (
-          <span className="font-mono">
-            {payment.company_base_currency
-              ? new Intl.NumberFormat("en-US", {
-                  style: "currency",
-                  currency: payment.company_base_currency,
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 2,
-                }).format(payment.rate)
-              : Number.isInteger(payment.rate)
-                ? payment.rate.toString()
-                : payment.rate.toFixed(2)}
-          </span>
-        ) : (
-          <span className="text-gray-600">—</span>
-        )}
+      {/* Amount: total + rate / base / tax / fee */}
+      <td className="align-top">
+        <div className="min-w-0 max-w-[16rem]">
+          <div className="font-medium text-slate-100">{formatCurrency(payment.amount, payment.currency)}</div>
+          <div className="mt-0.5 space-y-0.5 font-mono text-xs text-slate-400">
+            {payment.rate && payment.rate !== 1 && (
+              <div>
+                Rate:{" "}
+                {payment.company_base_currency
+                  ? new Intl.NumberFormat("en-US", {
+                      style: "currency",
+                      currency: payment.company_base_currency,
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 2,
+                    }).format(payment.rate)
+                  : Number.isInteger(payment.rate)
+                    ? payment.rate.toString()
+                    : payment.rate.toFixed(2)}
+              </div>
+            )}
+            {payment.rate && payment.company_base_currency && payment.currency !== payment.company_base_currency && (
+              <div>
+                Base: {formatBaseAmount(payment.amount, payment.currency, payment.rate, payment.company_base_currency)}
+              </div>
+            )}
+            {payment.tax > 0 && <div>Tax: {formatCurrency(payment.tax, payment.currency)}</div>}
+            {payment.processing_fee > 0 && (
+              <div>Fee: {formatCurrency(payment.processing_fee, payment.currency)}</div>
+            )}
+          </div>
+        </div>
       </td>
-      <td className="text-sm">
-        {payment.rate && payment.company_base_currency && payment.currency !== payment.company_base_currency ? (
-          formatBaseAmount(payment.amount, payment.currency, payment.rate, payment.company_base_currency)
-        ) : (
-          <span className="text-gray-600">—</span>
-        )}
-      </td>
-      <td className="text-sm">
-        {payment.tax > 0 ? formatCurrency(payment.tax, payment.currency) : <span className="text-gray-600">—</span>}
-      </td>
-      <td className="text-sm">
-        {payment.processing_fee > 0 ? (
-          formatCurrency(payment.processing_fee, payment.currency)
-        ) : (
-          <span className="text-gray-600">—</span>
-        )}
-      </td>
-      <td className="font-mono text-sm text-gray-300">
+      {/* External ID */}
+      <td className="align-top font-mono text-sm text-gray-300">
         {payment.external_id ? (
           <span className="inline-flex items-center gap-1">
             <span title={payment.external_id}>{payment.external_id.slice(0, 12)}...</span>
@@ -340,13 +337,12 @@ export function VMDetailPage() {
           <span className="text-gray-600">—</span>
         )}
       </td>
-      <td>
+      {/* Method & Status */}
+      <td className="align-top">
         <StatusBadge status={getPaymentMethodColor(payment.payment_method)}>
           {formatPaymentMethod(payment.payment_method)}
         </StatusBadge>
-      </td>
-      <td>
-        <div className="flex items-center space-x-2">
+        <div className="mt-1 flex items-center space-x-2">
           {payment.is_paid ? (
             <CheckCircleIcon className="h-4 w-4 text-green-400" />
           ) : new Date(payment.expires) < new Date() ? (
@@ -367,7 +363,8 @@ export function VMDetailPage() {
           </span>
         </div>
       </td>
-      <td className="text-gray-400 text-sm">
+      {/* Date */}
+      <td className="align-top text-gray-400 text-sm">
         <div className="space-y-0.5">
           <div>{new Date(payment.created).toLocaleString()}</div>
           {payment.paid_at && (
@@ -375,7 +372,8 @@ export function VMDetailPage() {
           )}
         </div>
       </td>
-      <td>
+      {/* Actions */}
+      <td className="align-top text-right">
         <PermissionGuard requiredPermissions={["payments::update"]}>
           {!payment.is_paid && new Date(payment.expires) > new Date() && (
             <Button
@@ -538,35 +536,32 @@ export function VMDetailPage() {
     <div className="space-y-4">
       {/* Compact Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">VM #{vm.id}</h1>
-          <div className="flex items-center space-x-4 text-sm text-gray-400">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-bold text-white">VM #{vm.id}</h1>
+            <VmStatusBadge vm={vm} />
+            {vm.disabled && <StatusBadge status="disabled" />}
+            {vm.deleted && <StatusBadge status="stopped">DELETED</StatusBadge>}
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-400">
             <span>{vm.image_name}</span>
-            <span>•</span>
+            <span className="text-slate-600">•</span>
             <span>{vm.template_name}</span>
-            <span>•</span>
-            <span>
+            <span className="text-slate-600">•</span>
+            <span className="font-mono text-xs">
               {vm.cpu}C • {formatBytes(vm.memory)} • {formatBytes(vm.disk_size)}
             </span>
             {vm.region_name && (
               <>
-                <span>•</span>
+                <span className="text-slate-600">•</span>
                 <span>{vm.region_name}</span>
               </>
             )}
             {lastRefresh && (
               <>
-                <span>•</span>
-                <span className="text-xs">Updated: {lastRefresh.toLocaleTimeString()}</span>
+                <span className="text-slate-600">•</span>
+                <span className="text-xs">Updated {lastRefresh.toLocaleTimeString()}</span>
               </>
-            )}
-            <span>•</span>
-            {vm.disabled ? (
-              <span className="text-red-400 text-xs font-medium">Disabled</span>
-            ) : vm.deleted ? (
-              <span className="text-red-400 text-xs font-medium">Deleted</span>
-            ) : (
-              <span className="text-green-400 text-xs font-medium">Enabled</span>
             )}
           </div>
         </div>
@@ -575,7 +570,7 @@ export function VMDetailPage() {
             variant="secondary"
             onClick={() => loadVM(true)}
             disabled={!!actionLoading}
-            className="text-blue-400 hover:text-blue-300 p-2"
+            className="text-slate-400 hover:text-white p-2"
             title="Refresh VM info"
           >
             <ArrowPathIcon className="h-4 w-4" />
@@ -586,6 +581,7 @@ export function VMDetailPage() {
               onClick={handleStartVM}
               disabled={actionLoading === "start"}
               className="text-green-400 hover:text-green-300 p-2"
+              title="Start VM"
             >
               <PlayIcon className="h-4 w-4" />
             </Button>
@@ -596,6 +592,7 @@ export function VMDetailPage() {
               onClick={handleStopVM}
               disabled={actionLoading === "stop"}
               className="text-yellow-400 hover:text-yellow-300 p-2"
+              title="Stop VM"
             >
               <StopIcon className="h-4 w-4" />
             </Button>
@@ -604,7 +601,7 @@ export function VMDetailPage() {
             variant="secondary"
             onClick={handleExtendVM}
             disabled={actionLoading === "extend"}
-            className="text-blue-400 hover:text-blue-300 p-2"
+            className="text-slate-400 hover:text-white p-2"
             title="Extend VM expiry"
           >
             <PlusIcon className="h-4 w-4" />
@@ -613,7 +610,7 @@ export function VMDetailPage() {
             variant="secondary"
             onClick={() => setShowIpAssignModal(true)}
             disabled={!!actionLoading}
-            className="text-purple-400 hover:text-purple-300 p-2"
+            className="text-slate-400 hover:text-white p-2"
             title="Assign IP address"
           >
             <GlobeAltIcon className="h-4 w-4" />
@@ -622,7 +619,7 @@ export function VMDetailPage() {
             variant="secondary"
             onClick={() => setShowRefundModal(true)}
             disabled={!!actionLoading}
-            className="text-orange-400 hover:text-orange-300 p-2"
+            className="text-slate-400 hover:text-white p-2"
             title="Process refund"
           >
             <BanknotesIcon className="h-4 w-4" />
@@ -631,9 +628,7 @@ export function VMDetailPage() {
             variant="secondary"
             onClick={handleToggleDisabled}
             disabled={actionLoading === "toggle-disabled"}
-            className={
-              vm.disabled ? "text-green-400 hover:text-green-300 p-2" : "text-gray-400 hover:text-gray-300 p-2"
-            }
+            className="text-slate-400 hover:text-white p-2"
             title={vm.disabled ? "Enable VM" : "Disable VM"}
           >
             <NoSymbolIcon className="h-4 w-4" />
@@ -650,54 +645,46 @@ export function VMDetailPage() {
       </div>
 
       {/* Compact Info Grid */}
-      <div className="bg-gray-800 rounded-lg p-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 text-sm">
-          <div>
+      <div className="bg-gray-800 border border-slate-700 rounded-lg p-4">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+          <div className="min-w-0">
             <div className="text-gray-400 mb-1">Owner</div>
             {vm.user_pubkey ? (
               <Profile pubkey={vm.user_pubkey} avatarSize="sm" />
             ) : (
               <span className="text-gray-500">-</span>
             )}
-          </div>
-          <div>
-            <div className="text-gray-400 mb-1">Host</div>
-            <div className="text-white">{vm.host_name || `#${vm.host_id}`}</div>
-          </div>
-          <div>
-            <div className="text-gray-400 mb-1">Ref Code</div>
-            {vm.ref_code ? (
-              <span className="bg-blue-900 text-blue-200 px-2 py-0.5 rounded text-xs font-mono font-semibold">
-                {vm.ref_code}
-              </span>
-            ) : (
-              <span className="text-gray-500">—</span>
-            )}
-          </div>
-          <div>
-            <div className="text-gray-400 mb-1">Subscription</div>
-            {vm.subscription ? (
+            {vm.subscription && (
               <Link
                 to={`/subscriptions/${vm.subscription.id}`}
-                className="text-blue-400 hover:text-blue-300 hover:underline"
+                className="mt-1 block truncate text-xs text-blue-400 hover:text-blue-300 hover:underline"
                 title={vm.subscription.name}
               >
-                {vm.subscription.name || `#${vm.subscription.id}`}
+                sub: {vm.subscription.name || `#${vm.subscription.id}`}
               </Link>
-            ) : (
-              <span className="text-gray-500">—</span>
+            )}
+            {vm.ref_code && (
+              <div className="mt-0.5 truncate font-mono text-xs text-slate-400" title={vm.ref_code}>
+                ref: {vm.ref_code}
+              </div>
             )}
           </div>
-          <div>
-            <div className="text-gray-400 mb-1">Network</div>
-            <div className="space-y-1">
-              <div className="font-mono text-gray-400 text-xs">{vm.mac_address}</div>
+          <div className="min-w-0">
+            <div className="text-gray-400 mb-1">Host &amp; Network</div>
+            <div className="truncate text-white" title={vm.host_name || `#${vm.host_id}`}>
+              {vm.host_name || `#${vm.host_id}`}
+            </div>
+            <div className="mt-1 space-y-1">
+              <div className="truncate font-mono text-gray-400 text-xs" title={vm.mac_address}>
+                {vm.mac_address}
+              </div>
               {vm.ip_addresses.length > 0 ? (
                 vm.ip_addresses.map((ip, idx) => (
                   <Link
                     key={idx}
                     to={`/ip-address/${encodeURIComponent(ip.ip)}`}
-                    className="block font-mono text-blue-400 hover:text-blue-300 hover:underline text-xs"
+                    className="block truncate font-mono text-blue-400 hover:text-blue-300 hover:underline text-xs"
+                    title={ip.ip}
                   >
                     {ip.ip}
                   </Link>
@@ -707,26 +694,18 @@ export function VMDetailPage() {
               )}
             </div>
           </div>
-          <div>
-            <div className="text-gray-400 mb-1">Dates</div>
-            <div className="space-y-1 text-xs">
-              <div className="text-gray-400">
-                Created: <span className="text-white">{new Date(vm.created).toLocaleString()}</span>
-              </div>
-              {vm.expires ? (
-                <div className="text-gray-400">
-                  Expires:{" "}
-                  <span className={new Date(vm.expires) < new Date() ? "text-red-400" : "text-white"}>
-                    {new Date(vm.expires).toLocaleString()}
-                  </span>
+          <div className="min-w-0">
+            <div className="text-gray-400 mb-1">Created</div>
+            <div className="text-xs text-white">{new Date(vm.created).toLocaleString()}</div>
+          </div>
+          <div className="min-w-0">
+            <div className="text-gray-400 mb-1">Expires</div>
+            {vm.expires ? (
+              <div className="space-y-1 text-xs">
+                <div className={new Date(vm.expires) < new Date() ? "text-red-400" : "text-white"}>
+                  {new Date(vm.expires).toLocaleString()}
                 </div>
-              ) : (
-                <div className="text-gray-400">
-                  Expires: <span className="text-yellow-400">N/A (pending)</span>
-                </div>
-              )}
-              {vm.expires &&
-                (() => {
+                {(() => {
                   const expiryInfo = formatTimeUntilExpiry(vm.expires);
                   return (
                     <div
@@ -742,19 +721,18 @@ export function VMDetailPage() {
                     </div>
                   );
                 })()}
-              {vm.auto_renewal_enabled && (
-                <StatusBadge status="running" className="mt-1">
-                  Auto-Renew
-                </StatusBadge>
-              )}
-            </div>
+                {vm.auto_renewal_enabled && <StatusBadge status="running">Auto-Renew</StatusBadge>}
+              </div>
+            ) : (
+              <div className="text-xs text-yellow-400">N/A (pending)</div>
+            )}
           </div>
         </div>
       </div>
 
       {/* Real-time VM Metrics */}
       {vm.running_state && (
-        <div className="bg-gray-800 rounded-lg p-4">
+        <div className="bg-gray-800 border border-slate-700 rounded-lg p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-lg font-semibold text-white">Real-time Metrics</h3>
             <div className="text-xs text-gray-400">
@@ -827,6 +805,7 @@ export function VMDetailPage() {
           itemsPerPage={10}
           errorAction="load VM history"
           loadingMessage="Loading VM history..."
+          minWidth="700px"
           dependencies={[vm.id, historyRefreshKey]}
           calculateStats={(_, total) => (
             <div className="text-sm text-gray-400">
@@ -860,6 +839,7 @@ export function VMDetailPage() {
           itemsPerPage={10}
           errorAction="load VM payments"
           loadingMessage="Loading VM payments..."
+          minWidth="900px"
           dependencies={[vm.id, paymentsRefreshKey]}
           calculateStats={(payments, total) => (
             <div className="flex gap-4 text-sm text-gray-400">

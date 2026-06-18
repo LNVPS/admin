@@ -29,19 +29,19 @@ export function StatusBadge({
       case "enabled":
       case "running":
       case "active":
-        return "bg-green-900 text-green-300";
+        return "border border-green-500/40 bg-green-500/10 text-green-400";
       case "disabled":
       case "stopped":
       case "inactive":
-        return "bg-red-900 text-red-300";
+        return "border border-red-500/40 bg-red-500/10 text-red-400";
       case "expired":
-        return "bg-orange-900 text-orange-300";
+        return "border border-orange-500/40 bg-orange-500/10 text-orange-400";
       case "unknown":
-        return "bg-gray-900 text-gray-300";
+        return "border border-slate-600 bg-slate-700/40 text-slate-300";
       case "warning":
-        return "bg-yellow-200 text-yellow-800";
+        return "border border-yellow-500/40 bg-yellow-500/10 text-yellow-400";
       default:
-        return "bg-gray-900 text-gray-300";
+        return "border border-slate-600 bg-slate-700/40 text-slate-300";
     }
   };
 
@@ -70,8 +70,9 @@ export function StatusBadge({
 
   return (
     <span
-      className={`inline-flex px-2 py-1 text-xs font-semibold rounded ${getStatusStyles(status)} ${className}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded-full ${getStatusStyles(status)} ${className}`}
     >
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
       {children || getStatusText(status)}
     </span>
   );

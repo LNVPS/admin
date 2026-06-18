@@ -812,19 +812,31 @@ export interface AdminIpRangeSubscriptionInfo {
   parent_cidr: string | null;
 }
 
+export type AdminSubscriptionType = "ip_range" | "asn_sponsoring" | "dns_hosting" | "vps";
+
+// Typed reference to the resource a line item bills for, resolved from subscription_type.
+// `null` when the type has no linkable resource (asn_sponsoring/dns_hosting) or the back-ref is missing.
+export type AdminSubscriptionLineItemResource =
+  | { type: "vps"; vm_id: number }
+  | { type: "ip_range"; ip_range_subscription_id: number };
+
 export interface AdminSubscriptionLineItemInfo {
   id: number;
   subscription_id: number;
+  subscription_type: AdminSubscriptionType;
   name: string;
   description: string | null;
   amount: number;
   setup_amount: number;
+  // Raw JSON for upgrade bookkeeping only (e.g. { new_cpu, new_memory, new_disk }); NOT a resource link.
   configuration: Record<string, any> | null;
+  resource: AdminSubscriptionLineItemResource | null;
 }
 
 export interface AdminSubscriptionInfo {
   id: number;
   user_id: number;
+  user_pubkey: string;
   name: string;
   description: string | null;
   created: string;
@@ -1073,7 +1085,7 @@ export class AdminApi {
     path: string,
     method: "GET" | "POST" | "DELETE" | "PUT" | "PATCH",
     body?: object,
-    params?: Record<string, string | number | undefined>,
+    params?: Record<string, string | number | boolean | undefined>,
   ) {
     // Build URL with query parameters
     const url = new URL(`${this.url}${path}`);
@@ -2417,7 +2429,14 @@ export class AdminApi {
   }
 
   // Subscription Management
-  async getSubscriptions(params?: { limit?: number; offset?: number; user_id?: number }) {
+  async getSubscriptions(params?: {
+    limit?: number;
+    offset?: number;
+    user_id?: number;
+    search?: string;
+    status?: "active" | "inactive";
+    auto_renewal?: boolean;
+  }) {
     return await this.handleResponse<PaginatedApiResponse<AdminSubscriptionInfo>>(
       await this.req("/api/admin/v1/subscriptions", "GET", undefined, params),
     );

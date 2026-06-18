@@ -56,10 +56,9 @@ export function AccessPoliciesPage() {
   const renderHeader = () => (
     <>
       <th className="w-16">ID</th>
-      <th>Policy Name</th>
+      <th>Policy</th>
       <th>Kind</th>
-      <th>Router</th>
-      <th>Interface</th>
+      <th>Router &amp; Interface</th>
       <th>IP Ranges</th>
       <th className="text-right">Actions</th>
     </>
@@ -67,36 +66,47 @@ export function AccessPoliciesPage() {
 
   const renderRow = (policy: AdminAccessPolicyDetail, index: number) => (
     <tr key={policy.id || index}>
-      <td className="whitespace-nowrap text-white">{policy.id}</td>
-      <td>
-        <div className="font-medium text-white">{policy.name}</div>
+      <td className="whitespace-nowrap align-top font-mono text-white">{policy.id}</td>
+      <td className="align-top">
+        <div
+          className="min-w-0 max-w-[18rem] truncate font-medium text-white"
+          title={policy.name}
+        >
+          {policy.name}
+        </div>
       </td>
-      <td className="text-gray-300">
+      <td className="align-top text-gray-300">
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900 text-blue-200 capitalize">
           {policy.kind.replace("_", " ")}
         </span>
       </td>
-      <td className="text-gray-300">
-        {policy.router_name ? (
-          <div className="flex items-center">
-            <ServerIcon className="h-4 w-4 mr-1 text-gray-400" />
-            {policy.router_name}
-          </div>
-        ) : (
-          <span className="text-gray-500">None</span>
-        )}
+      {/* Router + interface */}
+      <td className="align-top text-gray-300">
+        <div className="min-w-0 max-w-[16rem]">
+          {policy.router_name ? (
+            <div className="flex items-center" title={policy.router_name}>
+              <ServerIcon className="h-4 w-4 mr-1 flex-shrink-0 text-gray-400" />
+              <span className="truncate">{policy.router_name}</span>
+            </div>
+          ) : (
+            <span className="text-gray-500">No router</span>
+          )}
+          {policy.interface ? (
+            <div
+              className="mt-0.5 truncate font-mono text-xs text-slate-400"
+              title={policy.interface}
+            >
+              {policy.interface}
+            </div>
+          ) : (
+            <div className="mt-0.5 text-xs text-slate-500">No interface</div>
+          )}
+        </div>
       </td>
-      <td className="text-gray-300">
-        {policy.interface ? (
-          <span className="font-mono text-sm">{policy.interface}</span>
-        ) : (
-          <span className="text-gray-500">None</span>
-        )}
-      </td>
-      <td className="text-gray-300">
+      <td className="align-top text-gray-300">
         <span className="font-medium">{policy.ip_range_count}</span>
       </td>
-      <td className="text-right">
+      <td className="text-right align-top">
         <div className="flex justify-end space-x-2">
           <Button
             size="sm"
@@ -190,7 +200,7 @@ export function AccessPoliciesPage() {
         errorAction="view access policies"
         loadingMessage="Loading access policies..."
         dependencies={[refreshTrigger]}
-        minWidth="1200px"
+        minWidth="760px"
       />
 
       {/* Create Access Policy Modal */}

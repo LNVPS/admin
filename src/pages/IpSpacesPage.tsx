@@ -64,10 +64,8 @@ export function IpSpacesPage() {
   const renderHeader = () => (
     <>
       <th className="w-16">ID</th>
-      <th>CIDR</th>
-      <th>Registry</th>
-      <th>Prefix Range</th>
-      <th>External ID</th>
+      <th>CIDR &amp; External ID</th>
+      <th>Registry &amp; Prefix</th>
       <th>Pricing</th>
       <th>Status</th>
       <th className="text-right">Actions</th>
@@ -76,31 +74,35 @@ export function IpSpacesPage() {
 
   const renderRow = (ipSpace: AdminAvailableIpSpaceInfo, index: number) => (
     <tr key={ipSpace.id || index}>
-      <td className="whitespace-nowrap text-white">{ipSpace.id}</td>
-      <td>
-        <div className="space-y-0.5">
-          <div className="font-medium text-white font-mono">{ipSpace.cidr}</div>
+      <td className="whitespace-nowrap align-top text-white">{ipSpace.id}</td>
+      <td className="align-top">
+        <div className="min-w-0 max-w-[18rem]">
+          <div className="truncate font-mono font-medium text-white" title={ipSpace.cidr}>
+            {ipSpace.cidr}
+          </div>
+          {ipSpace.external_id ? (
+            <div className="mt-0.5 truncate font-mono text-xs text-gray-400" title={ipSpace.external_id}>
+              {ipSpace.external_id}
+            </div>
+          ) : (
+            <div className="mt-0.5 text-xs text-gray-500">No external ID</div>
+          )}
         </div>
       </td>
-      <td>
-        <div className="flex items-center">
-          <GlobeAltIcon className="h-4 w-4 mr-1 text-gray-400" />
-          <span className="text-gray-300">{ipSpace.registry.name}</span>
+      <td className="align-top">
+        <div className="min-w-0 max-w-[12rem]">
+          <div className="flex items-center">
+            <GlobeAltIcon className="h-4 w-4 mr-1 shrink-0 text-gray-400" />
+            <span className="truncate text-gray-300" title={ipSpace.registry.name}>
+              {ipSpace.registry.name}
+            </span>
+          </div>
+          <div className="mt-0.5 font-mono text-xs text-gray-400">
+            /{ipSpace.min_prefix_size} - /{ipSpace.max_prefix_size}
+          </div>
         </div>
       </td>
-      <td className="text-gray-300">
-        <span className="font-mono">
-          /{ipSpace.min_prefix_size} - /{ipSpace.max_prefix_size}
-        </span>
-      </td>
-      <td className="text-gray-300">
-        {ipSpace.external_id ? (
-          <span className="text-sm font-mono">{ipSpace.external_id}</span>
-        ) : (
-          <span className="text-gray-500">—</span>
-        )}
-      </td>
-      <td>
+      <td className="align-top">
         <button
           onClick={() => handleViewPricing(ipSpace)}
           className="inline-flex items-center text-sm text-blue-400 hover:text-blue-300"
@@ -109,7 +111,7 @@ export function IpSpacesPage() {
           {ipSpace.pricing_count} tier{ipSpace.pricing_count !== 1 ? "s" : ""}
         </button>
       </td>
-      <td>
+      <td className="align-top">
         <div className="flex gap-1">
           {ipSpace.is_reserved && <StatusBadge status="warning">Reserved</StatusBadge>}
           {ipSpace.is_available ? (
@@ -119,7 +121,7 @@ export function IpSpacesPage() {
           )}
         </div>
       </td>
-      <td className="text-right">
+      <td className="text-right align-top">
         <div className="flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={() => handleViewPricing(ipSpace)}>
             <CurrencyDollarIcon className="h-4 w-4" />
@@ -196,7 +198,7 @@ export function IpSpacesPage() {
         errorAction="view IP spaces"
         loadingMessage="Loading IP spaces..."
         dependencies={[refreshTrigger]}
-        minWidth="1400px"
+        minWidth="800px"
       />
 
       {showCreateModal && (

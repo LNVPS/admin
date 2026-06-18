@@ -30,3 +30,5 @@ dist-ssr
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+# Cloudflare Wrangler cache
+.wrangler/

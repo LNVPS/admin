@@ -131,9 +131,8 @@ export function RolesPage() {
 
   const renderHeader = () => (
     <>
-      <th>ID</th>
-      <th>Name</th>
-      <th>Description</th>
+      <th className="w-12">ID</th>
+      <th>Role</th>
       <th>Permissions</th>
       <th className="text-right">Actions</th>
     </>
@@ -141,26 +140,42 @@ export function RolesPage() {
 
   const renderRow = (role: AdminRoleInfo, index: number) => (
     <tr key={role.id || index}>
-      <td className="whitespace-nowrap text-white">{role.id}</td>
-      <td className="whitespace-nowrap text-gray-300">{role.name}</td>
-      <td className="text-gray-400">{role.description || "No description"}</td>
-      <td className="text-gray-300">
-        <div className="flex flex-wrap gap-1">
+      <td className="whitespace-nowrap align-top font-mono text-white">{role.id}</td>
+      {/* Role: name + description */}
+      <td className="align-top">
+        <div className="min-w-0 max-w-[22rem]">
+          <div className="truncate font-medium text-slate-100" title={role.name}>
+            {role.name}
+            {role.is_system_role && (
+              <span className="ml-1.5 text-xs text-slate-400">(system)</span>
+            )}
+          </div>
+          <div
+            className="mt-0.5 truncate text-xs text-slate-400"
+            title={role.description || undefined}
+          >
+            {role.description || "No description"}
+          </div>
+        </div>
+      </td>
+      <td className="align-top text-gray-300">
+        <div className="flex max-w-[22rem] flex-wrap gap-1">
           {role.permissions && role.permissions.length > 0 ? (
             <>
               {role.permissions
-                .slice(0, 2)
+                .slice(0, 3)
                 .map((permission: string, idx: number) => (
                   <span
                     key={idx}
-                    className="inline-flex px-2 py-1 font-semibold rounded-full bg-blue-900 text-blue-300"
+                    className="inline-flex max-w-[12rem] truncate px-2 py-0.5 font-mono text-xs rounded-full bg-blue-900 text-blue-300"
+                    title={permission}
                   >
                     {permission}
                   </span>
                 ))}
-              {role.permissions.length > 2 && (
-                <span className="inline-flex px-2 py-1 font-semibold rounded-full bg-gray-600 text-gray-300">
-                  +{role.permissions.length - 2} more
+              {role.permissions.length > 3 && (
+                <span className="inline-flex px-2 py-0.5 font-semibold text-xs rounded-full bg-gray-600 text-gray-300">
+                  +{role.permissions.length - 3} more
                 </span>
               )}
             </>
@@ -169,7 +184,7 @@ export function RolesPage() {
           )}
         </div>
       </td>
-      <td className="text-right">
+      <td className="text-right align-top">
         <div className="flex justify-end space-x-2">
           <Button
             size="sm"
@@ -236,7 +251,7 @@ export function RolesPage() {
               <FunnelIcon className="h-4 w-4 mr-2" />
               Filters
               {hasActiveFilters && (
-                <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-600 rounded-full">
+                <span className="ml-1 px-1.5 py-0.5 text-xs font-semibold text-slate-950 bg-blue-500 rounded-full">
                   {(resourceFilter ? 1 : 0) + (actionFilter ? 1 : 0)}
                 </span>
               )}
@@ -307,7 +322,7 @@ export function RolesPage() {
               <div className="mt-3 pt-3 border-t border-slate-600">
                 <div className="flex flex-wrap gap-2">
                   {resourceFilter && (
-                    <div className="inline-flex items-center px-2 py-1 bg-blue-600 text-blue-100 text-xs rounded-full">
+                    <div className="inline-flex items-center px-2 py-1 bg-blue-500/10 text-blue-400 ring-1 ring-inset ring-blue-500/30 text-xs rounded-full">
                       Resource: {resourceFilter}
                       <button
                         onClick={() => setResourceFilter("")}
@@ -318,7 +333,7 @@ export function RolesPage() {
                     </div>
                   )}
                   {actionFilter && (
-                    <div className="inline-flex items-center px-2 py-1 bg-green-600 text-green-100 text-xs rounded-full">
+                    <div className="inline-flex items-center px-2 py-1 bg-green-500/10 text-green-400 ring-1 ring-inset ring-green-500/30 text-xs rounded-full">
                       Action: {actionFilter}
                       <button
                         onClick={() => setActionFilter("")}
@@ -370,7 +385,7 @@ export function RolesPage() {
         errorAction="view roles"
         loadingMessage="Applying filters..."
         dependencies={[resourceFilter, actionFilter]}
-        minWidth="1000px"
+        minWidth="720px"
         renderEmptyState={() => (
           <div className="text-center py-8">
             <p className="text-gray-400">

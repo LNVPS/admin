@@ -15,7 +15,9 @@ import {
   GlobeAltIcon,
   KeyIcon,
   ListBulletIcon,
+  MoonIcon,
   ServerIcon,
+  SunIcon,
   UserGroupIcon,
   UsersIcon,
   WifiIcon,
@@ -24,6 +26,7 @@ import React, { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { ServerSelector } from "../components/ServerSelector";
 import { TasksWidget } from "../components/TasksWidget";
+import { useTheme } from "../hooks/useTheme";
 import { useUserRoles } from "../hooks/useUserRoles";
 import { LoginState } from "../lib/login";
 
@@ -213,6 +216,7 @@ export function DashboardLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { hasAnyPermission } = useUserRoles();
+  const { theme, toggleTheme } = useTheme();
 
   const handleLogout = () => {
     LoginState.logout();
@@ -283,7 +287,7 @@ export function DashboardLayout() {
           </button>
         </div>
 
-        <nav className="flex-1 mt-4 px-2 overflow-y-auto">
+        <nav className="flex-1 min-h-0 mt-4 px-2 overflow-y-auto">
           {visibleNavigation.map((item) => (
             <div key={item.name}>
               {item.children ? (
@@ -291,14 +295,14 @@ export function DashboardLayout() {
                 <div>
                   <button
                     onClick={() => toggleExpanded(item.name)}
-                    className="w-full mt-1 flex items-center rounded-lg px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors cursor-pointer"
+                    className="w-full min-w-0 mt-1 flex items-center rounded-lg px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors cursor-pointer"
                   >
-                    <item.icon className="mr-3 h-5 w-5" />
-                    {item.name}
+                    <item.icon className="mr-3 h-5 w-5 shrink-0" />
+                    <span className="truncate">{item.name}</span>
                     {expandedItems.has(item.name) ? (
-                      <ChevronDownIcon className="ml-auto h-4 w-4" />
+                      <ChevronDownIcon className="ml-auto shrink-0 h-4 w-4" />
                     ) : (
-                      <ChevronRightIcon className="ml-auto h-4 w-4" />
+                      <ChevronRightIcon className="ml-auto shrink-0 h-4 w-4" />
                     )}
                   </button>
                   {expandedItems.has(item.name) && (
@@ -311,13 +315,13 @@ export function DashboardLayout() {
                             mt-1 flex items-center rounded-lg px-4 py-2 text-sm font-medium transition-colors
                             ${
                               location.pathname === child.to
-                                ? "bg-blue-600 text-white"
+                                ? "bg-blue-500/10 text-blue-400 ring-1 ring-inset ring-blue-500/30"
                                 : "text-slate-300 hover:bg-slate-700 hover:text-white"
                             }
                           `}
                         >
-                          <child.icon className="mr-3 h-4 w-4" />
-                          {child.name}
+                          <child.icon className="mr-3 h-4 w-4 shrink-0" />
+                          <span className="truncate">{child.name}</span>
                         </Link>
                       ))}
                     </div>
@@ -331,22 +335,34 @@ export function DashboardLayout() {
                     mt-1 flex items-center rounded-lg px-4 py-2 text-sm font-medium transition-colors
                     ${
                       location.pathname === item.to
-                        ? "bg-blue-600 text-white"
+                        ? "bg-blue-500/10 text-blue-400 ring-1 ring-inset ring-blue-500/30"
                         : "text-slate-300 hover:bg-slate-700 hover:text-white"
                     }
                   `}
                 >
-                  <item.icon className="mr-3 h-5 w-5" />
-                  {item.name}
+                  <item.icon className="mr-3 h-5 w-5 shrink-0" />
+                  <span className="truncate">{item.name}</span>
                 </Link>
               )}
             </div>
           ))}
         </nav>
 
-        <div className="p-2 mt-auto space-y-2">
+        <div className="p-2 mt-auto shrink-0 space-y-2 border-t border-slate-700/60">
           <TasksWidget />
           <ServerSelector />
+          <button
+            onClick={toggleTheme}
+            className="flex w-full items-center rounded-lg px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white cursor-pointer"
+            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {theme === "dark" ? (
+              <SunIcon className="mr-3 h-5 w-5" />
+            ) : (
+              <MoonIcon className="mr-3 h-5 w-5" />
+            )}
+            {theme === "dark" ? "Light mode" : "Dark mode"}
+          </button>
           <button
             onClick={handleLogout}
             className="flex w-full items-center rounded-lg px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white cursor-pointer"
@@ -369,7 +385,7 @@ export function DashboardLayout() {
           </button>
         </div>
 
-        <main className="flex-1 p-6 overflow-y-auto h-full">
+        <main className="flex-1 p-4 overflow-y-auto h-full">
           <Outlet />
         </main>
       </div>

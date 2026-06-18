@@ -1,4 +1,5 @@
 import type React from "react";
+import { useState } from "react";
 
 interface Column<T> {
   header: string;
@@ -39,7 +40,7 @@ export function Table<T extends { id: string | number }>({
             {columns.map((column) => (
               <th
                 key={column.key.toString()}
-                className="px-0.5 py-0.5 text-left text-xs font-medium uppercase tracking-wider text-slate-400"
+                className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
               >
                 {column.header}
               </th>
@@ -60,7 +61,7 @@ export function Table<T extends { id: string | number }>({
               {columns.map((column) => (
                 <td
                   key={`${item.id}-${column.key}`}
-                  className="whitespace-nowrap px-0.5 py-0.5 text-xs text-slate-200"
+                  className="whitespace-nowrap px-3 py-2 text-[13px] text-slate-200"
                 >
                   {column.render
                     ? column.render(item)
@@ -100,30 +101,107 @@ interface PaginationProps {
   onPageChange: (page: number) => void;
 }
 
+// Compute a windowed list of page numbers with ellipsis gaps, e.g. 1 … 4 5 [6] 7 8 … 20
+function getPageItems(current: number, total: number, window = 1): (number | "gap")[] {
+  const items: (number | "gap")[] = [];
+  for (let p = 1; p <= total; p++) {
+    if (p === 1 || p === total || (p >= current - window && p <= current + window)) {
+      items.push(p);
+    } else if (items[items.length - 1] !== "gap") {
+      items.push("gap");
+    }
+  }
+  return items;
+}
+
 export function Pagination({
   currentPage,
   totalPages,
   onPageChange,
 }: PaginationProps) {
+  const [jump, setJump] = useState("");
+
+  const go = (page: number) => {
+    const clamped = Math.min(Math.max(1, page), totalPages);
+    if (clamped !== currentPage) onPageChange(clamped);
+  };
+
+  const submitJump = (e: React.FormEvent) => {
+    e.preventDefault();
+    const n = parseInt(jump, 10);
+    if (!Number.isNaN(n)) go(n);
+    setJump("");
+  };
+
+  const ctrl =
+    "rounded bg-slate-700 px-2 py-1 text-xs font-medium text-white transition-colors hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-40";
+
   return (
-    <div className="mt-2 flex items-center justify-between px-2">
-      <button
-        onClick={() => onPageChange(currentPage - 1)}
-        disabled={currentPage === 1}
-        className="rounded bg-slate-700 px-2 py-1 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        Prev
-      </button>
-      <span className="text-xs text-slate-400">
-        {currentPage} / {totalPages}
-      </span>
-      <button
-        onClick={() => onPageChange(currentPage + 1)}
-        disabled={currentPage === totalPages}
-        className="rounded bg-slate-700 px-2 py-1 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        Next
-      </button>
+    <div className="mt-2 flex flex-wrap items-center justify-between gap-y-2 gap-x-4 px-2">
+      <div className="flex items-center gap-1">
+        <button className={ctrl} onClick={() => go(1)} disabled={currentPage === 1} title="First page">
+          «
+        </button>
+        <button className={ctrl} onClick={() => go(currentPage - 1)} disabled={currentPage === 1} title="Previous page">
+          ‹
+        </button>
+        {getPageItems(currentPage, totalPages).map((item, i) =>
+          item === "gap" ? (
+            <span key={`gap-${i}`} className="px-1 text-xs text-slate-500">
+              …
+            </span>
+          ) : (
+            <button
+              key={item}
+              onClick={() => go(item)}
+              aria-current={item === currentPage ? "page" : undefined}
+              className={`rounded px-2 py-1 text-xs font-medium transition-colors ${
+                item === currentPage
+                  ? "bg-blue-500 text-slate-950"
+                  : "bg-slate-700 text-white hover:bg-slate-600"
+              }`}
+            >
+              {item}
+            </button>
+          ),
+        )}
+        <button
+          className={ctrl}
+          onClick={() => go(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          title="Next page"
+        >
+          ›
+        </button>
+        <button
+          className={ctrl}
+          onClick={() => go(totalPages)}
+          disabled={currentPage === totalPages}
+          title="Last page"
+        >
+          »
+        </button>
+      </div>
+
+      <form onSubmit={submitJump} className="flex items-center gap-2">
+        <span className="text-xs text-slate-400">
+          Page {currentPage} of {totalPages}
+        </span>
+        <div className="w-16">
+          <input
+            type="number"
+            min={1}
+            max={totalPages}
+            value={jump}
+            onChange={(e) => setJump(e.target.value)}
+            placeholder="Go to"
+            className="!px-2 !py-1 text-xs"
+          />
+        </div>
+        <button type="submit" className={ctrl} disabled={!jump.trim()}>
+          Go
+        </button>
+      </form>
     </div>
   );
 }

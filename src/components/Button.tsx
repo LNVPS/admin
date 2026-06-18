@@ -21,13 +21,16 @@ export function Button({
   ...props
 }: ButtonProps) {
   const baseStyles =
-    "inline-flex items-center justify-center font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors cursor-pointer";
+    "inline-flex items-center justify-center font-semibold rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 transition-colors cursor-pointer";
 
   const variantStyles = {
-    primary: "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500",
-    secondary: "bg-gray-600 text-white hover:bg-gray-500 focus:ring-gray-500",
-    danger: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500",
-    success: "bg-green-600 text-white hover:bg-green-700 focus:ring-green-500",
+    // primary maps to lnvps neon green — needs dark text for contrast
+    primary: "bg-blue-500 text-slate-950 hover:bg-blue-400 focus-visible:ring-blue-500",
+    secondary: "bg-slate-700 text-white hover:bg-slate-600 focus-visible:ring-slate-500 border border-slate-600",
+    // Literal light label (not `text-white`, which flips to dark in light mode) so it
+    // stays readable on the saturated fill in both themes.
+    danger: "bg-red-600 text-[#fafafa] hover:bg-red-500 focus-visible:ring-red-500",
+    success: "bg-green-600 text-[#fafafa] hover:bg-green-500 focus-visible:ring-green-500",
   };
 
   const sizeStyles = {

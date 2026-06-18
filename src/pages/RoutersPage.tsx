@@ -54,10 +54,9 @@ export function RoutersPage() {
   const renderHeader = () => (
     <>
       <th className="w-16">ID</th>
-      <th>Router Name</th>
-      <th>Type</th>
+      <th>Router</th>
       <th>URL</th>
-      <th>Access Policies</th>
+      <th>Policies</th>
       <th>Status</th>
       <th className="text-right">Actions</th>
     </>
@@ -65,28 +64,34 @@ export function RoutersPage() {
 
   const renderRow = (router: AdminRouterDetail, index: number) => (
     <tr key={router.id || index}>
-      <td className="whitespace-nowrap text-white">{router.id}</td>
-      <td>
-        <div className="font-medium text-white">{router.name}</div>
+      <td className="whitespace-nowrap align-top text-white">{router.id}</td>
+      <td className="align-top">
+        <div className="min-w-0 max-w-[16rem]">
+          <div className="truncate font-medium text-white" title={router.name}>
+            {router.name}
+          </div>
+          <div className="mt-1">
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-900 text-purple-200 capitalize">
+              {router.kind.replace("_", " ")}
+            </span>
+          </div>
+        </div>
       </td>
-      <td className="text-gray-300">
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-900 text-purple-200 capitalize">
-          {router.kind.replace("_", " ")}
-        </span>
+      <td className="align-top text-gray-300">
+        <div className="min-w-0 max-w-[20rem] truncate font-mono text-xs" title={router.url}>
+          {router.url}
+        </div>
       </td>
-      <td className="text-gray-300">
-        <span className="font-mono text-sm break-all">{router.url}</span>
-      </td>
-      <td className="text-gray-300">
+      <td className="align-top text-gray-300">
         <div className="flex items-center">
           <KeyIcon className="h-4 w-4 mr-1 text-gray-400" />
           <span className="font-medium">{router.access_policy_count}</span>
         </div>
       </td>
-      <td>
+      <td className="align-top">
         <StatusBadge status={router.enabled ? "active" : "inactive"} />
       </td>
-      <td className="text-right">
+      <td className="text-right align-top">
         <div className="flex justify-end space-x-2">
           <Button
             size="sm"
@@ -182,7 +187,7 @@ export function RoutersPage() {
         errorAction="view routers"
         loadingMessage="Loading routers..."
         dependencies={[refreshTrigger]}
-        minWidth="1400px"
+        minWidth="800px"
       />
 
       {/* Create Router Modal */}

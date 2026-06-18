@@ -131,7 +131,7 @@ export function ToastComponent({ toast, onDismiss }: ToastProps) {
                     px-3 py-1 text-xs font-medium rounded-md transition-colors
                     ${
                       action.variant === "primary"
-                        ? "bg-blue-600 text-white hover:bg-blue-700"
+                        ? "bg-blue-500 text-slate-950 hover:bg-blue-400"
                         : "bg-gray-700 text-gray-300 hover:bg-gray-600"
                     }
                   `}

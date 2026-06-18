@@ -1,9 +1,10 @@
-import { DocumentTextIcon, PencilIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { DocumentTextIcon, FunnelIcon, PencilIcon, PlusIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
 import { PaginatedTable } from "../components/PaginatedTable";
+import { Profile } from "../components/Profile";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import type { AdminSubscriptionInfo } from "../lib/api";
@@ -11,10 +12,96 @@ import { formatCurrency } from "../utils/currency";
 
 export function SubscriptionsPage() {
   const adminApi = useAdminApi();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedSubscription, setSelectedSubscription] = useState<AdminSubscriptionInfo | null>(null);
+
+  const [subIdInput, setSubIdInput] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [searchInput, setSearchInput] = useState(searchParams.get("search") ?? "");
+  const [filters, setFilters] = useState({
+    user_id: searchParams.get("user_id") ?? "",
+    search: searchParams.get("search") ?? "",
+    // Baseline is active-only; checking "Show inactive" widens to include inactive subscriptions.
+    show_inactive: (searchParams.get("show_inactive") ?? "") as "" | "true",
+    auto_renewal: (searchParams.get("auto_renewal") ?? "") as "" | "true" | "false",
+  });
+
+  // Mirror a filter into the URL so a filtered list is shareable / deep-linkable.
+  const syncParam = (key: string, value: string) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) next.set(key, value);
+        else next.delete(key);
+        return next;
+      },
+      { replace: true },
+    );
+  };
+
+  const handleFilterChange = (key: keyof typeof filters, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+    syncParam(key, value);
+  };
+
+  // Debounce the free-text search so we don't fire a request per keystroke.
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setFilters((prev) => (prev.search === searchInput ? prev : { ...prev, search: searchInput }));
+      syncParam("search", searchInput);
+    }, 300);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput]);
+
+  const clearFilters = () => {
+    setFilters({ user_id: "", search: "", show_inactive: "", auto_renewal: "" });
+    setSearchInput("");
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        for (const k of ["user_id", "search", "show_inactive", "auto_renewal"]) {
+          next.delete(k);
+        }
+        return next;
+      },
+      { replace: true },
+    );
+    setRefreshTrigger((prev) => prev + 1);
+  };
+
+  const activeFilters =
+    (filters.user_id ? 1 : 0) +
+    (filters.search ? 1 : 0) +
+    (filters.show_inactive ? 1 : 0) +
+    (filters.auto_renewal ? 1 : 0);
+
+  const getApiFilters = () => {
+    const apiFilters: {
+      user_id?: number;
+      search?: string;
+      status?: "active" | "inactive";
+      auto_renewal?: boolean;
+    } = {};
+    if (filters.user_id && !Number.isNaN(Number(filters.user_id))) {
+      apiFilters.user_id = Number(filters.user_id);
+    }
+    if (filters.search.trim()) {
+      apiFilters.search = filters.search.trim();
+    }
+    // Baseline shows active only; "Show inactive" removes the status filter to include all.
+    if (!filters.show_inactive) {
+      apiFilters.status = "active";
+    }
+    if (filters.auto_renewal) {
+      apiFilters.auto_renewal = filters.auto_renewal === "true";
+    }
+    return apiFilters;
+  };
 
   const refreshData = () => {
     setRefreshTrigger((prev) => prev + 1);
@@ -46,54 +133,73 @@ export function SubscriptionsPage() {
   const renderHeader = () => (
     <>
       <th className="w-16">ID</th>
-      <th>Name</th>
-      <th>User</th>
+      <th>Name &amp; User</th>
       <th>Billing</th>
-      <th>Line Items</th>
-      <th>Payments</th>
-      <th>Expires</th>
-      <th>Status</th>
+      <th>Items / Payments</th>
+      <th>Expires &amp; Status</th>
       <th className="text-right">Actions</th>
     </>
   );
 
   const renderRow = (sub: AdminSubscriptionInfo, index: number) => (
-    <tr key={sub.id || index}>
-      <td className="whitespace-nowrap text-white">{sub.id}</td>
-      <td>
-        <div className="space-y-0.5">
-          <Link to={`/subscriptions/${sub.id}`} className="font-medium text-blue-400 hover:text-blue-300">
+    <tr
+      key={sub.id || index}
+      onClick={() => navigate(`/subscriptions/${sub.id}`)}
+      className="cursor-pointer"
+    >
+      <td className="whitespace-nowrap align-top text-white">{sub.id}</td>
+      {/* Name + user */}
+      <td className="align-top">
+        <div className="min-w-0 max-w-[18rem]">
+          <Link
+            to={`/subscriptions/${sub.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="block truncate font-medium text-blue-400 hover:text-blue-300"
+            title={sub.name}
+          >
             {sub.name}
           </Link>
-          {sub.description && <div className="text-xs text-gray-400 truncate max-w-48">{sub.description}</div>}
+          {sub.description && (
+            <div className="truncate text-xs text-slate-400" title={sub.description}>
+              {sub.description}
+            </div>
+          )}
+          <Link
+            to={`/users/${sub.user_id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="mt-1 inline-block hover:opacity-80"
+            title={`User #${sub.user_id}`}
+          >
+            <Profile pubkey={sub.user_pubkey} avatarSize="sm" />
+          </Link>
         </div>
       </td>
-      <td>
-        <Link to={`/users/${sub.user_id}`} className="text-blue-400 hover:text-blue-300 text-sm">
-          User #{sub.user_id}
-        </Link>
-      </td>
-      <td>
+      {/* Billing: amount + interval / setup */}
+      <td className="align-top">
         <div className="text-sm text-gray-300">
-          <div>
+          <div className="tabular-nums">
             {formatCurrency(
               sub.line_items.reduce((sum, item) => sum + item.amount, 0),
               sub.currency,
             )}{" "}
-            <span className="text-xs text-gray-400">{formatInterval(sub.interval_amount, sub.interval_type)}</span>
+            <span className="text-xs text-slate-400">{formatInterval(sub.interval_amount, sub.interval_type)}</span>
           </div>
           {sub.setup_fee > 0 && (
-            <div className="text-xs text-gray-400">{formatCurrency(sub.setup_fee, sub.currency)} setup</div>
+            <div className="text-xs text-slate-400">{formatCurrency(sub.setup_fee, sub.currency)} setup</div>
           )}
         </div>
       </td>
-      <td className="text-gray-300">{sub.line_items.length}</td>
-      <td className="text-gray-300">{sub.payment_count}</td>
-      <td className="text-gray-300 text-sm">
-        {sub.expires ? new Date(sub.expires).toLocaleDateString() : <span className="text-gray-500">None</span>}
+      {/* Line items + payments */}
+      <td className="align-top text-gray-300">
+        <div className="text-sm">{sub.line_items.length} items</div>
+        <div className="mt-0.5 text-xs text-slate-400">{sub.payment_count} payments</div>
       </td>
-      <td>
-        <div className="flex gap-1">
+      {/* Expires + status */}
+      <td className="align-top">
+        <div className="text-sm text-gray-300">
+          {sub.expires ? new Date(sub.expires).toLocaleDateString() : <span className="text-slate-500">No expiry</span>}
+        </div>
+        <div className="mt-1 flex flex-wrap gap-1">
           {sub.is_active ? (
             <StatusBadge status="active">Active</StatusBadge>
           ) : (
@@ -102,17 +208,28 @@ export function SubscriptionsPage() {
           {sub.auto_renewal_enabled && <StatusBadge status="info">Auto-renew</StatusBadge>}
         </div>
       </td>
-      <td className="text-right">
+      <td className="text-right align-top">
         <div className="flex justify-end gap-2">
-          <Link to={`/subscriptions/${sub.id}`}>
-            <Button variant="ghost" size="sm">
-              <DocumentTextIcon className="h-4 w-4" />
-            </Button>
-          </Link>
-          <Button variant="ghost" size="sm" onClick={() => handleEdit(sub)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            title="Edit subscription"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEdit(sub);
+            }}
+          >
             <PencilIcon className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => handleDelete(sub)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            title="Delete subscription"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete(sub);
+            }}
+          >
             <TrashIcon className="h-4 w-4" />
           </Button>
         </div>
@@ -142,7 +259,7 @@ export function SubscriptionsPage() {
     };
 
     return (
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-6 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-white">Subscriptions</h1>
           <div className="mt-2 flex gap-4 text-sm text-gray-400">
@@ -157,18 +274,117 @@ export function SubscriptionsPage() {
             </span>
           </div>
         </div>
-        <Button onClick={() => setShowCreateModal(true)}>
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Create Subscription
-        </Button>
+        <div className="flex items-center space-x-2 flex-wrap gap-y-2">
+          <div className="w-56">
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search name or description"
+              className="!py-1.5 text-sm"
+            />
+          </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const id = subIdInput.trim();
+              if (id && !Number.isNaN(Number(id))) {
+                navigate(`/subscriptions/${id}`);
+                setSubIdInput("");
+              }
+            }}
+            className="flex items-center space-x-1"
+          >
+            <div className="w-28">
+              <input
+                type="number"
+                value={subIdInput}
+                onChange={(e) => setSubIdInput(e.target.value)}
+                placeholder="Go to ID"
+                className="!py-1.5 text-sm"
+              />
+            </div>
+            <Button variant="secondary" type="submit" disabled={!subIdInput.trim()}>
+              Go
+            </Button>
+          </form>
+          <Button onClick={() => setShowCreateModal(true)}>
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Create
+          </Button>
+          <Button variant="secondary" onClick={() => setShowFilters(!showFilters)} className="relative">
+            <FunnelIcon className="h-4 w-4 mr-2" />
+            Filters
+            {activeFilters > 0 && (
+              <span className="absolute -top-1 -right-1 bg-blue-500 text-slate-950 font-semibold text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {activeFilters}
+              </span>
+            )}
+          </Button>
+        </div>
       </div>
     );
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {showFilters && (
+        <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium text-white">Filters</h3>
+            <Button variant="secondary" onClick={() => setShowFilters(false)} className="p-1">
+              <XMarkIcon className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">User ID</label>
+              <input
+                type="number"
+                value={filters.user_id}
+                onChange={(e) => handleFilterChange("user_id", e.target.value)}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
+                placeholder="Filter by user ID"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Auto-renewal</label>
+              <select
+                value={filters.auto_renewal}
+                onChange={(e) => handleFilterChange("auto_renewal", e.target.value)}
+                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
+              >
+                <option value="">All</option>
+                <option value="true">Enabled</option>
+                <option value="false">Disabled</option>
+              </select>
+            </div>
+
+            <div className="flex items-end">
+              <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={filters.show_inactive === "true"}
+                  onChange={(e) => handleFilterChange("show_inactive", e.target.checked ? "true" : "")}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                Show inactive
+              </label>
+            </div>
+
+            <div className="flex items-end md:col-span-3">
+              <Button variant="secondary" onClick={clearFilters} disabled={activeFilters === 0}>
+                Clear All Filters
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <PaginatedTable
-        apiCall={(params) => adminApi.getSubscriptions(params)}
+        apiCall={(params) => adminApi.getSubscriptions({ ...params, ...getApiFilters() })}
         renderHeader={renderHeader}
         renderRow={renderRow}
         renderEmptyState={renderEmptyState}
@@ -176,8 +392,8 @@ export function SubscriptionsPage() {
         itemsPerPage={20}
         errorAction="view subscriptions"
         loadingMessage="Loading subscriptions..."
-        dependencies={[refreshTrigger]}
-        minWidth="1200px"
+        dependencies={[refreshTrigger, filters]}
+        minWidth="850px"
       />
 
       {showCreateModal && (
@@ -417,7 +633,7 @@ function CreateSubscriptionModal({ onClose, onSuccess }: { onClose: () => void; 
   );
 }
 
-function EditSubscriptionModal({
+export function EditSubscriptionModal({
   subscription,
   onClose,
   onSuccess,

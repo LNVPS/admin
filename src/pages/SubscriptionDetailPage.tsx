@@ -1,6 +1,7 @@
 import {
   ArrowLeftIcon,
   ArrowPathIcon,
+  ArrowTopRightOnSquareIcon,
   BanknotesIcon,
   CheckCircleIcon,
   CheckIcon,
@@ -8,34 +9,41 @@ import {
   ClockIcon,
   CreditCardIcon,
   DocumentTextIcon,
+  GlobeAltIcon,
   PencilIcon,
   PlusIcon,
+  ServerIcon,
   TrashIcon,
   XCircleIcon,
 } from "@heroicons/react/24/outline";
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { ErrorState } from "../components/ErrorState";
 import { Modal } from "../components/Modal";
 import { PaginatedTable } from "../components/PaginatedTable";
+import { Profile } from "../components/Profile";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { useApiCall } from "../hooks/useApiCall";
+import { EditSubscriptionModal } from "./SubscriptionsPage";
 import {
   AdminPaymentMethod,
   type AdminSubscriptionInfo,
   type AdminSubscriptionLineItemInfo,
+  type AdminSubscriptionLineItemResource,
   type AdminSubscriptionPaymentInfo,
 } from "../lib/api";
 import { formatCurrency } from "../utils/currency";
 
 export function SubscriptionDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const adminApi = useAdminApi();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showAddLineItem, setShowAddLineItem] = useState(false);
+  const [showEditSubscription, setShowEditSubscription] = useState(false);
   const [editingLineItem, setEditingLineItem] = useState<AdminSubscriptionLineItemInfo | null>(null);
 
   const {
@@ -60,6 +68,18 @@ export function SubscriptionDetailPage() {
     }
   };
 
+  const handleDeleteSubscription = async () => {
+    if (!subscription) return;
+    if (!confirm(`Delete subscription "${subscription.name}"? This action cannot be undone.`)) return;
+
+    try {
+      await adminApi.deleteSubscription(subscription.id);
+      navigate("/subscriptions");
+    } catch (error) {
+      // Error handled by API layer
+    }
+  };
+
   if (error) {
     return <ErrorState error={error} onRetry={retry} action="load subscription" />;
   }
@@ -77,36 +97,76 @@ export function SubscriptionDetailPage() {
     return `every ${amount} ${type}s`;
   };
 
+  // Resolve the line item's linked resource from the typed `resource` field.
+  const getLinkedResource = (resource: AdminSubscriptionLineItemResource | null) => {
+    if (!resource) return null;
+    if (resource.type === "vps") {
+      return { to: `/vms/${resource.vm_id}`, label: `VM #${resource.vm_id}`, icon: ServerIcon };
+    }
+    if (resource.type === "ip_range") {
+      return {
+        to: "/ip-spaces",
+        label: `IP Range subscription #${resource.ip_range_subscription_id}`,
+        icon: GlobeAltIcon,
+      };
+    }
+    return null;
+  };
+
   return (
     <div className="space-y-6">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-1 text-sm text-gray-400">
+        <Link to="/subscriptions" className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300">
+          <ArrowLeftIcon className="h-3.5 w-3.5" />
+          Subscriptions
+        </Link>
+        <span className="text-gray-600">/</span>
+        <span className="truncate text-gray-300" title={subscription.name}>
+          {subscription.name}
+        </span>
+      </div>
+
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link to="/subscriptions">
-            <Button variant="ghost" size="sm">
-              <ArrowLeftIcon className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="min-w-0">
+          <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-2xl font-bold text-white">{subscription.name}</h1>
-            <div className="mt-1 flex gap-2 items-center text-sm text-gray-400">
-              <span>Subscription #{subscription.id}</span>
-              <span>|</span>
-              <Link to={`/users/${subscription.user_id}`} className="text-blue-400 hover:text-blue-300">
-                User #{subscription.user_id}
-              </Link>
-              <span>|</span>
-              <span>Created {new Date(subscription.created).toLocaleDateString()}</span>
-            </div>
+            {subscription.is_active ? (
+              <StatusBadge status="active">Active</StatusBadge>
+            ) : (
+              <StatusBadge status="inactive">Inactive</StatusBadge>
+            )}
+            {subscription.auto_renewal_enabled && <StatusBadge status="info">Auto-renew</StatusBadge>}
+          </div>
+          <div className="mt-1 flex gap-2 items-center text-sm text-gray-400 flex-wrap">
+            <span>Subscription #{subscription.id}</span>
+            <span>|</span>
+            <Link
+              to={`/users/${subscription.user_id}`}
+              className="hover:opacity-80"
+              title={`User #${subscription.user_id}`}
+            >
+              <Profile pubkey={subscription.user_pubkey} avatarSize="sm" />
+            </Link>
+            <span>|</span>
+            <span>Created {new Date(subscription.created).toLocaleDateString()}</span>
           </div>
         </div>
-        <div className="flex gap-2">
-          {subscription.is_active ? (
-            <StatusBadge status="active">Active</StatusBadge>
-          ) : (
-            <StatusBadge status="inactive">Inactive</StatusBadge>
-          )}
-          {subscription.auto_renewal_enabled && <StatusBadge status="info">Auto-renew</StatusBadge>}
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="secondary" size="sm" onClick={() => setShowEditSubscription(true)}>
+            <PencilIcon className="h-4 w-4 mr-1.5" />
+            Edit
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleDeleteSubscription}
+            className="text-red-400 hover:text-red-300"
+          >
+            <TrashIcon className="h-4 w-4 mr-1.5" />
+            Delete
+          </Button>
         </div>
       </div>
 
@@ -138,15 +198,15 @@ export function SubscriptionDetailPage() {
               </div>
             </div>
             {subscription.description && (
-              <div className="col-span-2 md:col-span-4">
+              <div className="col-span-2 min-w-0 md:col-span-4">
                 <div className="text-xs text-gray-400 uppercase">Description</div>
-                <div className="text-gray-300">{subscription.description}</div>
+                <div className="break-words text-gray-300">{subscription.description}</div>
               </div>
             )}
             {subscription.external_id && (
-              <div className="col-span-2">
+              <div className="col-span-2 min-w-0">
                 <div className="text-xs text-gray-400 uppercase">External ID</div>
-                <div className="text-gray-300 font-mono text-sm">{subscription.external_id}</div>
+                <div className="break-all font-mono text-sm text-gray-300">{subscription.external_id}</div>
               </div>
             )}
           </div>
@@ -170,11 +230,13 @@ export function SubscriptionDetailPage() {
           <div className="text-center py-8 text-gray-400">No line items configured</div>
         ) : (
           <div className="space-y-2">
-            {subscription.line_items.map((item) => (
-              <div key={item.id} className="bg-gray-700 rounded-lg p-4 flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="font-medium text-white">{item.name}</div>
-                  {item.description && <div className="text-sm text-gray-400">{item.description}</div>}
+            {subscription.line_items.map((item) => {
+              const linked = getLinkedResource(item.resource);
+              return (
+              <div key={item.id} className="bg-gray-700 rounded-lg p-4 flex items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <div className="break-words font-medium text-white">{item.name}</div>
+                  {item.description && <div className="break-words text-sm text-gray-400">{item.description}</div>}
                   <div className="mt-1 flex gap-4 text-sm text-gray-300">
                     <span>
                       Recurring: {formatCurrency(item.amount, subscription.currency)}{" "}
@@ -184,10 +246,20 @@ export function SubscriptionDetailPage() {
                       <span>Setup: {formatCurrency(item.setup_amount, subscription.currency)}</span>
                     )}
                   </div>
+                  {linked && (
+                    <Link
+                      to={linked.to}
+                      className="mt-1.5 inline-flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300"
+                    >
+                      <linked.icon className="h-4 w-4" />
+                      <span>{linked.label}</span>
+                      <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
+                    </Link>
+                  )}
                   {item.configuration && (
                     <div className="mt-1">
                       <details className="text-xs">
-                        <summary className="text-gray-400 cursor-pointer hover:text-gray-300">Configuration</summary>
+                        <summary className="text-gray-400 cursor-pointer hover:text-gray-300">Upgrade details</summary>
                         <pre className="mt-1 p-2 bg-gray-800 rounded text-gray-300 overflow-x-auto">
                           {JSON.stringify(item.configuration, null, 2)}
                         </pre>
@@ -195,7 +267,7 @@ export function SubscriptionDetailPage() {
                     </div>
                   )}
                 </div>
-                <div className="flex gap-2 ml-4">
+                <div className="flex shrink-0 gap-2">
                   <Button variant="ghost" size="sm" onClick={() => setEditingLineItem(item)}>
                     <PencilIcon className="h-4 w-4" />
                   </Button>
@@ -204,7 +276,8 @@ export function SubscriptionDetailPage() {
                   </Button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -224,6 +297,17 @@ export function SubscriptionDetailPage() {
       </div>
 
       {/* Modals */}
+      {showEditSubscription && (
+        <EditSubscriptionModal
+          subscription={subscription}
+          onClose={() => setShowEditSubscription(false)}
+          onSuccess={() => {
+            setShowEditSubscription(false);
+            refreshData();
+          }}
+        />
+      )}
+
       {showAddLineItem && (
         <CreateLineItemModal
           subscriptionId={subscription.id}
@@ -325,20 +409,16 @@ function SubscriptionPaymentsTable({ subscriptionId, refreshKey }: { subscriptio
       <th>ID</th>
       <th>Type</th>
       <th>Amount</th>
-      <th>Rate</th>
-      <th>Base Amount</th>
-      <th>Tax</th>
-      <th>Processing Fee</th>
       <th>External ID</th>
-      <th>Method</th>
-      <th>Status</th>
+      <th>Method &amp; Status</th>
       <th>Date</th>
     </>
   );
 
   const renderRow = (payment: AdminSubscriptionPaymentInfo, index: number) => (
     <tr key={payment.id || index}>
-      <td className="font-mono text-sm text-blue-400">
+      {/* ID */}
+      <td className="align-top font-mono text-sm text-blue-400">
         <span className="inline-flex items-center gap-1">
           <span title={payment.id}>{payment.id.slice(0, 8)}...</span>
           <button
@@ -355,44 +435,42 @@ function SubscriptionPaymentsTable({ subscriptionId, refreshKey }: { subscriptio
           </button>
         </span>
       </td>
-      <td>
+      {/* Type */}
+      <td className="align-top">
         <StatusBadge status={payment.payment_type === "purchase" ? "info" : "active"}>
           {payment.payment_type}
         </StatusBadge>
       </td>
-      <td>{formatCurrency(payment.amount, payment.currency)}</td>
-      <td className="text-sm">
-        {payment.rate && payment.rate !== 1 ? (
-          <span className="font-mono">
-            {new Intl.NumberFormat("en-US", {
-              style: payment.company_base_currency ? "currency" : "decimal",
-              currency: payment.company_base_currency ?? undefined,
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 2,
-            }).format(payment.rate)}
-          </span>
-        ) : (
-          <span className="text-gray-600">—</span>
-        )}
+      {/* Amount: total + rate / base / tax / fee */}
+      <td className="align-top">
+        <div className="min-w-0 max-w-[16rem]">
+          <div className="font-medium text-slate-100">{formatCurrency(payment.amount, payment.currency)}</div>
+          <div className="mt-0.5 space-y-0.5 font-mono text-xs text-slate-400">
+            {payment.rate && payment.rate !== 1 && (
+              <div>
+                Rate:{" "}
+                {new Intl.NumberFormat("en-US", {
+                  style: payment.company_base_currency ? "currency" : "decimal",
+                  currency: payment.company_base_currency ?? undefined,
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 2,
+                }).format(payment.rate)}
+              </div>
+            )}
+            {payment.rate && payment.currency !== payment.company_base_currency && (
+              <div>
+                Base: {formatBaseAmount(payment.amount, payment.currency, payment.rate, payment.company_base_currency)}
+              </div>
+            )}
+            {payment.tax > 0 && <div>Tax: {formatCurrency(payment.tax, payment.currency)}</div>}
+            {payment.processing_fee > 0 && (
+              <div>Fee: {formatCurrency(payment.processing_fee, payment.currency)}</div>
+            )}
+          </div>
+        </div>
       </td>
-      <td className="text-sm">
-        {payment.rate && payment.currency !== payment.company_base_currency ? (
-          formatBaseAmount(payment.amount, payment.currency, payment.rate, payment.company_base_currency)
-        ) : (
-          <span className="text-gray-600">—</span>
-        )}
-      </td>
-      <td className="text-sm">
-        {payment.tax > 0 ? formatCurrency(payment.tax, payment.currency) : <span className="text-gray-600">—</span>}
-      </td>
-      <td className="text-sm">
-        {payment.processing_fee > 0 ? (
-          formatCurrency(payment.processing_fee, payment.currency)
-        ) : (
-          <span className="text-gray-600">—</span>
-        )}
-      </td>
-      <td className="font-mono text-sm text-gray-300">
+      {/* External ID */}
+      <td className="align-top font-mono text-sm text-gray-300">
         {payment.external_id ? (
           <span className="inline-flex items-center gap-1">
             <span title={payment.external_id}>{payment.external_id.slice(0, 12)}...</span>
@@ -413,13 +491,12 @@ function SubscriptionPaymentsTable({ subscriptionId, refreshKey }: { subscriptio
           <span className="text-gray-600">—</span>
         )}
       </td>
-      <td>
+      {/* Method & Status */}
+      <td className="align-top">
         <StatusBadge status={getPaymentMethodColor(payment.payment_method)}>
           {formatPaymentMethod(payment.payment_method)}
         </StatusBadge>
-      </td>
-      <td>
-        <div className="flex items-center space-x-2">
+        <div className="mt-1 flex items-center space-x-2">
           {payment.is_paid ? (
             <CheckCircleIcon className="h-4 w-4 text-green-400" />
           ) : payment.expires && new Date(payment.expires) < new Date() ? (
@@ -444,7 +521,8 @@ function SubscriptionPaymentsTable({ subscriptionId, refreshKey }: { subscriptio
           </span>
         </div>
       </td>
-      <td className="text-gray-400 text-sm">
+      {/* Date */}
+      <td className="align-top text-gray-400 text-sm">
         <div className="space-y-0.5">
           <div>{new Date(payment.created).toLocaleString()}</div>
           {payment.paid_at && (
@@ -471,7 +549,7 @@ function SubscriptionPaymentsTable({ subscriptionId, refreshKey }: { subscriptio
       itemsPerPage={10}
       errorAction="load payments"
       loadingMessage="Loading payments..."
-      minWidth="1100px"
+      minWidth="950px"
       inlineError={true}
       dependencies={[subscriptionId, refreshKey]}
       calculateStats={(payments, total) => (

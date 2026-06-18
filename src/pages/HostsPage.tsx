@@ -52,13 +52,11 @@ export function HostsPage() {
 
   const renderHeader = () => (
     <>
-      <th>ID</th>
-      <th>Host Details</th>
-      <th>Region</th>
+      <th className="w-12">ID</th>
+      <th>Host</th>
       <th>Resources</th>
       <th>Disks</th>
-      <th>Load Factors</th>
-      <th className="w-12">VMs</th>
+      <th>Load (set / actual)</th>
       <th>Status</th>
       <th className="text-right">Actions</th>
     </>
@@ -66,36 +64,42 @@ export function HostsPage() {
 
   const renderRow = (host: AdminHostInfo, index: number) => (
     <tr key={host.id || index}>
-      <td className="whitespace-nowrap text-white">{host.id}</td>
-      <td>
-        <div className="space-y-1">
-          <div className="font-medium text-white">{host.name}</div>
-          <div>
-            <Pill variant="secondary">{host.kind}</Pill>
+      <td className="whitespace-nowrap align-top text-white">{host.id}</td>
+      {/* Host: name / kind · region · status / vlan · mtu */}
+      <td className="align-top">
+        <div className="min-w-0 max-w-[18rem]">
+          <div className="truncate font-medium text-white" title={host.name}>
+            {host.name}
           </div>
-          {host.vlan_id && <div className="text-gray-500">VLAN: {host.vlan_id}</div>}
-        </div>
-      </td>
-      <td className="text-gray-300">
-        <div className="space-y-1">
-          <div className="font-medium">{host.region.name}</div>
-          <div>
+          <div className="mt-1 flex items-center gap-1.5">
+            <Pill variant="secondary">{host.kind}</Pill>
             <span
-              className={`inline-flex px-1.5 py-0.5 font-medium rounded ${
+              className={`inline-flex px-1.5 py-0.5 text-xs font-medium rounded ${
                 host.region.enabled ? "bg-green-900 text-green-300" : "bg-red-900 text-red-300"
               }`}
             >
               {host.region.enabled ? "Active" : "Inactive"}
             </span>
           </div>
+          <div className="mt-0.5 truncate text-xs text-slate-400" title={host.region.name}>
+            {host.region.name}
+          </div>
+          {(host.vlan_id || host.mtu) && (
+            <div className="mt-0.5 text-xs text-slate-500">
+              {host.vlan_id ? `VLAN ${host.vlan_id}` : ""}
+              {host.vlan_id && host.mtu ? " · " : ""}
+              {host.mtu ? `MTU ${host.mtu}` : ""}
+            </div>
+          )}
         </div>
       </td>
-      <td className="text-gray-300">
-        <div className="space-y-0.5">
-          <div>
-            <span className="font-medium">{host.cpu}</span> CPU cores
+      {/* Resources: CPU / RAM */}
+      <td className="align-top text-gray-300">
+        <div className="min-w-0 max-w-[12rem]">
+          <div className="truncate">
+            <span className="font-medium">{host.cpu}</span> cores
             {(host.cpu_mfg && host.cpu_mfg !== "unknown") || (host.cpu_arch && host.cpu_arch !== "unknown") ? (
-              <span className="text-gray-500 text-xs ml-1">
+              <span className="text-slate-500 text-xs ml-1">
                 (
                 {[
                   host.cpu_mfg && host.cpu_mfg !== "unknown" ? host.cpu_mfg : null,
@@ -107,62 +111,63 @@ export function HostsPage() {
               </span>
             ) : null}
           </div>
-          <div>
-            <span className="font-medium">{formatBytes(host.memory)}</span> RAM
-          </div>
-          {host.mtu && <div className="text-gray-500 text-xs">MTU: {host.mtu}</div>}
+          <div className="mt-0.5 text-xs text-slate-400">{formatBytes(host.memory)} RAM</div>
         </div>
       </td>
-      <td className="text-gray-300">
-        <div className="space-y-2">
+      {/* Disks */}
+      <td className="align-top text-gray-300">
+        <div className="min-w-0 max-w-[16rem] space-y-2">
           <div className="space-y-0.5">
             {host.disks.map((disk, idx) => (
-              <div key={idx} className="text-gray-400 flex items-center gap-1 flex-wrap">
-                <span className="font-mono text-purple-400">{disk.name}</span>
-                <span className="text-gray-500">{formatBytes(disk.size)}</span>
-                <span className="text-gray-500">{disk.kind.toUpperCase()}</span>
-                <span className="text-gray-500">{disk.interface.toUpperCase()}</span>
+              <div key={idx} className="flex items-center gap-1 text-xs text-slate-400">
+                <span className="truncate font-mono text-purple-400" title={disk.name}>
+                  {disk.name}
+                </span>
+                <span className="text-slate-500">{formatBytes(disk.size)}</span>
+                <span className="text-slate-500">{disk.kind.toUpperCase()}</span>
+                <span className="text-slate-500">{disk.interface.toUpperCase()}</span>
                 {!disk.enabled && (
                   <span className="inline-flex px-1 py-0.5 rounded text-red-300 bg-red-900">Disabled</span>
                 )}
               </div>
             ))}
           </div>
+          <Button size="sm" variant="secondary" onClick={() => handleManageDisks(host)} className="px-3 py-1 text-xs">
+            <CogIcon className="h-3 w-3 mr-1" />
+            Manage Disks ({host.disks.length})
+          </Button>
+        </div>
+      </td>
+      {/* Load factors + active VMs */}
+      <td className="align-top text-gray-300">
+        <div className="text-xs space-y-0.5">
           <div>
-            <Button size="sm" variant="secondary" onClick={() => handleManageDisks(host)} className="px-3 py-1 text-xs">
-              <CogIcon className="h-3 w-3 mr-1" />
-              Manage Disks ({host.disks.length})
-            </Button>
+            CPU {(host.load_cpu * 100).toFixed(0)}% / {(host.calculated_load.cpu_load * 100).toFixed(0)}%
+          </div>
+          <div>
+            RAM {(host.load_memory * 100).toFixed(0)}% / {(host.calculated_load.memory_load * 100).toFixed(0)}%
+          </div>
+          <div>
+            Disk {(host.load_disk * 100).toFixed(0)}% / {(host.calculated_load.disk_load * 100).toFixed(0)}%
+          </div>
+          <div className="font-medium text-white">
+            Overall {(host.calculated_load.overall_load * 100).toFixed(0)}%
+          </div>
+          <div className="mt-1">
+            <span
+              className={`inline-flex px-1.5 py-0.5 font-medium rounded ${
+                host.calculated_load.active_vms > 0 ? "bg-blue-900 text-blue-300" : "bg-gray-600 text-gray-400"
+              }`}
+            >
+              {host.calculated_load.active_vms} VMs
+            </span>
           </div>
         </div>
       </td>
-      <td className="text-gray-300">
-        <div className="space-y-0.5">
-          <div>
-            CPU: {(host.load_cpu * 100).toFixed(0)}% / {(host.calculated_load.cpu_load * 100).toFixed(0)}%
-          </div>
-          <div>
-            RAM: {(host.load_memory * 100).toFixed(0)}% / {(host.calculated_load.memory_load * 100).toFixed(0)}%
-          </div>
-          <div>
-            Disk: {(host.load_disk * 100).toFixed(0)}% / {(host.calculated_load.disk_load * 100).toFixed(0)}%
-          </div>
-          <div className="font-medium text-white">Overall: {(host.calculated_load.overall_load * 100).toFixed(0)}%</div>
-        </div>
-      </td>
-      <td className="whitespace-nowrap text-center">
-        <span
-          className={`inline-flex px-0.5 py-0.5 font-medium rounded ${
-            host.calculated_load.active_vms > 0 ? "bg-blue-900 text-blue-300" : "bg-gray-600 text-gray-400"
-          }`}
-        >
-          {host.calculated_load.active_vms}
-        </span>
-      </td>
-      <td className="whitespace-nowrap">
+      <td className="whitespace-nowrap align-top">
         <StatusBadge status={host.enabled ? "enabled" : "disabled"} />
       </td>
-      <td className="text-right">
+      <td className="text-right align-top">
         <Button size="sm" variant="secondary" onClick={() => handleEdit(host)} className="p-1">
           <PencilIcon className="h-4 w-4" />
         </Button>
@@ -231,7 +236,7 @@ export function HostsPage() {
         errorAction="view hosts"
         loadingMessage="Loading hosts..."
         dependencies={[refreshTrigger]}
-        minWidth="1400px"
+        minWidth="900px"
       />
 
       {/* Create Host Modal */}
@@ -380,7 +385,7 @@ function CreateHostModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Create Host" size="lg">
+    <Modal isOpen={isOpen} onClose={onClose} title="Create Host" size="3xl">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -737,7 +742,7 @@ function EditHostModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Edit Host" size="lg">
+    <Modal isOpen={isOpen} onClose={onClose} title="Edit Host" size="3xl">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>

@@ -49,7 +49,7 @@ export function MultiSelect({ options, selected, onChange, placeholder = "Select
           selected.map((option) => (
             <span
               key={option}
-              className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-600 text-white text-xs rounded"
+              className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-500 text-slate-950 font-medium text-xs rounded"
             >
               {option}
               <button type="button" onClick={(e) => removeOption(option, e)} className="hover:text-red-300">

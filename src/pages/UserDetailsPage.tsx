@@ -1,4 +1,5 @@
 import {
+  DocumentTextIcon,
   EnvelopeIcon,
   MapPinIcon,
   PencilIcon,
@@ -23,12 +24,14 @@ import { useAdminApi } from "../hooks/useAdminApi";
 import { useUserRoles } from "../hooks/useUserRoles";
 import {
   type AdminRoleInfo,
+  type AdminSubscriptionInfo,
   type AdminUserInfo,
   type AdminVmInfo,
   getCountryName,
   type UserRoleInfo,
   VmRunningStates,
 } from "../lib/api";
+import { formatCurrency } from "../utils/currency";
 import { formatBytes } from "../utils/formatBytes";
 
 export function UserDetailsPage() {
@@ -45,6 +48,7 @@ export function UserDetailsPage() {
   const [error, setError] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [includeDeletedVms, setIncludeDeletedVms] = useState(false);
+  const [showInactiveSubs, setShowInactiveSubs] = useState(false);
   const [showAddRoleModal, setShowAddRoleModal] = useState(false);
   const [showEditUserModal, setShowEditUserModal] = useState(false);
 
@@ -108,35 +112,49 @@ export function UserDetailsPage() {
 
   const renderVMHeader = () => (
     <>
-      <th>ID</th>
-      <th>Image</th>
-      <th>Template</th>
-      <th>Resources</th>
-      <th>Status</th>
+      <th className="w-14">ID</th>
+      <th>Instance</th>
+      <th>Resources &amp; Status</th>
       <th>Host</th>
-      <th>Created</th>
-      <th>Expires</th>
+      <th>Dates</th>
     </>
   );
 
   const renderVMRow = (vm: AdminVmInfo, index: number) => (
     <tr key={vm.id || index} className={`hover:bg-slate-700 ${vm.deleted ? "bg-gray-800/50 opacity-75" : ""}`}>
-      <td className="whitespace-nowrap font-mono">
+      <td className="whitespace-nowrap align-top font-mono">
         <Link to={`/vms/${vm.id}`} className="text-blue-400 hover:text-blue-300">
           #{vm.id}
         </Link>
       </td>
-      <td className="text-gray-300">{vm.image_name}</td>
-      <td className="text-gray-300">{vm.template_name}</td>
-      <td className="text-gray-400 text-sm">
-        {vm.cpu}C • {formatBytes(vm.memory)} • {formatBytes(vm.disk_size)}
+      {/* Instance: image · template */}
+      <td className="align-top">
+        <div className="min-w-0 max-w-[18rem]">
+          <div className="truncate text-gray-300" title={vm.image_name}>
+            {vm.image_name}
+          </div>
+          {vm.template_name && (
+            <div className="mt-0.5 truncate text-xs text-gray-400" title={vm.template_name}>
+              {vm.template_name}
+            </div>
+          )}
+        </div>
       </td>
-      <td>
+      {/* Resources & status */}
+      <td className="align-top">
         <VmStatusBadge vm={vm} />
+        <div className="mt-1 font-mono text-xs text-gray-400">
+          {vm.cpu}C • {formatBytes(vm.memory)} • {formatBytes(vm.disk_size)}
+        </div>
       </td>
-      <td className="text-gray-300">{vm.host_name || `#${vm.host_id}`}</td>
-      <td className="text-gray-400 text-sm">{new Date(vm.created).toLocaleDateString()}</td>
-      <td className="text-gray-400 text-sm">
+      <td className="align-top">
+        <div className="min-w-0 max-w-[12rem] truncate text-gray-300" title={vm.host_name || `#${vm.host_id}`}>
+          {vm.host_name || `#${vm.host_id}`}
+        </div>
+      </td>
+      {/* Dates: created + expires */}
+      <td className="align-top text-gray-400 text-sm">
+        <div>Created {new Date(vm.created).toLocaleDateString()}</div>
         <div
           className={
             new Date(vm.expires) < new Date()
@@ -146,7 +164,7 @@ export function UserDetailsPage() {
                 : "text-gray-400"
           }
         >
-          {new Date(vm.expires).toLocaleDateString()}
+          Expires {new Date(vm.expires).toLocaleDateString()}
         </div>
       </td>
     </tr>
@@ -164,10 +182,12 @@ export function UserDetailsPage() {
 
   const renderRolesRow = (roleInfo: UserRoleInfo, index: number) => (
     <tr key={roleInfo.role.id || index}>
-      <td className="font-semibold text-blue-400">{roleInfo.role.name}</td>
-      <td className="text-gray-300">{roleInfo.role.description || "No description"}</td>
-      <td className="text-gray-300">
-        <div className="flex flex-wrap gap-1">
+      <td className="align-top font-semibold text-blue-400">{roleInfo.role.name}</td>
+      <td className="align-top text-gray-300">
+        <div className="min-w-0 max-w-[20rem] break-words">{roleInfo.role.description || "No description"}</div>
+      </td>
+      <td className="align-top text-gray-300">
+        <div className="flex max-w-[24rem] flex-wrap gap-1">
           {roleInfo.role.permissions && roleInfo.role.permissions.length > 0 ? (
             <>
               {roleInfo.role.permissions.slice(0, 3).map((permission: string, idx: number) => (
@@ -189,13 +209,13 @@ export function UserDetailsPage() {
           )}
         </div>
       </td>
-      <td>
+      <td className="align-top">
         <StatusBadge status={roleInfo.role.is_system_role ? "running" : "unknown"}>
           {roleInfo.role.is_system_role ? "System" : "Custom"}
         </StatusBadge>
       </td>
       {canManageRoles && (
-        <td className="text-right">
+        <td className="align-top text-right">
           <Button
             size="sm"
             variant="secondary"
@@ -207,6 +227,63 @@ export function UserDetailsPage() {
           </Button>
         </td>
       )}
+    </tr>
+  );
+
+  const formatInterval = (amount: number, type: string) => (amount === 1 ? `per ${type}` : `every ${amount} ${type}s`);
+
+  const renderSubHeader = () => (
+    <>
+      <th className="w-14">ID</th>
+      <th>Name</th>
+      <th>Billing</th>
+      <th>Status</th>
+      <th>Expires</th>
+    </>
+  );
+
+  const renderSubRow = (sub: AdminSubscriptionInfo, index: number) => (
+    <tr key={sub.id || index} className="cursor-pointer hover:bg-slate-700" onClick={() => navigate(`/subscriptions/${sub.id}`)}>
+      <td className="whitespace-nowrap align-top font-mono text-blue-400">#{sub.id}</td>
+      <td className="align-top">
+        <div className="min-w-0 max-w-[18rem]">
+          <Link
+            to={`/subscriptions/${sub.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="block truncate font-medium text-blue-400 hover:text-blue-300"
+            title={sub.name}
+          >
+            {sub.name}
+          </Link>
+          {sub.description && (
+            <div className="truncate text-xs text-gray-400" title={sub.description}>
+              {sub.description}
+            </div>
+          )}
+        </div>
+      </td>
+      <td className="align-top text-gray-300">
+        <div className="tabular-nums">
+          {formatCurrency(
+            sub.line_items.reduce((total, item) => total + item.amount, 0),
+            sub.currency,
+          )}{" "}
+          <span className="text-xs text-gray-400">{formatInterval(sub.interval_amount, sub.interval_type)}</span>
+        </div>
+      </td>
+      <td className="align-top">
+        <div className="flex flex-wrap gap-1">
+          {sub.is_active ? (
+            <StatusBadge status="active">Active</StatusBadge>
+          ) : (
+            <StatusBadge status="inactive">Inactive</StatusBadge>
+          )}
+          {sub.auto_renewal_enabled && <StatusBadge status="info">Auto-renew</StatusBadge>}
+        </div>
+      </td>
+      <td className="align-top text-gray-400 text-sm">
+        {sub.expires ? new Date(sub.expires).toLocaleDateString() : <span className="text-gray-500">No expiry</span>}
+      </td>
     </tr>
   );
 
@@ -299,9 +376,9 @@ export function UserDetailsPage() {
             <h3 className="text-lg font-semibold text-white">Contact</h3>
           </div>
           <div className="space-y-3 text-sm">
-            <div>
+            <div className="min-w-0">
               <div className="text-gray-400">Email</div>
-              <div className="text-white">{user.email || <span className="text-gray-500">Not provided</span>}</div>
+              <div className="break-all text-white">{user.email || <span className="text-gray-500">Not provided</span>}</div>
             </div>
             <div>
               <div className="text-gray-400">Contact Methods</div>
@@ -351,9 +428,9 @@ export function UserDetailsPage() {
               </div>
             )}
             {user.billing_tax_id && (
-              <div>
+              <div className="min-w-0">
                 <div className="text-gray-400">Tax ID</div>
-                <div className="text-white font-mono">{user.billing_tax_id}</div>
+                <div className="break-all font-mono text-white">{user.billing_tax_id}</div>
               </div>
             )}
           </div>
@@ -390,6 +467,7 @@ export function UserDetailsPage() {
           itemsPerPage={10}
           errorAction="load user VMs"
           loadingMessage="Loading user VMs..."
+          minWidth="760px"
           dependencies={[user.id, refreshTrigger, includeDeletedVms]}
           calculateStats={(vms, total) => {
             const stats = {
@@ -427,6 +505,65 @@ export function UserDetailsPage() {
         />
       </div>
 
+      {/* User's Subscriptions */}
+      <PermissionGuard requiredPermissions={["subscriptions::view"]}>
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold text-white flex items-center justify-between gap-4 flex-wrap">
+            <span className="flex items-center space-x-2">
+              <DocumentTextIcon className="h-5 w-5" />
+              <span>Subscriptions</span>
+            </span>
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 text-sm font-normal text-gray-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showInactiveSubs}
+                  onChange={(e) => setShowInactiveSubs(e.target.checked)}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                Show inactive
+              </label>
+              <Link
+                to={`/subscriptions?user_id=${user.id}`}
+                className="text-sm font-normal text-blue-400 hover:text-blue-300"
+              >
+                View all →
+              </Link>
+            </div>
+          </h2>
+          <PaginatedTable
+            apiCall={(params) =>
+              adminApi.getSubscriptions({
+                ...params,
+                user_id: user.id,
+                status: showInactiveSubs ? undefined : "active",
+              })
+            }
+            renderHeader={renderSubHeader}
+            renderRow={renderSubRow}
+            itemsPerPage={10}
+            errorAction="load user subscriptions"
+            loadingMessage="Loading subscriptions..."
+            minWidth="640px"
+            inlineError={true}
+            dependencies={[user.id, refreshTrigger, showInactiveSubs]}
+            renderEmptyState={() => (
+              <div className="text-center py-8 text-gray-400">No subscriptions for this user</div>
+            )}
+            calculateStats={(subs, total) => (
+              <div className="flex gap-4 text-sm text-gray-400">
+                <span>
+                  Total: <span className="text-white font-medium">{total}</span>
+                </span>
+                <span>
+                  Active: <span className="text-green-400 font-medium">{subs.filter((s) => s.is_active).length}</span>
+                </span>
+              </div>
+            )}
+          />
+        </div>
+      </PermissionGuard>
+
       {/* User's Roles */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -456,6 +593,7 @@ export function UserDetailsPage() {
           itemsPerPage={10}
           errorAction="load user roles"
           loadingMessage="Loading user roles..."
+          minWidth="700px"
           dependencies={[user.id, refreshTrigger]}
           calculateStats={(roles, total) => (
             <div className="flex gap-4 text-sm text-gray-400">

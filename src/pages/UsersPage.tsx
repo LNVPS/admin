@@ -96,18 +96,21 @@ export function UsersPage() {
     <>
       <th className="w-12">ID</th>
       <th>User</th>
-      <th>Contact</th>
-      <th>Loc</th>
-      <th className="w-12">VMs</th>
-      <th className="w-16">Role</th>
+      <th>Contact &amp; Location</th>
+      <th>VMs &amp; Role</th>
       <th>Activity</th>
       <th className="text-right">Actions</th>
     </>
   );
 
-  const renderRow = (user: AdminUserInfo, index: number) => (
+  const renderRow = (user: AdminUserInfo, index: number) => {
+    const countryName = user.country_code ? getCountryName(user.country_code) : null;
+    const location = [user.billing_city, user.billing_state, countryName]
+      .filter(Boolean)
+      .join(", ");
+    return (
     <tr key={user.id || index}>
-      <td className="whitespace-nowrap">
+      <td className="whitespace-nowrap align-top">
         <Link
           to={`/users/${user.id}`}
           state={{ user }}
@@ -116,111 +119,95 @@ export function UsersPage() {
           {user.id}
         </Link>
       </td>
-      <td className="whitespace-nowrap">
-        {user.pubkey ? (
-          <Profile pubkey={user.pubkey} avatarSize="sm" />
-        ) : (
-          <span className="text-gray-400">N/A</span>
-        )}
-      </td>
-      <td>
-        <div className="space-y-0.5 max-w-32">
+      {/* User: profile + email */}
+      <td className="align-top">
+        <div className="min-w-0 max-w-[18rem]">
+          {user.pubkey ? (
+            <Profile pubkey={user.pubkey} avatarSize="sm" />
+          ) : (
+            <span className="text-gray-400">N/A</span>
+          )}
           {user.email && (
-            <div className="text-blue-400 truncate" title={user.email}>
-              {user.email.length > 15
-                ? user.email.substring(0, 15) + "..."
-                : user.email}
+            <div className="mt-0.5 truncate text-xs text-blue-400" title={user.email}>
+              {user.email}
             </div>
           )}
-          <div className="flex gap-0.5">
+        </div>
+      </td>
+      {/* Contact + location */}
+      <td className="align-top">
+        <div className="min-w-0 max-w-[14rem]">
+          <div className="flex gap-1">
             {user.contact_email && (
-              <span className="inline-flex px-0.5 py-0.5 bg-green-900 text-green-300 rounded">
-                E
+              <span className="inline-flex px-1 py-0.5 bg-green-900 text-green-300 rounded text-xs">
+                Email
               </span>
             )}
             {user.contact_nip17 && (
-              <span className="inline-flex px-0.5 py-0.5 bg-purple-900 text-purple-300 rounded">
-                N
+              <span className="inline-flex px-1 py-0.5 bg-purple-900 text-purple-300 rounded text-xs">
+                NIP-17
               </span>
             )}
             {!user.contact_email && !user.contact_nip17 && (
-              <span className="text-gray-500">-</span>
+              <span className="text-gray-500 text-xs">No contact</span>
             )}
           </div>
-        </div>
-      </td>
-      <td>
-        <div className="space-y-0.5">
-          {user.country_code && (
-            <div
-              className="text-white truncate max-w-20"
-              title={getCountryName(user.country_code)}
-            >
-              {getCountryName(user.country_code).length > 12
-                ? getCountryName(user.country_code).substring(0, 12) + "..."
-                : getCountryName(user.country_code)}
+          {location ? (
+            <div className="mt-0.5 truncate text-xs text-slate-400" title={location}>
+              {location}
             </div>
-          )}
-          {user.billing_city && (
-            <div
-              className="text-gray-400 truncate max-w-16"
-              title={`${user.billing_city}, ${user.billing_state || ""}`}
-            >
-              {user.billing_city.length > 8
-                ? user.billing_city.substring(0, 8) + "..."
-                : user.billing_city}
-            </div>
-          )}
-          {!user.country_code && !user.billing_city && (
-            <span className="text-gray-500">-</span>
+          ) : (
+            <div className="mt-0.5 text-xs text-slate-500">No location</div>
           )}
         </div>
       </td>
-      <td className="whitespace-nowrap text-center">
+      {/* VMs + role */}
+      <td className="align-top">
         <span
-          className={`inline-flex px-0.5 py-0.5 font-medium rounded ${
+          className={`inline-flex px-1.5 py-0.5 font-medium rounded text-xs ${
             user.vm_count > 0
               ? "bg-blue-900 text-blue-300"
               : "bg-gray-600 text-gray-400"
           }`}
         >
-          {user.vm_count}
+          {user.vm_count} VMs
         </span>
+        <div className="mt-1">
+          <span
+            className={`inline-flex px-1.5 py-0.5 font-medium rounded text-xs ${
+              user.is_admin
+                ? "bg-orange-900 text-orange-300"
+                : "bg-gray-600 text-gray-300"
+            }`}
+          >
+            {user.is_admin ? "Admin" : "User"}
+          </span>
+        </div>
       </td>
-      <td className="whitespace-nowrap">
-        <span
-          className={`inline-flex px-0.5 py-0.5 font-medium rounded ${
-            user.is_admin
-              ? "bg-orange-900 text-orange-300"
-              : "bg-gray-600 text-gray-300"
-          }`}
-        >
-          {user.is_admin ? "A" : "U"}
-        </span>
-      </td>
-      <td>
-        <div className="space-y-0.5">
-          <div className="text-gray-400">
-            {new Date(user.created).toLocaleDateString("en-US", {
+      {/* Activity: created + last login */}
+      <td className="align-top">
+        <div className="text-xs text-slate-400">
+          Created{" "}
+          {new Date(user.created).toLocaleDateString("en-US", {
+            month: "2-digit",
+            day: "2-digit",
+            year: "2-digit",
+          })}
+        </div>
+        {user.last_login ? (
+          <div className="text-xs text-green-400">
+            Login{" "}
+            {new Date(user.last_login).toLocaleDateString("en-US", {
               month: "2-digit",
               day: "2-digit",
               year: "2-digit",
             })}
           </div>
-          {user.last_login ? (
-            <div className="text-green-400">
-              {new Date(user.last_login).toLocaleDateString("en-US", {
-                month: "2-digit",
-                day: "2-digit",
-                year: "2-digit",
-              })}
-            </div>
-          ) : (
-            <div className="text-red-400">Never</div>
-          )}
-        </div>
+        ) : (
+          <div className="text-xs text-red-400">Never logged in</div>
+        )}
       </td>
-      <td className="text-right">
+      <td className="text-right align-top">
         <div className="flex justify-end space-x-2">
           <Link to={`/users/${user.id}`} state={{ user }}>
             <Button
@@ -253,7 +240,8 @@ export function UsersPage() {
         </div>
       </td>
     </tr>
-  );
+    );
+  };
 
   const calculateStats = (users: AdminUserInfo[], totalItems: number, error?: Error | null) => {
     const stats = {
@@ -351,7 +339,7 @@ export function UsersPage() {
         errorAction="view users"
         loadingMessage="Loading users..."
         dependencies={[refreshTrigger, searchTerm]}
-        minWidth="1000px"
+        minWidth="820px"
         inlineError={true}
       />
 

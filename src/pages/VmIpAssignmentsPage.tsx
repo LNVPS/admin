@@ -109,9 +109,7 @@ export function VmIpAssignmentsPage() {
     <>
       <th className="w-16">ID</th>
       <th>IP Address</th>
-      <th>VM</th>
-      <th>IP Range</th>
-      <th>Region</th>
+      <th>VM &amp; Range</th>
       <th>DNS</th>
       <th>Status</th>
       <th className="text-right">Actions</th>
@@ -120,70 +118,71 @@ export function VmIpAssignmentsPage() {
 
   const renderRow = (assignment: AdminVmIpAssignmentInfo, index: number) => (
     <tr key={assignment.id || index}>
-      <td className="whitespace-nowrap text-white">{assignment.id}</td>
-      <td>
-        <div className="space-y-0.5">
+      <td className="whitespace-nowrap align-top text-white">{assignment.id}</td>
+      <td className="align-top">
+        <div className="min-w-0 max-w-[16rem]">
           <Link
             to={`/ip-address/${encodeURIComponent(assignment.ip)}`}
-            className="font-mono font-medium text-blue-400 hover:text-blue-300 hover:underline"
+            className="block truncate font-mono font-medium text-blue-400 hover:text-blue-300 hover:underline"
+            title={assignment.ip}
           >
             {assignment.ip}
           </Link>
           {assignment.arp_ref && (
-            <div className="text-gray-400 text-sm">
+            <div className="mt-0.5 truncate font-mono text-xs text-gray-400" title={assignment.arp_ref}>
               ARP: {assignment.arp_ref}
             </div>
           )}
         </div>
       </td>
-      <td>
-        <div className="space-y-0.5">
+      <td className="align-top">
+        <div className="min-w-0 max-w-[18rem]">
           <div className="flex items-center">
-            <ServerIcon className="h-4 w-4 mr-1 text-gray-400" />
+            <ServerIcon className="h-4 w-4 mr-1 shrink-0 text-gray-400" />
             <Link
               to={`/vms/${assignment.vm_id}`}
               className="font-medium text-blue-400 hover:text-blue-300 hover:underline"
             >
-              {assignment.vm_id}
+              VM #{assignment.vm_id}
             </Link>
+          </div>
+          <div className="mt-0.5 truncate text-xs" title={assignment.ip_range_cidr || undefined}>
+            {assignment.ip_range_cidr ? (
+              <button
+                onClick={() => {
+                  setFilters({
+                    ...filters,
+                    ip_range_id: assignment.ip_range_id.toString(),
+                  });
+                  setRefreshTrigger((prev) => prev + 1);
+                  setShowFilters(true);
+                }}
+                className="max-w-full truncate font-mono text-blue-400 hover:text-blue-300 hover:underline"
+                title={`Filter by IP range ${assignment.ip_range_cidr}`}
+              >
+                {assignment.ip_range_cidr}
+              </button>
+            ) : (
+              <span className="font-mono text-gray-500">No range</span>
+            )}
+          </div>
+          <div className="mt-0.5 flex items-center text-xs text-gray-400">
+            <GlobeAltIcon className="h-3.5 w-3.5 mr-1 shrink-0 text-gray-500" />
+            <span className="truncate" title={assignment.region_name || "N/A"}>
+              {assignment.region_name || "N/A"}
+            </span>
           </div>
         </div>
       </td>
-      <td>
-        {assignment.ip_range_cidr ? (
-          <button
-            onClick={() => {
-              setFilters({
-                ...filters,
-                ip_range_id: assignment.ip_range_id.toString(),
-              });
-              setRefreshTrigger((prev) => prev + 1);
-              setShowFilters(true);
-            }}
-            className="text-blue-400 hover:text-blue-300 hover:underline font-mono text-left"
-            title={`Filter by IP range ${assignment.ip_range_cidr}`}
-          >
-            {assignment.ip_range_cidr}
-          </button>
-        ) : (
-          <span className="text-gray-300 font-mono">N/A</span>
-        )}
-      </td>
-      <td className="text-gray-300">
-        <div className="flex items-center">
-          <GlobeAltIcon className="h-4 w-4 mr-1 text-gray-400" />
-          {assignment.region_name || "N/A"}
-        </div>
-      </td>
-      <td>
-        <div className="space-y-0.5">
+      <td className="align-top">
+        <div className="min-w-0 max-w-[14rem] space-y-0.5">
           {assignment.dns_forward && (
-            <div className="text-sm text-blue-400">
+            <div className="truncate text-xs text-blue-400" title={assignment.dns_forward}>
               ↗ {assignment.dns_forward}
             </div>
           )}
           {assignment.dns_reverse && (
-            <div className="text-sm text-green-400">
+            <div className="truncate text-xs text-green-400" title={assignment.dns_reverse}>
               ↙ {assignment.dns_reverse}
             </div>
           )}
@@ -192,10 +191,10 @@ export function VmIpAssignmentsPage() {
           )}
         </div>
       </td>
-      <td>
+      <td className="align-top">
         <StatusBadge status={assignment.deleted ? "inactive" : "active"} />
       </td>
-      <td className="text-right">
+      <td className="text-right align-top">
         <div className="flex justify-end space-x-2">
           <Button
             size="sm"
@@ -274,7 +273,7 @@ export function VmIpAssignmentsPage() {
             <FunnelIcon className="h-4 w-4 mr-2" />
             Filters
             {hasActiveFilters() && (
-              <span className="ml-1 bg-blue-500 text-white text-xs rounded-full px-1.5 py-0.5">
+              <span className="ml-1 bg-blue-500 text-slate-950 font-semibold text-xs rounded-full px-1.5 py-0.5">
                 {
                   Object.entries(filters).filter(([key, value]) =>
                     key === "include_deleted" ? value : value !== "",
@@ -426,7 +425,7 @@ export function VmIpAssignmentsPage() {
         errorAction="view IP assignments"
         loadingMessage="Loading IP assignments..."
         dependencies={[refreshTrigger, filters]}
-        minWidth="1400px"
+        minWidth="850px"
       />
 
       {/* Edit IP Assignment Modal */}

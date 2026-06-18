@@ -1,5 +1,175 @@
 @import "tailwindcss";
 
+/* ============================================================
+   LNVPS Admin theme — adopts the lnvps.net "cyber" palette
+   (sampled from ../lnvps_web/src/index.css @theme), applied
+   with restraint: neon green as a single accent, no scanlines
+   or heavy glow. Color scales below are REMAPPED so existing
+   `slate-*` / `gray-*` / `blue-*` utility classes across the
+   app recolor automatically:
+     - slate + gray  -> one unified dark scale
+     - blue (the old accent) -> lnvps neon green
+   ============================================================ */
+@theme {
+  /* Fonts — Source Code Pro (lnvps brand) for everything,
+     Bricolage Grotesque for display headings. */
+  --font-sans: "Source Code Pro", ui-monospace, "Cascadia Code", monospace;
+  --font-mono: "Source Code Pro", ui-monospace, monospace;
+  --font-display: "Bricolage Grotesque", system-ui, sans-serif;
+
+  /* Brutalist density: sharpen every corner so the UI reads as
+     utilitarian and gives more room to data. rounded-full is a
+     separate token and stays pill-shaped. */
+  --radius-xs: 0.0625rem;
+  --radius-sm: 0.125rem;
+  --radius-md: 0.1875rem;
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.3125rem;
+  --radius-2xl: 0.375rem;
+
+  /* Semantic cyber tokens (lnvps_web) for direct use */
+  --color-cyber-darker: #050505;
+  --color-cyber-dark: #0a0a0a;
+  --color-cyber-panel: #0d1117;
+  --color-cyber-panel-light: #161b22;
+  --color-cyber-primary: oklch(0.8 0.3 142); /* neon green */
+  --color-cyber-accent: #00fff2; /* cyan */
+  --color-cyber-warning: #ffb800;
+  --color-cyber-danger: #ff0040;
+  --color-cyber-muted: #4a5568;
+  --color-cyber-text: #b8c4d0;
+  --color-cyber-text-bright: #e2e8f0;
+  --color-cyber-border: oklch(0.8 0.3 142 / 0.16);
+
+  /* Unified dark neutral scale — slate + gray point at the same
+     ramp so the old two-palette inconsistency disappears. */
+  --color-slate-50: #f9fafb;
+  --color-slate-100: #f3f4f6;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #b8c4d0;
+  --color-slate-400: #7c8a99;
+  --color-slate-500: #4a5568;
+  --color-slate-600: #2a323d;
+  --color-slate-700: #161b22;
+  --color-slate-800: #0d1117;
+  --color-slate-900: #0a0a0a;
+  --color-slate-950: #050505;
+
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e2e8f0;
+  --color-gray-300: #b8c4d0;
+  --color-gray-400: #7c8a99;
+  --color-gray-500: #4a5568;
+  --color-gray-600: #2a323d;
+  --color-gray-700: #161b22;
+  --color-gray-800: #0d1117;
+  --color-gray-900: #0a0a0a;
+  --color-gray-950: #050505;
+
+  /* Accent: remap blue -> neon green so existing blue utilities
+     (links, primary buttons, focus rings) become the brand color. */
+  --color-blue-300: oklch(0.88 0.18 142);
+  --color-blue-400: oklch(0.85 0.24 142);
+  --color-blue-500: oklch(0.8 0.3 142);
+  --color-blue-600: oklch(0.74 0.3 142);
+  --color-blue-700: oklch(0.66 0.26 142);
+  --color-blue-800: oklch(0.5 0.2 142);
+  --color-blue-900: oklch(0.36 0.14 142);
+
+  /* Warnings -> lnvps amber */
+  --color-yellow-300: #ffd24d;
+  --color-yellow-400: #ffb800;
+  --color-yellow-500: #ffb800;
+  --color-yellow-900: #3a2a00;
+
+  /* Danger -> lnvps red */
+  --color-red-400: #ff4d6a;
+  --color-red-500: #ff0040;
+  --color-red-600: #e60039;
+  --color-red-900: #3a0011;
+}
+
+/* ============================================================
+   LIGHT MODE — activated by `html.light` (toggle in the sidebar).
+   Utilities reference the CSS vars below, so overriding the ramp
+   here recolors the whole app. Key moves:
+     - --color-white -> near-black so the ~500 `text-white` primary
+       text usages become dark text on light surfaces.
+     - --color-slate-950 STAYS dark: it's the label color on neon
+       accent fills (`text-slate-950`), must stay readable.
+     - neutral ramp inverted (high numbers = light surfaces).
+     - accent/status colors darkened for contrast on light bg.
+   ============================================================ */
+html.light {
+  --color-white: #0b0e14;
+
+  --color-slate-50: #0a0a0a;
+  --color-slate-100: #111827;
+  --color-slate-200: #1f2937;
+  --color-slate-300: #334155; /* secondary text */
+  --color-slate-400: #5b6776; /* muted text / icons */
+  --color-slate-500: #8a95a3; /* faint text / placeholders */
+  --color-slate-600: #cbd5e1; /* borders */
+  --color-slate-700: #e2e8f0; /* dividers, secondary button bg */
+  --color-slate-800: #ffffff; /* cards / panels / inputs / table head */
+  --color-slate-900: #eef1f5; /* app background */
+  --color-slate-950: #0b0e14; /* on-accent text — stays dark */
+
+  --color-gray-50: #0a0a0a;
+  --color-gray-100: #111827;
+  --color-gray-200: #1f2937;
+  --color-gray-300: #334155;
+  --color-gray-400: #5b6776;
+  --color-gray-500: #8a95a3;
+  --color-gray-600: #cbd5e1;
+  --color-gray-700: #e2e8f0;
+  --color-gray-800: #ffffff;
+  --color-gray-900: #eef1f5;
+  --color-gray-950: #0b0e14;
+
+  /* Accent (blue→green): darker greens so links/fills read on white. */
+  --color-blue-300: oklch(0.55 0.15 142);
+  --color-blue-400: oklch(0.58 0.16 142); /* links */
+  --color-blue-500: oklch(0.62 0.17 142); /* primary fills (dark label) */
+  --color-blue-600: oklch(0.55 0.16 142);
+  --color-blue-700: oklch(0.48 0.14 142);
+  --color-blue-800: oklch(0.42 0.12 142);
+  --color-blue-900: oklch(0.93 0.05 142); /* tint backgrounds */
+
+  /* Status greens (not remapped by @theme) need light-mode values too. */
+  --color-green-300: #15803d;
+  --color-green-400: #16a34a;
+  --color-green-500: #16a34a;
+  --color-green-600: #15803d;
+  --color-green-900: #dcfce7;
+
+  /* Warnings (amber) — darken for contrast on white. */
+  --color-yellow-300: #b45309;
+  --color-yellow-400: #b45309;
+  --color-yellow-500: #a16207;
+  --color-yellow-900: #fef3c7;
+
+  /* Danger (red) — darken text/fills; keep button fill saturated. */
+  --color-red-400: #dc2626;
+  --color-red-500: #e11d48;
+  --color-red-600: #be123c;
+  --color-red-900: #fee2e2;
+}
+
+/* Softer, lighter accent glow for the light background. */
+html.light body {
+  background-image: radial-gradient(1100px 460px at 82% -12%, oklch(0.62 0.17 142 / 0.07), transparent 72%);
+}
+
+/* Display font for headings */
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
 /* Custom scrollbar for dark theme */
 ::-webkit-scrollbar {
   width: 10px;
@@ -7,20 +177,27 @@
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-slate-800;
+  @apply bg-slate-900;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-slate-600 rounded-full;
+  @apply bg-slate-700 rounded-full;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-slate-500;
+  @apply bg-slate-600;
+}
+
+::selection {
+  background: var(--color-cyber-primary);
+  color: #04130a;
 }
 
 /* Base styles */
 body {
   @apply bg-slate-900 text-white;
+  background-image: radial-gradient(1100px 460px at 82% -12%, oklch(0.8 0.3 142 / 0.08), transparent 72%);
+  background-attachment: fixed;
 }
 
 /* Focus styles */
@@ -35,13 +212,13 @@ input[type="password"],
 input[type="number"],
 textarea,
 select {
-  @apply w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none;
+  @apply w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-md text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none;
 }
 
 /* Checkbox and radio */
 input[type="checkbox"],
 input[type="radio"] {
-  @apply h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded bg-slate-800 border-slate-600;
+  @apply h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-600 rounded bg-slate-800;
 }
 
 /* Button disabled state */

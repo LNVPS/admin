@@ -7,6 +7,7 @@ import { Button } from "../components/Button";
 import { CreateVmModal } from "../components/CreateVmModal";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { Profile } from "../components/Profile";
+import { StatusBadge } from "../components/StatusBadge";
 import { getVmStatus, VmStatusBadge } from "../components/VmStatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { type AdminHostInfo, type AdminRegionInfo, type AdminVmInfo, VmRunningStates } from "../lib/api";
@@ -134,62 +135,59 @@ export function VMsPage() {
 
   const renderHeader = () => (
     <>
-      <th className="w-12">ID</th>
-      <th>VM Details</th>
-      <th>Status & Resources</th>
-      <th>Network</th>
+      <th className="w-14">ID</th>
+      <th>Host &amp; Network</th>
+      <th>Status</th>
       <th>Owner</th>
-      <th>Dates</th>
       <th className="text-right">Actions</th>
     </>
   );
 
   const renderRow = (vmInfo: AdminVmInfo, index: number) => (
     <tr key={vmInfo.id || index} className={vmInfo.deleted ? "bg-gray-800/50 opacity-75" : ""}>
-      <td className="whitespace-nowrap">
-        <Link to={`/vms/${vmInfo.id}`} className="text-blue-400 hover:text-blue-300 font-medium">
-          {vmInfo.id}
+      <td className="whitespace-nowrap align-top">
+        <Link to={`/vms/${vmInfo.id}`} className="text-blue-400 hover:text-blue-300 font-semibold">
+          #{vmInfo.id}
         </Link>
       </td>
-      <td className="text-gray-300">
-        <div className="space-y-0.5">
-          <div className="font-medium">{vmInfo.image_name}</div>
-          <div className="text-blue-400">
-            {vmInfo.template_name}
-            {vmInfo.host_name && <span className="text-gray-400"> · {vmInfo.host_name}</span>}
+      {/* Host · region / IPs */}
+      <td className="align-top">
+        <div className="min-w-0 max-w-[22rem]">
+          <div className="truncate text-slate-100">
+            {vmInfo.host_name && <span className="font-medium">{vmInfo.host_name}</span>}
+            {vmInfo.host_name && <span className="text-slate-500"> · </span>}
+            <span className="text-slate-400">{vmInfo.region_name || "Unknown region"}</span>
+          </div>
+          <div className="mt-1 space-y-0.5">
+            {vmInfo.ip_addresses.length > 0 ? (
+              vmInfo.ip_addresses.map((ip, idx) => (
+                <div key={idx} className="truncate font-mono text-xs text-slate-300" title={ip.ip}>
+                  {ip.ip}
+                </div>
+              ))
+            ) : (
+              <span className="text-xs text-slate-500">No IPs</span>
+            )}
           </div>
         </div>
       </td>
-      <td>
-        <div className="space-y-1">
-          <div className="flex items-center space-x-2">
-            <VmStatusBadge vm={vmInfo} />
+      {/* Status + resources */}
+      <td className="align-top">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <VmStatusBadge vm={vmInfo} />
+          {(vmInfo as { disabled?: boolean }).disabled && <StatusBadge status="disabled" />}
+        </div>
+        {vmInfo.cpu !== undefined && vmInfo.memory !== undefined && vmInfo.disk_size !== undefined ? (
+          <div className="mt-1.5 font-mono text-xs text-slate-300">
+            {vmInfo.cpu}C · {formatBytes(vmInfo.memory)} · {formatBytes(vmInfo.disk_size)}{" "}
+            <span className="uppercase text-slate-500">{vmInfo.disk_type}</span>
           </div>
-          {vmInfo.cpu !== undefined && vmInfo.memory !== undefined && vmInfo.disk_size !== undefined ? (
-            <div className="text-sm font-mono text-gray-300">
-              {vmInfo.cpu}C · {formatBytes(vmInfo.memory)} · {formatBytes(vmInfo.disk_size)}{" "}
-              <span className="text-gray-400 uppercase">{vmInfo.disk_type}</span>
-            </div>
-          ) : (
-            <div className="text-gray-500 text-xs">No resource info</div>
-          )}
-        </div>
+        ) : (
+          <div className="mt-1.5 text-xs text-slate-500">No resource info</div>
+        )}
       </td>
-      <td className="text-gray-300">
-        <div className="space-y-0.5">
-          {vmInfo.ip_addresses.length > 0 ? (
-            vmInfo.ip_addresses.map((ip, idx) => (
-              <div key={idx}>
-                <span className="font-mono">{ip.ip}</span>
-              </div>
-            ))
-          ) : (
-            <span className="text-gray-400">No IPs</span>
-          )}
-          <div className="text-gray-400">{vmInfo.region_name || "Unknown"}</div>
-        </div>
-      </td>
-      <td>
+      {/* Owner + dates */}
+      <td className="align-top">
         {vmInfo.user_id ? (
           <Link
             to={`/users/${vmInfo.user_id}`}
@@ -199,22 +197,16 @@ export function VMsPage() {
             <Profile pubkey={vmInfo.user_pubkey || ""} avatarSize="sm" />
           </Link>
         ) : (
-          <span className="text-gray-400">N/A</span>
+          <span className="text-slate-400">N/A</span>
         )}
-      </td>
-      <td>
-        <div className="space-y-0.5">
-          <div className="text-gray-400">{new Date(vmInfo.created).toLocaleDateString()}</div>
-          {vmInfo.expires ? (
-            <div className={new Date(vmInfo.expires) < new Date() ? "text-red-500" : "text-gray-500"}>
-              Exp: {new Date(vmInfo.expires).toLocaleDateString()}
-            </div>
-          ) : (
-            <div className="text-yellow-500">Exp: N/A (pending)</div>
+        <div className="mt-1 text-xs text-slate-400">
+          Created {new Date(vmInfo.created).toLocaleDateString()}
+          {vmInfo.expires && new Date(vmInfo.expires) < new Date() && (
+            <span className="ml-2 font-semibold text-red-400">Expired</span>
           )}
         </div>
       </td>
-      <td className="text-right">
+      <td className="text-right align-top">
         <div className="flex justify-end space-x-2">
           <Link to={`/vms/${vmInfo.id}`}>
             <Button size="sm" variant="secondary" className="p-1 text-blue-400 hover:text-blue-300">
@@ -267,33 +259,26 @@ export function VMsPage() {
 
     const activeFilters = getActiveFilterCount();
 
+    const statCells = [
+      { label: "Total", value: stats.total, text: "text-cyan-400", dot: "bg-cyan-400" },
+      { label: "Running", value: stats.running, text: "text-green-400", dot: "bg-green-400" },
+      { label: "Stopped", value: stats.stopped, text: "text-red-400", dot: "bg-red-500" },
+      { label: "New / pending", value: stats.new, text: "text-yellow-400", dot: "bg-yellow-400" },
+    ];
+    if (filters.include_deleted) {
+      statCells.push({ label: "Deleted", value: stats.deleted, text: "text-slate-400", dot: "bg-slate-500" });
+    }
+
     return (
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Virtual Machines</h1>
-          <div className="mt-2 flex gap-4 text-sm text-gray-400">
-            <span>
-              Total: <span className="text-white font-medium">{stats.total}</span>
-            </span>
-            <span>
-              Running: <span className="text-green-400 font-medium">{stats.running}</span>
-            </span>
-            <span>
-              Stopped: <span className="text-red-400 font-medium">{stats.stopped}</span>
-            </span>
-            {stats.new > 0 && (
-              <span>
-                New: <span className="text-yellow-400 font-medium">{stats.new}</span>
-              </span>
-            )}
-            {filters.include_deleted && stats.deleted > 0 && (
-              <span>
-                Deleted: <span className="text-gray-400 font-medium">{stats.deleted}</span>
-              </span>
-            )}
+      <div className="space-y-5">
+        <div className="flex items-start justify-between gap-6 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Virtual Machines</h1>
+            <p className="mt-2 text-sm text-slate-400">
+              {stats.total} instances across {regions.length || "—"} regions · {stats.running} running
+            </p>
           </div>
-        </div>
-        <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -324,11 +309,24 @@ export function VMsPage() {
             <FunnelIcon className="h-4 w-4 mr-2" />
             Filters
             {activeFilters > 0 && (
-              <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 bg-blue-500 text-slate-950 font-semibold text-xs rounded-full h-5 w-5 flex items-center justify-center">
                 {activeFilters}
               </span>
             )}
           </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-px overflow-hidden rounded-lg border border-slate-700 bg-slate-700">
+          {statCells.map((cell) => (
+            <div key={cell.label} className="bg-slate-800 px-5 py-4">
+              <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                <span className={`h-1.5 w-1.5 rounded-full ${cell.dot}`} />
+                {cell.label}
+              </div>
+              <div className={`font-display mt-2 text-3xl font-extrabold ${cell.text}`}>{cell.value}</div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -432,7 +430,7 @@ export function VMsPage() {
         errorAction="view virtual machines"
         loadingMessage="Loading virtual machines..."
         dependencies={[refreshTrigger, filters]}
-        minWidth="1200px"
+        minWidth="820px"
       />
 
       <CreateVmModal

@@ -118,11 +118,11 @@ export function PaginatedTable<T>({
             <div className="overflow-x-auto">
               <table className={`w-full divide-y divide-gray-700 ${tableClassName}`} style={{ minWidth }}>
                 <thead>
-                  <tr className="[&>th]:px-1 [&>th]:py-1 [&>th]:text-left [&>th]:text-xs [&>th]:font-medium [&>th]:text-gray-300 [&>th]:uppercase [&>th]:tracking-wider">
+                  <tr className="[&>th]:px-3 [&>th]:py-2 [&>th]:text-left [&>th]:text-[10px] [&>th]:font-semibold [&>th]:text-gray-400 [&>th]:uppercase [&>th]:tracking-[0.14em] [&>th]:bg-slate-800/60 [&>th]:border-b [&>th]:border-gray-700">
                     {renderHeader()}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-700 [&>tr]:hover:bg-gray-800 [&>tr>td]:px-0.5 [&>tr>td]:py-0.5 [&>tr>td]:text-xs">
+                <tbody className="divide-y divide-gray-700 [&>tr]:transition-colors [&>tr]:hover:bg-slate-800 [&>tr>td]:px-3 [&>tr>td]:py-2 [&>tr>td]:text-[13px] [&>tr>td]:leading-snug">
                   {items.map((item, index) => renderRow(item, index))}
                 </tbody>
               </table>

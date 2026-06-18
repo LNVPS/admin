@@ -132,92 +132,106 @@ export function PaymentMethodsPage() {
   const renderHeader = () => (
     <>
       <th className="w-16">ID</th>
-      <th>Name</th>
-      <th>Company</th>
+      <th>Name &amp; Company</th>
       <th>Payment Method</th>
       <th>Processing Fee</th>
-      <th>Status</th>
-      <th>Created</th>
+      <th>Status &amp; Created</th>
       <th className="text-right">Actions</th>
     </>
   );
 
-  const renderRow = (config: AdminPaymentMethodConfigInfo, index: number) => (
-    <tr key={config.id || index}>
-      <td className="whitespace-nowrap text-white">{config.id}</td>
-      <td>
-        <div className="font-medium text-white">{config.name}</div>
-      </td>
-      <td className="text-gray-300">
-        <div className="text-sm">
-          {config.company_name || companyNameMap.get(config.company_id) || `Company #${config.company_id}`}
-        </div>
-      </td>
-      <td>
-        <div className="flex items-center gap-2">
-          {config.payment_method === AdminPaymentMethod.LIGHTNING ? (
-            <BoltIcon className={`h-5 w-5 ${getPaymentMethodColor(config.payment_method)}`} />
+  const renderRow = (config: AdminPaymentMethodConfigInfo, index: number) => {
+    const companyLabel =
+      config.company_name || companyNameMap.get(config.company_id) || `Company #${config.company_id}`;
+    return (
+      <tr key={config.id || index}>
+        <td className="whitespace-nowrap align-top text-white">{config.id}</td>
+        {/* Name + company */}
+        <td className="align-top">
+          <div className="min-w-0 max-w-[18rem]">
+            <div className="truncate font-medium text-white" title={config.name}>
+              {config.name}
+            </div>
+            <div className="mt-0.5 truncate text-xs text-slate-400" title={companyLabel}>
+              {companyLabel}
+            </div>
+          </div>
+        </td>
+        {/* Payment method + provider + currencies */}
+        <td className="align-top">
+          <div className="min-w-0 max-w-[16rem]">
+            <div className="flex items-center gap-2">
+              {config.payment_method === AdminPaymentMethod.LIGHTNING ? (
+                <BoltIcon className={`h-5 w-5 shrink-0 ${getPaymentMethodColor(config.payment_method)}`} />
+              ) : (
+                <CreditCardIcon className={`h-5 w-5 shrink-0 ${getPaymentMethodColor(config.payment_method)}`} />
+              )}
+              <span className="text-gray-300">{getPaymentMethodName(config.payment_method)}</span>
+              {getProviderTypesForMethod(config.payment_method).length > 1 && (
+                <span className="rounded bg-slate-700 px-2 py-0.5 font-mono text-xs">
+                  {getProviderTypeName(config.provider_type)}
+                </span>
+              )}
+            </div>
+            {config.supported_currencies && config.supported_currencies.length > 0 && (
+              <div
+                className="mt-1 truncate text-xs text-slate-400"
+                title={config.supported_currencies.join(", ")}
+              >
+                {config.supported_currencies.join(", ")}
+              </div>
+            )}
+          </div>
+        </td>
+        <td className="align-top text-gray-300">
+          {config.processing_fee_rate !== null || config.processing_fee_base !== null ? (
+            <div className="text-sm tabular-nums">
+              {config.processing_fee_rate !== null && <span>{config.processing_fee_rate}%</span>}
+              {config.processing_fee_rate !== null && config.processing_fee_base !== null && " + "}
+              {config.processing_fee_base !== null && config.processing_fee_currency && (
+                <span>{formatCurrency(config.processing_fee_base, config.processing_fee_currency)}</span>
+              )}
+              {config.processing_fee_base !== null && !config.processing_fee_currency && (
+                <span>{config.processing_fee_base}</span>
+              )}
+            </div>
           ) : (
-            <CreditCardIcon className={`h-5 w-5 ${getPaymentMethodColor(config.payment_method)}`} />
+            <span className="text-gray-500">None</span>
           )}
-          <span className="text-gray-300">{getPaymentMethodName(config.payment_method)}</span>
-          {getProviderTypesForMethod(config.payment_method).length > 1 && (
-            <span className="px-2 py-1 bg-slate-700 rounded text-xs font-mono">
-              {getProviderTypeName(config.provider_type)}
-            </span>
+        </td>
+        {/* Status + created */}
+        <td className="align-top">
+          {config.enabled ? (
+            <div className="flex items-center text-green-400">
+              <CheckCircleIcon className="mr-1 h-5 w-5" />
+              <span>Enabled</span>
+            </div>
+          ) : (
+            <div className="flex items-center text-red-400">
+              <XCircleIcon className="mr-1 h-5 w-5" />
+              <span>Disabled</span>
+            </div>
           )}
-        </div>
-        {config.supported_currencies && config.supported_currencies.length > 0 && (
-          <div className="mt-1 text-xs text-gray-400">{config.supported_currencies.join(", ")}</div>
-        )}
-      </td>
-      <td className="text-gray-300">
-        {config.processing_fee_rate !== null || config.processing_fee_base !== null ? (
-          <div className="text-sm">
-            {config.processing_fee_rate !== null && <span>{config.processing_fee_rate}%</span>}
-            {config.processing_fee_rate !== null && config.processing_fee_base !== null && " + "}
-            {config.processing_fee_base !== null && config.processing_fee_currency && (
-              <span>{formatCurrency(config.processing_fee_base, config.processing_fee_currency)}</span>
-            )}
-            {config.processing_fee_base !== null && !config.processing_fee_currency && (
-              <span>{config.processing_fee_base}</span>
-            )}
+          <div className="mt-0.5 text-xs text-slate-400">{formatDate(config.created)}</div>
+        </td>
+        <td className="text-right align-top">
+          <div className="flex justify-end space-x-2">
+            <Button size="sm" variant="secondary" onClick={() => handleEdit(config)} className="p-1">
+              <PencilIcon className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => handleDelete(config)}
+              className="text-red-400 hover:text-red-300 p-1"
+            >
+              <TrashIcon className="h-4 w-4" />
+            </Button>
           </div>
-        ) : (
-          <span className="text-gray-500">None</span>
-        )}
-      </td>
-      <td>
-        {config.enabled ? (
-          <div className="flex items-center text-green-400">
-            <CheckCircleIcon className="h-5 w-5 mr-1" />
-            <span>Enabled</span>
-          </div>
-        ) : (
-          <div className="flex items-center text-red-400">
-            <XCircleIcon className="h-5 w-5 mr-1" />
-            <span>Disabled</span>
-          </div>
-        )}
-      </td>
-      <td className="text-gray-300">{formatDate(config.created)}</td>
-      <td className="text-right">
-        <div className="flex justify-end space-x-2">
-          <Button size="sm" variant="secondary" onClick={() => handleEdit(config)} className="p-1">
-            <PencilIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => handleDelete(config)}
-            className="text-red-400 hover:text-red-300 p-1"
-          >
-            <TrashIcon className="h-4 w-4" />
-          </Button>
-        </div>
-      </td>
-    </tr>
-  );
+        </td>
+      </tr>
+    );
+  };
 
   const renderEmptyState = () => (
     <div className="text-center py-8 text-slate-400">
@@ -273,7 +287,7 @@ export function PaymentMethodsPage() {
         errorAction="view payment methods"
         loadingMessage="Loading payment methods..."
         dependencies={[refreshTrigger]}
-        minWidth="1400px"
+        minWidth="900px"
       />
 
       {/* Create Payment Method Modal */}

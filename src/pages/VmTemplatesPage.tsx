@@ -80,95 +80,94 @@ export function VmTemplatesPage() {
   const renderHeader = () => (
     <>
       <th className="w-12">ID</th>
-      <th>Template Name</th>
-      <th>Cost Plan</th>
-      <th>Resources</th>
-      <th>Storage</th>
-      <th>Constraints</th>
+      <th>Template &amp; Cost</th>
+      <th>Specs</th>
       <th>Resource Limits</th>
-      <th>Region</th>
-      <th>Active VMs</th>
-      <th>Status</th>
-      <th>Info</th>
+      <th>Deployment</th>
+      <th>Status &amp; Dates</th>
       <th className="text-right">Actions</th>
     </>
   );
 
   const renderRow = (template: AdminVmTemplateInfo, index: number) => {
     const costPlan = costPlans.find((p) => p.id === template.cost_plan_id);
+    const hasConstraints =
+      (template.cpu_mfg && template.cpu_mfg !== "unknown") ||
+      (template.cpu_arch && template.cpu_arch !== "unknown") ||
+      (template.cpu_features && template.cpu_features.length > 0);
+    const constraintText = [
+      template.cpu_mfg && template.cpu_mfg !== "unknown" ? template.cpu_mfg : null,
+      template.cpu_arch && template.cpu_arch !== "unknown" ? template.cpu_arch : null,
+    ]
+      .filter(Boolean)
+      .join(" / ");
     return (
       <tr key={template.id || index}>
-        <td className="whitespace-nowrap text-white">{template.id}</td>
-        <td className="text-gray-300">
-          <div className="font-medium text-white">{template.name}</div>
-        </td>
-        <td className="text-gray-300">
-          {costPlan ? (
-            <div className="space-y-0.5">
-              <div className="font-medium text-white">
-                {formatCurrency(costPlan.amount, costPlan.currency)}/
-                {costPlan.interval_amount === 1
-                  ? costPlan.interval_type
-                  : `${costPlan.interval_amount} ${costPlan.interval_type}s`}
-              </div>
-              <div className="text-gray-400 text-xs">{costPlan.name}</div>
+        <td className="whitespace-nowrap align-top font-mono text-white">{template.id}</td>
+        {/* Template name + cost plan */}
+        <td className="align-top text-gray-300">
+          <div className="min-w-0 max-w-[18rem]">
+            <div className="truncate font-medium text-white" title={template.name}>
+              {template.name}
             </div>
-          ) : (
-            <span className="text-gray-500">—</span>
-          )}
-        </td>
-        <td className="text-gray-300">
-          <div className="space-y-0.5">
-            <div>
-              <span className="font-medium">{template.cpu}</span> CPU cores
-            </div>
-            <div>
-              <span className="font-medium">{formatBytes(template.memory)}</span> RAM
-            </div>
+            {costPlan ? (
+              <>
+                <div className="mt-0.5 text-xs text-slate-300">
+                  {formatCurrency(costPlan.amount, costPlan.currency)}/
+                  {costPlan.interval_amount === 1
+                    ? costPlan.interval_type
+                    : `${costPlan.interval_amount} ${costPlan.interval_type}s`}
+                </div>
+                <div className="truncate text-xs text-slate-400" title={costPlan.name}>
+                  {costPlan.name}
+                </div>
+              </>
+            ) : (
+              <div className="mt-0.5 text-xs text-slate-500">No cost plan</div>
+            )}
           </div>
         </td>
-        <td className="text-gray-300">
-          <div className="space-y-0.5">
-            <div className="font-medium">{formatBytes(template.disk_size)}</div>
-            <div className="text-gray-400">
-              {template.disk_type.toUpperCase()} • {template.disk_interface.toUpperCase()}
+        {/* Specs: resources + storage + constraints */}
+        <td className="align-top text-gray-300">
+          <div className="min-w-0 max-w-[16rem] space-y-0.5">
+            <div className="font-mono text-xs text-slate-200">
+              {template.cpu}C · {formatBytes(template.memory)} RAM
             </div>
+            <div className="font-mono text-xs text-slate-300">
+              {formatBytes(template.disk_size)}{" "}
+              <span className="uppercase text-slate-500">
+                {template.disk_type} · {template.disk_interface}
+              </span>
+            </div>
+            {hasConstraints && (
+              <>
+                {constraintText && (
+                  <div className="truncate text-xs text-slate-400" title={constraintText}>
+                    {constraintText}
+                  </div>
+                )}
+                {template.cpu_features && template.cpu_features.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {template.cpu_features.slice(0, 3).map((feature, idx) => (
+                      <span
+                        key={idx}
+                        className="max-w-[8rem] truncate text-xs bg-gray-700 text-gray-300 px-1 py-0.5 rounded"
+                        title={feature}
+                      >
+                        {feature}
+                      </span>
+                    ))}
+                    {template.cpu_features.length > 3 && (
+                      <span className="text-xs text-gray-500">+{template.cpu_features.length - 3} more</span>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </td>
-        <td className="text-gray-300">
-          {(template.cpu_mfg && template.cpu_mfg !== "unknown") ||
-          (template.cpu_arch && template.cpu_arch !== "unknown") ||
-          (template.cpu_features && template.cpu_features.length > 0) ? (
-            <div className="space-y-0.5">
-              {((template.cpu_mfg && template.cpu_mfg !== "unknown") ||
-                (template.cpu_arch && template.cpu_arch !== "unknown")) && (
-                <div className="text-gray-400 text-xs">
-                  {[
-                    template.cpu_mfg && template.cpu_mfg !== "unknown" ? template.cpu_mfg : null,
-                    template.cpu_arch && template.cpu_arch !== "unknown" ? template.cpu_arch : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" / ")}
-                </div>
-              )}
-              {template.cpu_features && template.cpu_features.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {template.cpu_features.slice(0, 3).map((feature, idx) => (
-                    <span key={idx} className="text-xs bg-gray-700 text-gray-300 px-1 py-0.5 rounded">
-                      {feature}
-                    </span>
-                  ))}
-                  {template.cpu_features.length > 3 && (
-                    <span className="text-xs text-gray-500">+{template.cpu_features.length - 3}</span>
-                  )}
-                </div>
-              )}
-            </div>
-          ) : (
-            <span className="text-gray-500">—</span>
-          )}
-        </td>
-        <td className="text-gray-300">
+        {/* Resource limits */}
+        <td className="align-top text-gray-300">
           {template.disk_iops_read != null ||
           template.disk_iops_write != null ||
           template.disk_mbps_read != null ||
@@ -193,34 +192,40 @@ export function VmTemplatesPage() {
             <span className="text-gray-500">—</span>
           )}
         </td>
-        <td className="text-gray-300">
-          <div className="text-white">{template.region_name || `Region ${template.region_id}`}</div>
-        </td>
-        <td className="text-gray-300">
-          <div className="flex items-center">
-            <ServerIcon className="h-4 w-4 mr-1 text-gray-400" />
-            <span className="font-medium">{template.active_vm_count}</span>
+        {/* Deployment: region + active VMs */}
+        <td className="align-top text-gray-300">
+          <div className="min-w-0 max-w-[12rem]">
+            <div
+              className="truncate text-white"
+              title={template.region_name || `Region ${template.region_id}`}
+            >
+              {template.region_name || `Region ${template.region_id}`}
+            </div>
+            <div className="mt-0.5 flex items-center text-xs text-slate-400">
+              <ServerIcon className="h-3.5 w-3.5 mr-1 text-gray-400" />
+              <span className="font-medium">{template.active_vm_count}</span>
+              <span className="ml-1">active VMs</span>
+            </div>
           </div>
         </td>
-        <td>
-          <div className="space-y-1">
+        {/* Status + dates */}
+        <td className="align-top">
+          <div className="flex flex-wrap gap-1">
             <StatusBadge status={template.enabled ? "enabled" : "disabled"} />
             {template.expires && new Date(template.expires) < new Date() && (
-              <div>
-                <StatusBadge status="expired" />
-              </div>
+              <StatusBadge status="expired" />
             )}
           </div>
-        </td>
-        <td>
-          <div className="space-y-0.5">
-            <div className="text-gray-400">Created: {new Date(template.created).toLocaleDateString()}</div>
-            {template.expires && (
-              <div className="text-gray-500">Expires: {new Date(template.expires).toLocaleDateString()}</div>
-            )}
+          <div className="mt-1 text-xs text-slate-400">
+            Created {new Date(template.created).toLocaleDateString()}
           </div>
+          {template.expires && (
+            <div className="text-xs text-slate-500">
+              Expires {new Date(template.expires).toLocaleDateString()}
+            </div>
+          )}
         </td>
-        <td className="text-right">
+        <td className="text-right align-top">
           <div className="flex justify-end space-x-2">
             <Button
               size="sm"
@@ -300,7 +305,7 @@ export function VmTemplatesPage() {
         errorAction="view VM templates"
         loadingMessage="Loading VM templates..."
         dependencies={[refreshTrigger]}
-        minWidth="1400px"
+        minWidth="980px"
       />
 
       <VmTemplateModal

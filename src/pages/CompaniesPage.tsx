@@ -9,7 +9,6 @@ import {
   PlusIcon,
   PencilIcon,
   TrashIcon,
-  GlobeAltIcon,
 } from "@heroicons/react/24/outline";
 
 export function CompaniesPage() {
@@ -54,81 +53,104 @@ export function CompaniesPage() {
   const renderHeader = () => (
     <>
       <th className="w-16">ID</th>
-      <th>Company Details</th>
+      <th>Company</th>
       <th>Location</th>
       <th>Contact</th>
-      <th>Regions</th>
-      <th>Created</th>
+      <th>Regions &amp; Created</th>
       <th className="text-right">Actions</th>
     </>
   );
 
-  const renderRow = (company: AdminCompanyInfo, index: number) => (
-    <tr key={company.id || index}>
-      <td className="whitespace-nowrap text-white">{company.id}</td>
-      <td>
-        <div className="space-y-0.5">
-          <div className="font-medium text-white">{company.name}</div>
-          <div className="text-blue-400 text-sm font-mono">
-            Base Currency: {company.base_currency}
-          </div>
-          {company.tax_id && (
-            <div className="text-gray-400 text-sm">
-              Tax ID: {company.tax_id}
+  const renderRow = (company: AdminCompanyInfo, index: number) => {
+    const cityLine = [company.city, company.state, company.postcode]
+      .filter(Boolean)
+      .join(", ");
+    return (
+      <tr key={company.id || index}>
+        <td className="whitespace-nowrap align-top text-white">{company.id}</td>
+        {/* Company: name / base currency / tax id */}
+        <td className="align-top">
+          <div className="min-w-0 max-w-[18rem]">
+            <div className="truncate font-medium text-white" title={company.name}>
+              {company.name}
             </div>
-          )}
-        </div>
-      </td>
-      <td className="text-gray-300">
-        <div className="space-y-0.5 text-sm">
-          {company.address_1 && <div>{company.address_1}</div>}
-          {company.address_2 && <div>{company.address_2}</div>}
-          <div className="flex gap-2">
-            {company.city && <span>{company.city}</span>}
-            {company.state && <span>{company.state}</span>}
-            {company.postcode && <span>{company.postcode}</span>}
+            <div className="mt-0.5 truncate font-mono text-xs text-blue-400">
+              {company.base_currency}
+            </div>
+            {company.tax_id && (
+              <div className="truncate text-xs text-slate-400" title={company.tax_id}>
+                Tax ID: {company.tax_id}
+              </div>
+            )}
           </div>
-          {company.country_code && (
-            <div className="text-gray-400">{company.country_code}</div>
-          )}
-        </div>
-      </td>
-      <td className="text-gray-300">
-        <div className="space-y-0.5 text-sm">
-          {company.email && <div>{company.email}</div>}
-          {company.phone && <div>{company.phone}</div>}
-        </div>
-      </td>
-      <td className="text-gray-300">
-        <div className="flex items-center">
-          <GlobeAltIcon className="h-4 w-4 mr-1 text-gray-400" />
-          <span className="font-medium">{company.region_count}</span>
-        </div>
-      </td>
-      <td className="text-gray-300">{formatDate(company.created)}</td>
-      <td className="text-right">
-        <div className="flex justify-end space-x-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => handleEdit(company)}
-            className="p-1"
-          >
-            <PencilIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => handleDelete(company)}
-            className="text-red-400 hover:text-red-300 p-1"
-            disabled={company.region_count > 0}
-          >
-            <TrashIcon className="h-4 w-4" />
-          </Button>
-        </div>
-      </td>
-    </tr>
-  );
+        </td>
+        {/* Location: address / city·state·postcode / country */}
+        <td className="align-top text-gray-300">
+          <div className="min-w-0 max-w-[18rem] text-sm">
+            {company.address_1 && (
+              <div className="truncate" title={company.address_1}>
+                {company.address_1}
+              </div>
+            )}
+            {company.address_2 && (
+              <div className="truncate text-xs text-slate-400" title={company.address_2}>
+                {company.address_2}
+              </div>
+            )}
+            {cityLine && (
+              <div className="mt-0.5 truncate text-xs text-slate-400" title={cityLine}>
+                {cityLine}
+              </div>
+            )}
+            {company.country_code && (
+              <div className="mt-0.5 text-xs text-slate-500">{company.country_code}</div>
+            )}
+          </div>
+        </td>
+        {/* Contact: email / phone */}
+        <td className="align-top text-gray-300">
+          <div className="min-w-0 max-w-[16rem] text-sm">
+            {company.email && (
+              <div className="truncate" title={company.email}>
+                {company.email}
+              </div>
+            )}
+            {company.phone && (
+              <div className="mt-0.5 truncate text-xs text-slate-400" title={company.phone}>
+                {company.phone}
+              </div>
+            )}
+          </div>
+        </td>
+        {/* Regions + created */}
+        <td className="align-top text-gray-300">
+          <div className="font-medium">{company.region_count} regions</div>
+          <div className="mt-0.5 text-xs text-slate-400">{formatDate(company.created)}</div>
+        </td>
+        <td className="text-right align-top">
+          <div className="flex justify-end space-x-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => handleEdit(company)}
+              className="p-1"
+            >
+              <PencilIcon className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => handleDelete(company)}
+              className="text-red-400 hover:text-red-300 p-1"
+              disabled={company.region_count > 0}
+            >
+              <TrashIcon className="h-4 w-4" />
+            </Button>
+          </div>
+        </td>
+      </tr>
+    );
+  };
 
   const renderEmptyState = () => (
     <div className="text-center py-8 text-slate-400">
@@ -194,7 +216,7 @@ export function CompaniesPage() {
         errorAction="view companies"
         loadingMessage="Loading companies..."
         dependencies={[refreshTrigger]}
-        minWidth="1200px"
+        minWidth="900px"
       />
 
       {/* Create Company Modal */}

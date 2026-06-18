@@ -56,9 +56,8 @@ export function IpRangesPage() {
   const renderHeader = () => (
     <>
       <th className="w-16">ID</th>
-      <th>CIDR & Gateway</th>
-      <th>Region</th>
-      <th>Access Policy</th>
+      <th>CIDR &amp; Gateway</th>
+      <th>Region &amp; Policy</th>
       <th>Allocation</th>
       <th>Assigned (Free)</th>
       <th>Status</th>
@@ -68,43 +67,55 @@ export function IpRangesPage() {
 
   const renderRow = (ipRange: AdminIpRangeInfo, index: number) => (
     <tr key={ipRange.id || index}>
-      <td className="whitespace-nowrap text-white">{ipRange.id}</td>
-      <td>
-        <div className="space-y-0.5">
-          <div className="font-medium text-white font-mono">{ipRange.cidr}</div>
-          <div className="text-gray-400 text-sm font-mono">Gateway: {ipRange.gateway}</div>
-          {ipRange.reverse_zone_id && <div className="text-gray-400 text-sm">Zone: {ipRange.reverse_zone_id}</div>}
+      <td className="whitespace-nowrap align-top text-white">{ipRange.id}</td>
+      <td className="align-top">
+        <div className="min-w-0 max-w-[18rem]">
+          <div className="truncate font-mono font-medium text-white" title={ipRange.cidr}>
+            {ipRange.cidr}
+          </div>
+          <div className="mt-0.5 truncate font-mono text-xs text-gray-400" title={ipRange.gateway}>
+            gw {ipRange.gateway}
+          </div>
+          {ipRange.reverse_zone_id && (
+            <div className="mt-0.5 truncate text-xs text-gray-400" title={ipRange.reverse_zone_id}>
+              Zone: {ipRange.reverse_zone_id}
+            </div>
+          )}
         </div>
       </td>
-      <td className="text-gray-300">
-        <div className="flex items-center">
-          <GlobeAltIcon className="h-4 w-4 mr-1 text-gray-400" />
-          {ipRange.region_name || `Region ${ipRange.region_id}`}
+      <td className="align-top text-gray-300">
+        <div className="min-w-0 max-w-[14rem]">
+          <div className="flex items-center">
+            <GlobeAltIcon className="h-4 w-4 mr-1 shrink-0 text-gray-400" />
+            <span className="truncate" title={ipRange.region_name || `Region ${ipRange.region_id}`}>
+              {ipRange.region_name || `Region ${ipRange.region_id}`}
+            </span>
+          </div>
+          <div className="mt-0.5 truncate text-xs">
+            {ipRange.access_policy_name ? (
+              <span className="text-blue-400">{ipRange.access_policy_name}</span>
+            ) : (
+              <span className="text-gray-500">No policy</span>
+            )}
+          </div>
         </div>
       </td>
-      <td className="text-gray-300">
-        {ipRange.access_policy_name ? (
-          <span className="text-blue-400">{ipRange.access_policy_name}</span>
-        ) : (
-          <span className="text-gray-500">None</span>
-        )}
-      </td>
-      <td className="text-gray-300">
+      <td className="align-top text-gray-300">
         <div className="space-y-0.5">
           <div className="capitalize">{ipRange.allocation_mode}</div>
           {ipRange.use_full_range && <div className="text-xs text-yellow-400">Full Range</div>}
         </div>
       </td>
-      <td className="text-gray-300">
+      <td className="align-top text-gray-300">
         <span className="font-medium">
           {ipRange.assignment_count}
           {ipRange.available_ips !== undefined && <> ({ipRange.available_ips})</>}
         </span>
       </td>
-      <td>
+      <td className="align-top">
         <StatusBadge status={ipRange.enabled ? "active" : "inactive"} />
       </td>
-      <td className="text-right">
+      <td className="text-right align-top">
         <div className="flex justify-end space-x-2">
           <Button
             size="sm"
@@ -178,7 +189,7 @@ export function IpRangesPage() {
         errorAction="view IP ranges"
         loadingMessage="Loading IP ranges..."
         dependencies={[refreshTrigger]}
-        minWidth="1400px"
+        minWidth="900px"
       />
 
       {/* Create IP Range Modal */}

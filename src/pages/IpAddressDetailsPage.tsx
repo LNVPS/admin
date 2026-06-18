@@ -88,12 +88,9 @@ export function IpAddressDetailsPage() {
 
   const renderAssignmentHeader = () => (
     <>
-      <th>VM</th>
-      <th>Owner</th>
+      <th>VM &amp; Region</th>
       <th>Status</th>
-      <th>DNS</th>
-      <th>ARP Ref</th>
-      <th>Region</th>
+      <th>DNS &amp; ARP</th>
       <th className="text-right">Actions</th>
     </>
   );
@@ -103,26 +100,28 @@ export function IpAddressDetailsPage() {
     index: number,
   ) => (
     <tr key={assignment.id || index}>
-      <td>
-        <div className="flex items-center space-x-2">
-          <ServerIcon className="h-4 w-4 text-gray-400" />
-          <div>
-            <div className="font-medium text-white">
-              <Link
-                to={`/vms/${assignment.vm_id}`}
-                className="text-blue-400 hover:text-blue-300 hover:underline"
-              >
-                {`VM-${assignment.vm_id}`}
-              </Link>
-            </div>
-            <div className="text-gray-400 text-xs">ID: {assignment.vm_id}</div>
+      <td className="align-top">
+        <div className="min-w-0 max-w-[18rem]">
+          <div className="flex items-center space-x-2">
+            <ServerIcon className="h-4 w-4 shrink-0 text-gray-400" />
+            <Link
+              to={`/vms/${assignment.vm_id}`}
+              className="font-medium text-blue-400 hover:text-blue-300 hover:underline"
+            >
+              {`VM-${assignment.vm_id}`}
+            </Link>
           </div>
+          <div className="mt-0.5 truncate text-xs text-gray-400" title={assignment.region_name || "N/A"}>
+            {assignment.region_name || "N/A"}
+          </div>
+          {assignment.ip_range_cidr && (
+            <div className="mt-0.5 truncate font-mono text-xs text-gray-400" title={assignment.ip_range_cidr}>
+              {assignment.ip_range_cidr}
+            </div>
+          )}
         </div>
       </td>
-      <td>
-        <span className="text-gray-500">-</span>
-      </td>
-      <td>
+      <td className="align-top">
         <div className="flex items-center space-x-2">
           {assignment.deleted ? (
             <XCircleIcon className="h-4 w-4 text-red-400" />
@@ -132,43 +131,29 @@ export function IpAddressDetailsPage() {
           <StatusBadge status={assignment.deleted ? "inactive" : "active"} />
         </div>
       </td>
-      <td>
-        <div className="space-y-0.5">
+      <td className="align-top">
+        <div className="min-w-0 max-w-[16rem] space-y-0.5">
           {assignment.dns_forward && (
-            <div className="text-sm text-blue-400">
+            <div className="truncate text-xs text-blue-400" title={assignment.dns_forward}>
               ↗ {assignment.dns_forward}
             </div>
           )}
           {assignment.dns_reverse && (
-            <div className="text-sm text-green-400">
+            <div className="truncate text-xs text-green-400" title={assignment.dns_reverse}>
               ↙ {assignment.dns_reverse}
             </div>
           )}
-          {!assignment.dns_forward && !assignment.dns_reverse && (
+          {assignment.arp_ref && (
+            <div className="truncate font-mono text-xs text-gray-300" title={assignment.arp_ref}>
+              ARP: {assignment.arp_ref}
+            </div>
+          )}
+          {!assignment.dns_forward && !assignment.dns_reverse && !assignment.arp_ref && (
             <span className="text-gray-500">None</span>
           )}
         </div>
       </td>
-      <td>
-        {assignment.arp_ref ? (
-          <span className="font-mono text-sm text-gray-300">
-            {assignment.arp_ref}
-          </span>
-        ) : (
-          <span className="text-gray-500">-</span>
-        )}
-      </td>
-      <td>
-        <div className="space-y-0.5">
-          <div className="text-gray-300">{assignment.region_name || "N/A"}</div>
-          {assignment.ip_range_cidr && (
-            <div className="text-gray-400 text-xs font-mono">
-              {assignment.ip_range_cidr}
-            </div>
-          )}
-        </div>
-      </td>
-      <td className="text-right">
+      <td className="text-right align-top">
         <div className="flex justify-end space-x-2">
           {!assignment.deleted && (
             <Button
@@ -228,12 +213,14 @@ export function IpAddressDetailsPage() {
           >
             <ArrowLeftIcon className="h-4 w-4" />
           </Button>
-          <div>
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold text-white flex items-center">
-              <GlobeAltIcon className="h-6 w-6 mr-2" />
+              <GlobeAltIcon className="h-6 w-6 mr-2 shrink-0" />
               IP Address Details
             </h1>
-            <p className="text-gray-400 font-mono text-lg mt-1">{decodedIp}</p>
+            <p className="text-gray-400 font-mono text-lg mt-1 break-all" title={decodedIp}>
+              {decodedIp}
+            </p>
           </div>
         </div>
       </div>
@@ -282,10 +269,12 @@ export function IpAddressDetailsPage() {
           )}
 
           {ipRange && (
-            <div>
+            <div className="min-w-0">
               <div className="text-gray-400 text-sm mb-1">IP Range</div>
-              <div className="text-white font-mono">{ipRange.cidr}</div>
-              <div className="text-gray-400 text-xs mt-1">
+              <div className="text-white font-mono break-all" title={ipRange.cidr}>
+                {ipRange.cidr}
+              </div>
+              <div className="text-gray-400 text-xs mt-1 break-all" title={ipRange.gateway}>
                 Gateway: {ipRange.gateway}
               </div>
             </div>
@@ -296,27 +285,27 @@ export function IpAddressDetailsPage() {
           <div className="mt-4 pt-4 border-t border-gray-700">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {currentAssignment.dns_forward && (
-                <div>
+                <div className="min-w-0">
                   <div className="text-gray-400 text-sm mb-1">Forward DNS</div>
-                  <div className="text-blue-400 font-mono">
+                  <div className="text-blue-400 font-mono break-all" title={currentAssignment.dns_forward}>
                     {currentAssignment.dns_forward}
                   </div>
                 </div>
               )}
               {currentAssignment.dns_reverse && (
-                <div>
+                <div className="min-w-0">
                   <div className="text-gray-400 text-sm mb-1">Reverse DNS</div>
-                  <div className="text-green-400 font-mono">
+                  <div className="text-green-400 font-mono break-all" title={currentAssignment.dns_reverse}>
                     {currentAssignment.dns_reverse}
                   </div>
                 </div>
               )}
               {currentAssignment.arp_ref && (
-                <div>
+                <div className="min-w-0">
                   <div className="text-gray-400 text-sm mb-1">
                     ARP Reference
                   </div>
-                  <div className="text-gray-300 font-mono">
+                  <div className="text-gray-300 font-mono break-all" title={currentAssignment.arp_ref}>
                     {currentAssignment.arp_ref}
                   </div>
                 </div>

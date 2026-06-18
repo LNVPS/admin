@@ -94,61 +94,67 @@ export function ReferralsPage() {
 
   const renderHeader = () => (
     <>
-      <th>VM ID</th>
-      <th>Ref Code</th>
+      <th>VM &amp; Ref Code</th>
       <th>User</th>
-      <th>Region</th>
-      <th>Template</th>
+      <th>Region &amp; Template</th>
       <th>IP Addresses</th>
-      <th>CPU / RAM / Disk</th>
-      <th>Created</th>
-      <th>Expires</th>
+      <th>Resources</th>
+      <th>Dates</th>
     </>
   );
 
   const renderRow = (vm: AdminVmInfo) => (
     <tr key={vm.id}>
-      <td>
-        <Link to={`/vms/${vm.id}`} className="text-blue-400 hover:text-blue-300 font-mono">
+      {/* VM id + ref code */}
+      <td className="align-top">
+        <Link to={`/vms/${vm.id}`} className="font-mono text-blue-400 hover:text-blue-300">
           #{vm.id}
         </Link>
+        <div className="mt-1">
+          <span className="rounded bg-blue-900 px-2 py-0.5 font-mono text-xs font-semibold text-blue-200">
+            {vm.ref_code}
+          </span>
+        </div>
       </td>
-      <td>
-        <span className="bg-blue-900 text-blue-200 px-2 py-0.5 rounded text-xs font-mono font-semibold">
-          {vm.ref_code}
-        </span>
-      </td>
-      <td>
-        <Link to={`/users/${vm.user_id}`} className="text-blue-400 hover:text-blue-300">
+      <td className="align-top">
+        <Link to={`/users/${vm.user_id}`} className="block min-w-0 max-w-[14rem] text-blue-400 hover:text-blue-300">
           <span className="font-mono text-xs">{vm.user_pubkey.slice(0, 12)}…</span>
-          {vm.user_email && <span className="block text-gray-400 text-xs">{vm.user_email}</span>}
+          {vm.user_email && (
+            <span className="block truncate text-xs text-slate-400" title={vm.user_email}>
+              {vm.user_email}
+            </span>
+          )}
         </Link>
       </td>
-      <td>
-        <span className="text-gray-300">{vm.region_name}</span>
+      {/* Region + template */}
+      <td className="align-top text-gray-300">
+        <div className="min-w-0 max-w-[14rem]">
+          <div className="truncate" title={vm.region_name}>
+            {vm.region_name}
+          </div>
+          <div className="mt-0.5 truncate text-xs text-slate-400" title={vm.template_name}>
+            {vm.template_name}
+          </div>
+        </div>
       </td>
-      <td>
-        <span className="text-gray-300">{vm.template_name}</span>
-      </td>
-      <td>
+      <td className="align-top">
         <div className="space-y-0.5">
           {vm.ip_addresses.map((ip) => (
-            <div key={ip.id} className="font-mono text-xs text-gray-300">
+            <div key={ip.id} className="truncate font-mono text-xs text-gray-300" title={ip.ip}>
               {ip.ip}
             </div>
           ))}
         </div>
       </td>
-      <td>
-        <span className="text-gray-300 text-xs">
+      <td className="align-top">
+        <span className="text-xs text-gray-300">
           {vm.cpu}c / {formatBytes(vm.memory)} / {formatBytes(vm.disk_size)}
         </span>
       </td>
-      <td>
-        <span className="text-gray-300 text-xs">{new Date(vm.created).toLocaleDateString()}</span>
-      </td>
-      <td>
-        <span className="text-gray-300 text-xs">{new Date(vm.expires).toLocaleDateString()}</span>
+      {/* Created + expires */}
+      <td className="align-top text-xs text-gray-300">
+        <div>Created {new Date(vm.created).toLocaleDateString()}</div>
+        <div className="mt-0.5 text-slate-400">Expires {new Date(vm.expires).toLocaleDateString()}</div>
       </td>
     </tr>
   );
@@ -171,7 +177,7 @@ export function ReferralsPage() {
           </button>
           <Link
             to="/referrals-report"
-            className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
+            className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-500 hover:bg-blue-400 text-slate-950 font-semibold rounded-md transition-colors"
           >
             <ChartBarIcon className="h-4 w-4" />
             View Report
@@ -211,7 +217,7 @@ export function ReferralsPage() {
           <button
             type="button"
             onClick={handleSearch}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm transition-colors"
+            className="px-4 py-2 bg-blue-500 hover:bg-blue-400 text-slate-950 font-semibold rounded-md text-sm transition-colors"
           >
             Search
           </button>
@@ -240,7 +246,7 @@ export function ReferralsPage() {
         loadingMessage="Loading referred VMs..."
         dependencies={[appliedFilter, refreshKey]}
         calculateStats={renderStats}
-        minWidth="900px"
+        minWidth="800px"
         renderEmptyState={() => (
           <div className="text-center py-8">
             <UserGroupIcon className="h-12 w-12 text-gray-600 mx-auto mb-3" />

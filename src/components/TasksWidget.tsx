@@ -84,26 +84,29 @@ export function TasksWidget() {
     <div className="mb-4">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors cursor-pointer bg-slate-800"
+        className="w-full flex items-center gap-2 min-h-[44px] rounded-lg px-4 py-2.5 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors cursor-pointer bg-slate-800"
       >
-        <div className="flex items-center">
-          <ClockIcon className="mr-3 h-5 w-5 text-blue-400" />
-          <span>Tasks</span>
+        <ClockIcon className="h-5 w-5 shrink-0 text-blue-400" />
+        <span className="truncate">Tasks</span>
+        {/* Fixed-width status area so polled count changes never reflow the sidebar */}
+        <div className="ml-auto flex shrink-0 items-center gap-1.5 text-xs tabular-nums">
           {stats.running > 0 && (
-            <span className="ml-2 bg-green-600 text-white text-xs px-2 py-1 rounded-full">
-              {stats.running} running
+            <span className="flex items-center gap-1 rounded-full bg-green-500/15 px-1.5 py-0.5 text-green-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
+              {stats.running}
             </span>
           )}
           {stats.waiting > 0 && (
-            <span className="ml-2 bg-yellow-600 text-white text-xs px-2 py-1 rounded-full">
-              {stats.waiting} queued
+            <span className="flex items-center gap-1 rounded-full bg-yellow-500/15 px-1.5 py-0.5 text-yellow-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-yellow-400" />
+              {stats.waiting}
             </span>
           )}
         </div>
       </button>
 
       {isOpen && (
-        <div className="mt-2 bg-slate-800 rounded-lg p-4">
+        <div className="mt-2 max-h-[55vh] overflow-y-auto bg-slate-800 rounded-lg p-4">
           <div className="mb-3">
             <div className="flex justify-between mb-2">
               <span className="text-xs font-semibold text-slate-400 uppercase">Summary</span>

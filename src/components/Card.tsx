@@ -11,7 +11,7 @@ interface CardProps {
 
 export function Card({ title, children, className, actions, icon }: CardProps) {
   return (
-    <div className={clsx("rounded-lg bg-slate-800 shadow-lg", className)}>
+    <div className={clsx("rounded-lg border border-slate-700 bg-slate-800 shadow-lg", className)}>
       {(title || actions) && (
         <div className="flex items-center justify-between border-b border-slate-700 px-4 py-3">
           {title && (
@@ -49,7 +49,7 @@ export function StatCard({
   return (
     <div
       className={clsx(
-        "rounded-lg bg-slate-800 p-4 shadow-lg transition-transform hover:scale-105",
+        "rounded-lg border border-slate-700 bg-slate-800 p-4 shadow-lg transition-colors hover:border-slate-600",
         className,
       )}
     >

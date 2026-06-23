@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, ArrowsRightLeftIcon, GlobeAltIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, ArrowPathIcon, ArrowsRightLeftIcon, GlobeAltIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Button } from "../components/Button";
@@ -15,6 +15,7 @@ export function RouterDetailPage() {
   const adminApi = useAdminApi();
   const { success, error: toastError } = useToast();
   const [togglingId, setTogglingId] = useState<number | null>(null);
+  const [forcingId, setForcingId] = useState<number | null>(null);
 
   const {
     data: router,
@@ -27,9 +28,15 @@ export function RouterDetailPage() {
     data: tunnelsData,
     loading: tunnelsLoading,
     error: tunnelsError,
+    retry: retryTunnels,
   } = useApiCall(() => adminApi.getRouterTunnels(routerId), [routerId]);
+  // gre0/gretap0 are the kernel's base GRE devices, not real provisioned
+  // tunnels — hide them so the list only shows actual sessions.
+  const HIDDEN_TUNNELS = new Set(["gre0", "gretap0"]);
   const tunnels = tunnelsData
-    ? [...tunnelsData].sort((a, b) => a.name.localeCompare(b.name))
+    ? [...tunnelsData]
+        .filter((t) => !HIDDEN_TUNNELS.has(t.name.toLowerCase()))
+        .sort((a, b) => a.name.localeCompare(b.name))
     : tunnelsData;
 
   const {
@@ -56,6 +63,23 @@ export function RouterDetailPage() {
       toastError(err instanceof Error ? err.message : "Failed to toggle BGP session");
     } finally {
       setTogglingId(null);
+    }
+  };
+
+  // Force the router to re-issue enable/disable on a session. "up" prompts the
+  // router to re-attempt the connection; "down" administratively shuts it down.
+  const handleForceSession = async (session: AdminBgpSessionInfo, up: boolean) => {
+    setForcingId(session.id);
+    try {
+      await adminApi.toggleBgpSession(routerId, session.name, up);
+      success(`BGP session "${session.name}" ${up ? "enable" : "disable"} job dispatched`);
+      // Give the worker a moment to apply, then refresh
+      setTimeout(() => retrySessions(), 2000);
+    } catch (err) {
+      console.error(`Failed to force BGP session ${up ? "up" : "down"}:`, err);
+      toastError(err instanceof Error ? err.message : "Failed to update BGP session");
+    } finally {
+      setForcingId(null);
     }
   };
 
@@ -132,6 +156,15 @@ export function RouterDetailPage() {
           <ArrowsRightLeftIcon className="h-5 w-5 text-gray-400" />
           <h2 className="text-base font-semibold text-white">Tunnels</h2>
           {tunnels && <span className="text-xs text-gray-400">({tunnels.length})</span>}
+          <button
+            type="button"
+            onClick={retryTunnels}
+            disabled={tunnelsLoading}
+            title="Refresh tunnels"
+            className="ml-auto rounded-md p-1.5 text-gray-400 hover:bg-slate-700 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ArrowPathIcon className={`h-4 w-4 ${tunnelsLoading ? "animate-spin" : ""}`} />
+          </button>
         </div>
         {tunnelsLoading ? (
           <div className="px-4 py-6 text-sm text-gray-400">Loading tunnels...</div>
@@ -183,6 +216,15 @@ export function RouterDetailPage() {
           <GlobeAltIcon className="h-5 w-5 text-gray-400" />
           <h2 className="text-base font-semibold text-white">BGP Sessions</h2>
           {sessions && <span className="text-xs text-gray-400">({sessions.length})</span>}
+          <button
+            type="button"
+            onClick={retrySessions}
+            disabled={sessionsLoading}
+            title="Refresh BGP sessions"
+            className="ml-auto rounded-md p-1.5 text-gray-400 hover:bg-slate-700 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ArrowPathIcon className={`h-4 w-4 ${sessionsLoading ? "animate-spin" : ""}`} />
+          </button>
         </div>
         {sessionsLoading ? (
           <div className="px-4 py-6 text-sm text-gray-400">Loading BGP sessions...</div>
@@ -281,24 +323,48 @@ export function RouterDetailPage() {
                         {session.enabled ? "Enabled" : "Disabled"}
                       </StatusBadge>
                     </td>
-                    <td className="px-4 py-2 text-right">
-                      <Button
-                        size="sm"
-                        variant={session.enabled ? "secondary" : "primary"}
-                        disabled={togglingId === session.id}
-                        onClick={() => handleToggleSession(session)}
-                        title={
-                          session.enabled
-                            ? "Administratively shut down this session (sets Admin = Disabled). Does not change the live BGP state directly."
-                            : "Administratively enable this session (sets Admin = Enabled). The peer must still come up before BGP State becomes Established."
-                        }
-                      >
-                        {togglingId === session.id
-                          ? "..."
-                          : session.enabled
-                            ? "Disable"
-                            : "Enable"}
-                      </Button>
+                    <td className="px-4 py-2">
+                      <div className="flex items-center justify-end gap-2">
+                        {session.enabled && session.state.toLowerCase() !== "established" && (
+                          <Button
+                            size="sm"
+                            variant="success"
+                            disabled={forcingId === session.id || togglingId === session.id}
+                            onClick={() => handleForceSession(session, true)}
+                            title="Re-issue enable to prompt the router to re-attempt the connection. Use when the session is enabled but stuck Down/Idle/Active."
+                          >
+                            {forcingId === session.id ? "..." : "Force up"}
+                          </Button>
+                        )}
+                        {!session.enabled && session.state.toLowerCase() === "established" && (
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            disabled={forcingId === session.id || togglingId === session.id}
+                            onClick={() => handleForceSession(session, false)}
+                            title="Session is administratively disabled but still Established. Re-issue disable to force it down."
+                          >
+                            {forcingId === session.id ? "..." : "Force down"}
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant={session.enabled ? "secondary" : "primary"}
+                          disabled={togglingId === session.id || forcingId === session.id}
+                          onClick={() => handleToggleSession(session)}
+                          title={
+                            session.enabled
+                              ? "Administratively shut down this session (sets Admin = Disabled). Does not change the live BGP state directly."
+                              : "Administratively enable this session (sets Admin = Enabled). The peer must still come up before BGP State becomes Established."
+                          }
+                        >
+                          {togglingId === session.id
+                            ? "..."
+                            : session.enabled
+                              ? "Disable"
+                              : "Enable"}
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}

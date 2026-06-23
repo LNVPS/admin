@@ -4,10 +4,9 @@ import {
   BuildingOfficeIcon,
   ChartBarIcon,
   ChatBubbleLeftRightIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
   CommandLineIcon,
   ComputerDesktopIcon,
+  CpuChipIcon,
   CreditCardIcon,
   CurrencyDollarIcon,
   DocumentDuplicateIcon,
@@ -30,32 +29,106 @@ import { useTheme } from "../hooks/useTheme";
 import { useUserRoles } from "../hooks/useUserRoles";
 import { LoginState } from "../lib/login";
 
-interface SidebarItem {
+type NavAccent = "blue" | "teal";
+
+interface NavItem {
   name: string;
-  to?: string;
+  to: string;
   icon: React.ElementType;
   requiredPermissions: string[];
-  children?: SidebarItem[];
 }
 
-const navigation: SidebarItem[] = [
+interface NavSection {
+  label: string;
+  icon: React.ElementType;
+  items: NavItem[];
+  /** Visual accent. The network fabric uses "teal" as its signature. */
+  accent?: NavAccent;
+}
+
+// Accent tokens. Blue is the default product accent; teal is reserved for the
+// network fabric (IP ranges, assignments, routers, IP space) so those screens
+// read as one distinct system rather than blending into the rest of the admin.
+const ACCENTS: Record<
+  NavAccent,
+  { rail: string; node: string; activeNode: string; activeLink: string; sectionIcon: string }
+> = {
+  blue: {
+    rail: "border-slate-700/70",
+    node: "bg-slate-600 ring-slate-800",
+    activeNode: "bg-blue-400 ring-blue-400/30",
+    activeLink: "bg-blue-500/10 text-blue-400 ring-1 ring-inset ring-blue-500/30",
+    sectionIcon: "text-slate-500",
+  },
+  teal: {
+    rail: "border-teal-400/25",
+    node: "bg-teal-500/40 ring-slate-800",
+    activeNode: "bg-teal-300 ring-teal-400/40",
+    activeLink: "bg-teal-500/10 text-teal-200 ring-1 ring-inset ring-teal-400/30",
+    sectionIcon: "text-teal-400",
+  },
+};
+
+// Organised by operator domain: running infra (Compute), the priced catalogue
+// (Catalog), the network fabric (Network), people (Customers), commerce
+// (Business), and consolidated reporting (Reports).
+const navigation: NavSection[] = [
   {
-    name: "Users",
-    icon: UsersIcon,
-    requiredPermissions: ["users::view"],
-    children: [
+    label: "Compute",
+    icon: CpuChipIcon,
+    items: [
+      { name: "Virtual Machines", to: "/vms", icon: ServerIcon, requiredPermissions: ["virtual_machines::view"] },
+      { name: "Hosts", to: "/hosts", icon: ComputerDesktopIcon, requiredPermissions: ["hosts::view"] },
+      { name: "Regions", to: "/regions", icon: GlobeAltIcon, requiredPermissions: ["host_region::view"] },
+    ],
+  },
+  {
+    label: "Catalog",
+    icon: DocumentDuplicateIcon,
+    items: [
       {
-        name: "List",
-        to: "/users",
-        icon: ListBulletIcon,
-        requiredPermissions: ["users::view"],
+        name: "Templates",
+        to: "/vm-templates",
+        icon: DocumentDuplicateIcon,
+        requiredPermissions: ["vm_template::view"],
+      },
+      { name: "OS Images", to: "/os-images", icon: CommandLineIcon, requiredPermissions: ["vm_os_image::view"] },
+      {
+        name: "Custom Pricing",
+        to: "/custom-pricing",
+        icon: CurrencyDollarIcon,
+        requiredPermissions: ["vm_custom_pricing::view"],
+      },
+    ],
+  },
+  {
+    label: "Network",
+    icon: WifiIcon,
+    accent: "teal",
+    items: [
+      { name: "IP Ranges", to: "/ip-ranges", icon: ListBulletIcon, requiredPermissions: ["ip_range::view"] },
+      {
+        name: "IP Assignments",
+        to: "/vm-ip-assignments",
+        icon: GlobeAltIcon,
+        requiredPermissions: ["ip_range::view"],
       },
       {
-        name: "Roles",
-        to: "/roles",
+        name: "Access Policies",
+        to: "/access-policies",
         icon: KeyIcon,
-        requiredPermissions: ["roles::view"],
+        requiredPermissions: ["access_policy::view"],
       },
+      { name: "Routers", to: "/routers", icon: ServerIcon, requiredPermissions: ["router::view"] },
+      { name: "IP Space", to: "/ip-spaces", icon: GlobeAltIcon, requiredPermissions: ["ip_space::view"] },
+    ],
+  },
+  {
+    label: "Customers",
+    icon: UsersIcon,
+    items: [
+      { name: "Users", to: "/users", icon: ListBulletIcon, requiredPermissions: ["users::view"] },
+      { name: "Roles", to: "/roles", icon: KeyIcon, requiredPermissions: ["roles::view"] },
       {
         name: "Bulk Message",
         to: "/bulk-message",
@@ -65,154 +138,37 @@ const navigation: SidebarItem[] = [
     ],
   },
   {
-    name: "Virtual Machines",
-    icon: ServerIcon,
-    requiredPermissions: ["virtual_machines::view"],
-    children: [
-      {
-        name: "List",
-        to: "/vms",
-        icon: ListBulletIcon,
-        requiredPermissions: ["virtual_machines::view"],
-      },
-      {
-        name: "Hosts",
-        to: "/hosts",
-        icon: ComputerDesktopIcon,
-        requiredPermissions: ["hosts::view"],
-      },
-      {
-        name: "Regions",
-        to: "/regions",
-        icon: GlobeAltIcon,
-        requiredPermissions: ["host_region::view"],
-      },
-      {
-        name: "OS Images",
-        to: "/os-images",
-        icon: CommandLineIcon,
-        requiredPermissions: ["vm_os_image::view"],
-      },
-      {
-        name: "Templates",
-        to: "/vm-templates",
-        icon: DocumentDuplicateIcon,
-        requiredPermissions: ["vm_template::view"],
-      },
-      {
-        name: "Custom Pricing",
-        to: "/custom-pricing",
-        icon: CurrencyDollarIcon,
-        requiredPermissions: ["vm_custom_pricing::view"],
-      },
-      {
-        name: "IP Assignments",
-        to: "/vm-ip-assignments",
-        icon: GlobeAltIcon,
-        requiredPermissions: ["ip_range::view"],
-      },
-    ],
-  },
-  {
-    name: "VM Networking",
-    icon: WifiIcon,
-    requiredPermissions: ["ip_range::view", "access_policy::view", "router::view"],
-    children: [
-      {
-        name: "IP Ranges",
-        to: "/ip-ranges",
-        icon: ListBulletIcon,
-        requiredPermissions: ["ip_range::view"],
-      },
-      {
-        name: "Access Policies",
-        to: "/access-policies",
-        icon: KeyIcon,
-        requiredPermissions: ["access_policy::view"],
-      },
-      {
-        name: "Routers",
-        to: "/routers",
-        icon: ServerIcon,
-        requiredPermissions: ["router::view"],
-      },
-    ],
-  },
-  {
-    name: "LIR Services",
+    label: "Business",
     icon: BanknotesIcon,
-    requiredPermissions: ["ip_space::view"],
-    children: [
+    items: [
       {
-        name: "IP Space",
-        to: "/ip-spaces",
-        icon: GlobeAltIcon,
-        requiredPermissions: ["ip_space::view"],
+        name: "Subscriptions",
+        to: "/subscriptions",
+        icon: DocumentTextIcon,
+        requiredPermissions: ["subscriptions::view"],
       },
-    ],
-  },
-  {
-    name: "Subscriptions",
-    to: "/subscriptions",
-    icon: DocumentTextIcon,
-    requiredPermissions: ["subscriptions::view"],
-  },
-  {
-    name: "Billing",
-    icon: BanknotesIcon,
-    requiredPermissions: ["company::view", "payment_method_config::view"],
-    children: [
-      {
-        name: "Companies",
-        to: "/companies",
-        icon: BuildingOfficeIcon,
-        requiredPermissions: ["company::view"],
-      },
+      { name: "Companies", to: "/companies", icon: BuildingOfficeIcon, requiredPermissions: ["company::view"] },
       {
         name: "Payment Methods",
         to: "/payment-methods",
         icon: CreditCardIcon,
         requiredPermissions: ["payment_method_config::view"],
       },
+      { name: "Referrals", to: "/referrals", icon: UserGroupIcon, requiredPermissions: ["virtual_machines::view"] },
     ],
   },
   {
-    name: "Referrals",
-    icon: UserGroupIcon,
-    requiredPermissions: ["virtual_machines::view"],
-    children: [
-      {
-        name: "Management",
-        to: "/referrals",
-        icon: ListBulletIcon,
-        requiredPermissions: ["virtual_machines::view"],
-      },
-      {
-        name: "Report",
-        to: "/referrals-report",
-        icon: ChartBarIcon,
-        requiredPermissions: ["analytics::view"],
-      },
-    ],
-  },
-  {
-    name: "Analytics",
+    label: "Reports",
     icon: ChartBarIcon,
-    requiredPermissions: ["analytics::view"],
-    children: [
-      {
-        name: "Sales Report",
-        to: "/sales-report",
-        icon: ChartBarIcon,
-        requiredPermissions: ["analytics::view"],
-      },
+    items: [
+      { name: "Sales", to: "/sales-report", icon: ChartBarIcon, requiredPermissions: ["analytics::view"] },
+      { name: "Referrals", to: "/referrals-report", icon: ChartBarIcon, requiredPermissions: ["analytics::view"] },
     ],
   },
 ];
 
 export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
   const location = useLocation();
   const { hasAnyPermission } = useUserRoles();
@@ -223,52 +179,17 @@ export function DashboardLayout() {
     navigate("/login");
   };
 
-  const toggleExpanded = (itemName: string) => {
-    setExpandedItems((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(itemName)) {
-        newSet.delete(itemName);
-      } else {
-        newSet.add(itemName);
-      }
-      return newSet;
-    });
-  };
-
-  const filterNavigationItems = (items: SidebarItem[]): SidebarItem[] => {
-    return items
-      .filter((item) => {
-        if (!hasAnyPermission(item.requiredPermissions)) {
-          return false;
-        }
-        if (item.children) {
-          const visibleChildren = filterNavigationItems(item.children);
-          return visibleChildren.length > 0;
-        }
-        return true;
-      })
-      .map((item) => ({
-        ...item,
-        children: item.children ? filterNavigationItems(item.children) : undefined,
-      }));
-  };
-
-  // Filter navigation items based on user permissions
-  const visibleNavigation = React.useMemo(() => filterNavigationItems(navigation), [hasAnyPermission]);
-
-  // Auto-expand parent items when their child routes are active
-  React.useEffect(() => {
-    const activeParents = new Set<string>();
-    visibleNavigation.forEach((item) => {
-      if (item.children) {
-        const hasActiveChild = item.children.some((child) => child.to === location.pathname);
-        if (hasActiveChild) {
-          activeParents.add(item.name);
-        }
-      }
-    });
-    setExpandedItems((prev) => new Set([...prev, ...activeParents]));
-  }, [location.pathname]);
+  // Keep only the sections (and items within them) the user can see.
+  const visibleSections = React.useMemo(
+    () =>
+      navigation
+        .map((section) => ({
+          ...section,
+          items: section.items.filter((item) => hasAnyPermission(item.requiredPermissions)),
+        }))
+        .filter((section) => section.items.length > 0),
+    [hasAnyPermission],
+  );
 
   return (
     <div className="h-screen bg-slate-900 text-white flex">
@@ -287,65 +208,50 @@ export function DashboardLayout() {
           </button>
         </div>
 
-        <nav className="flex-1 min-h-0 mt-4 px-2 overflow-y-auto">
-          {visibleNavigation.map((item) => (
-            <div key={item.name}>
-              {item.children ? (
-                // Parent item with children
-                <div>
-                  <button
-                    onClick={() => toggleExpanded(item.name)}
-                    className="w-full min-w-0 mt-1 flex items-center rounded-lg px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors cursor-pointer"
-                  >
-                    <item.icon className="mr-3 h-5 w-5 shrink-0" />
-                    <span className="truncate">{item.name}</span>
-                    {expandedItems.has(item.name) ? (
-                      <ChevronDownIcon className="ml-auto shrink-0 h-4 w-4" />
-                    ) : (
-                      <ChevronRightIcon className="ml-auto shrink-0 h-4 w-4" />
-                    )}
-                  </button>
-                  {expandedItems.has(item.name) && (
-                    <div className="ml-4">
-                      {item.children.map((child) => (
-                        <Link
-                          key={child.name}
-                          to={child.to!}
-                          className={`
-                            mt-1 flex items-center rounded-lg px-4 py-2 text-sm font-medium transition-colors
-                            ${
-                              location.pathname === child.to
-                                ? "bg-blue-500/10 text-blue-400 ring-1 ring-inset ring-blue-500/30"
-                                : "text-slate-300 hover:bg-slate-700 hover:text-white"
-                            }
-                          `}
-                        >
-                          <child.icon className="mr-3 h-4 w-4 shrink-0" />
-                          <span className="truncate">{child.name}</span>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
+        <nav className="flex-1 min-h-0 mt-2 px-2 pb-4 overflow-y-auto">
+          {visibleSections.map((section) => {
+            const accent = ACCENTS[section.accent ?? "blue"];
+            return (
+              <div key={section.label} className="mt-4 first:mt-1">
+                {/* Section eyebrow */}
+                <div className="flex items-center gap-2 px-3 pb-1.5 select-none">
+                  <section.icon className={`h-3.5 w-3.5 shrink-0 ${accent.sectionIcon}`} />
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                    {section.label}
+                  </span>
                 </div>
-              ) : (
-                // Regular item without children
-                <Link
-                  to={item.to!}
-                  className={`
-                    mt-1 flex items-center rounded-lg px-4 py-2 text-sm font-medium transition-colors
-                    ${
-                      location.pathname === item.to
-                        ? "bg-blue-500/10 text-blue-400 ring-1 ring-inset ring-blue-500/30"
-                        : "text-slate-300 hover:bg-slate-700 hover:text-white"
-                    }
-                  `}
-                >
-                  <item.icon className="mr-3 h-5 w-5 shrink-0" />
-                  <span className="truncate">{item.name}</span>
-                </Link>
-              )}
-            </div>
-          ))}
+
+                {/* Items on an accent rail */}
+                <div className="relative ml-4 pl-3">
+                  <span
+                    aria-hidden="true"
+                    className={`pointer-events-none absolute left-0 top-1 bottom-1 border-l ${accent.rail}`}
+                  />
+                  {section.items.map((item) => {
+                    const active = location.pathname === item.to;
+                    return (
+                      <Link
+                        key={item.name}
+                        to={item.to}
+                        className={`group relative mt-0.5 flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                          active ? accent.activeLink : "text-slate-300 hover:bg-slate-700 hover:text-white"
+                        }`}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={`absolute -left-3 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full ring-2 transition-colors ${
+                            active ? accent.activeNode : `${accent.node} group-hover:bg-slate-400`
+                          }`}
+                        />
+                        <item.icon className="mr-2.5 h-4 w-4 shrink-0" />
+                        <span className="truncate">{item.name}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </nav>
 
         <div className="p-2 mt-auto shrink-0 space-y-2 border-t border-slate-700/60">

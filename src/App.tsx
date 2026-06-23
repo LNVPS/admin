@@ -24,6 +24,7 @@ import { ReferralsPage } from "./pages/ReferralsPage";
 import { ReferralsReportPage } from "./pages/ReferralsReportPage";
 import { RegionsPage } from "./pages/RegionsPage";
 import { RolesPage } from "./pages/RolesPage";
+import { RouterDetailPage } from "./pages/RouterDetailPage";
 import { RoutersPage } from "./pages/RoutersPage";
 import { SalesReportPage } from "./pages/SalesReportPage";
 import { SubscriptionDetailPage } from "./pages/SubscriptionDetailPage";
@@ -230,6 +231,14 @@ function AppContent() {
               element={
                 <PermissionGuard requiredPermissions={["router::view"]}>
                   <RoutersPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="routers/:id"
+              element={
+                <PermissionGuard requiredPermissions={["router::view"]}>
+                  <RouterDetailPage />
                 </PermissionGuard>
               }
             />

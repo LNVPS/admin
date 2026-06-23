@@ -59,6 +59,7 @@ export enum NetworkAccessPolicyKind {
 export enum RouterKind {
   MIKROTIK = "mikrotik",
   OVH_ADDITIONAL_IP = "ovh_additional_ip",
+  LINUX_SSH = "linux_ssh",
 }
 
 export enum AdminUserRole {
@@ -682,6 +683,44 @@ export interface AdminRouterDetail {
   kind: RouterKind;
   url: string;
   access_policy_count: number;
+}
+
+export type RouterTunnelKind = "gre" | "vxlan" | "wireguard";
+
+export interface AdminRouterTunnelInfo {
+  id: number;
+  router_id: number;
+  name: string;
+  kind: RouterTunnelKind;
+  local_addr: string | null;
+  remote_addr: string | null;
+  enabled: boolean;
+  last_seen: string | null;
+}
+
+export interface RouterTunnelTrafficSample {
+  tunnel_name: string;
+  rx_bytes: number;
+  tx_bytes: number;
+  sampled_at: string;
+}
+
+export type BgpSessionDirection = "upstream" | "downstream" | "peer" | "unknown";
+
+export interface AdminBgpSessionInfo {
+  id: number;
+  router_id: number;
+  /** Backend session id used for toggling (protocol name / RouterOS .id) */
+  name: string;
+  peer_ip: string | null;
+  peer_asn: number | null;
+  local_asn: number | null;
+  state: string;
+  prefixes_received: number | null;
+  prefixes_sent: number | null;
+  enabled: boolean;
+  direction: BgpSessionDirection;
+  last_seen: string | null;
 }
 
 export interface TimeSeriesPeriodSummary {
@@ -2107,6 +2146,43 @@ export class AdminApi {
 
   async deleteRouter(id: number) {
     await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/routers/${id}`, "DELETE"));
+  }
+
+  // Router Tunnels & BGP Sessions
+  async getRouterTunnels(routerId: number) {
+    const result = await this.handleResponse<ApiResponse<AdminRouterTunnelInfo[]>>(
+      await this.req(`/api/admin/v1/routers/${routerId}/tunnels`, "GET"),
+    );
+    return result.data;
+  }
+
+  async getTunnelTraffic(routerId: number, tunnelName: string, params?: { from?: string; to?: string }) {
+    const result = await this.handleResponse<ApiResponse<RouterTunnelTrafficSample[]>>(
+      await this.req(
+        `/api/admin/v1/routers/${routerId}/tunnels/${encodeURIComponent(tunnelName)}/traffic`,
+        "GET",
+        undefined,
+        params,
+      ),
+    );
+    return result.data;
+  }
+
+  async getBgpSessions(routerId: number) {
+    const result = await this.handleResponse<ApiResponse<AdminBgpSessionInfo[]>>(
+      await this.req(`/api/admin/v1/routers/${routerId}/bgp/sessions`, "GET"),
+    );
+    return result.data;
+  }
+
+  async toggleBgpSession(routerId: number, sessionId: string, enabled: boolean) {
+    const result = await this.handleResponse<ApiResponse<{ job_id: string }>>(
+      await this.req(`/api/admin/v1/routers/${routerId}/bgp/sessions/toggle`, "POST", {
+        session_id: sessionId,
+        enabled,
+      }),
+    );
+    return result.data;
   }
 
   // Cost Plan Management

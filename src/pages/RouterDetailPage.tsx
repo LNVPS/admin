@@ -1,9 +1,17 @@
-import { ArrowLeftIcon, ArrowPathIcon, ArrowsRightLeftIcon, GlobeAltIcon } from "@heroicons/react/24/outline";
-import { useState } from "react";
+import {
+  ArrowLeftIcon,
+  ArrowPathIcon,
+  ArrowsRightLeftIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  GlobeAltIcon,
+} from "@heroicons/react/24/outline";
+import { Fragment, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Button } from "../components/Button";
 import { ErrorState } from "../components/ErrorState";
 import { StatusBadge } from "../components/StatusBadge";
+import { TunnelTrafficChart } from "../components/TunnelTrafficChart";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { useApiCall } from "../hooks/useApiCall";
 import { useToast } from "../hooks/useToast";
@@ -16,6 +24,7 @@ export function RouterDetailPage() {
   const { success, error: toastError } = useToast();
   const [togglingId, setTogglingId] = useState<number | null>(null);
   const [forcingId, setForcingId] = useState<number | null>(null);
+  const [expandedTunnel, setExpandedTunnel] = useState<string | null>(null);
 
   const {
     data: router,
@@ -45,9 +54,7 @@ export function RouterDetailPage() {
     error: sessionsError,
     retry: retrySessions,
   } = useApiCall(() => adminApi.getBgpSessions(routerId), [routerId]);
-  const sessions = sessionsData
-    ? [...sessionsData].sort((a, b) => a.name.localeCompare(b.name))
-    : sessionsData;
+  const sessions = sessionsData ? [...sessionsData].sort((a, b) => a.name.localeCompare(b.name)) : sessionsData;
 
   const handleToggleSession = async (session: AdminBgpSessionInfo) => {
     setTogglingId(session.id);
@@ -177,6 +184,7 @@ export function RouterDetailPage() {
             <table className="min-w-full divide-y divide-slate-700/60 text-sm">
               <thead className="text-left text-xs uppercase tracking-wide text-gray-400">
                 <tr>
+                  <th className="px-4 py-2 w-8" />
                   <th className="px-4 py-2">Name</th>
                   <th className="px-4 py-2">Kind</th>
                   <th className="px-4 py-2">Local</th>
@@ -186,24 +194,46 @@ export function RouterDetailPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
-                {tunnels.map((tunnel) => (
-                  <tr key={tunnel.id}>
-                    <td className="px-4 py-2 font-medium text-white">{tunnel.name}</td>
-                    <td className="px-4 py-2">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-700 text-slate-200 uppercase">
-                        {tunnel.kind}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 font-mono text-xs text-gray-300">{tunnel.local_addr ?? "—"}</td>
-                    <td className="px-4 py-2 font-mono text-xs text-gray-300">{tunnel.remote_addr ?? "—"}</td>
-                    <td className="px-4 py-2">
-                      <StatusBadge status={tunnel.enabled ? "active" : "inactive"} />
-                    </td>
-                    <td className="px-4 py-2 text-xs text-gray-400">
-                      {tunnel.last_seen ? new Date(tunnel.last_seen).toLocaleString() : "—"}
-                    </td>
-                  </tr>
-                ))}
+                {tunnels.map((tunnel) => {
+                  const isExpanded = expandedTunnel === tunnel.name;
+                  return (
+                    <Fragment key={tunnel.id}>
+                      <tr
+                        className="cursor-pointer hover:bg-slate-800/40"
+                        onClick={() => setExpandedTunnel(isExpanded ? null : tunnel.name)}
+                      >
+                        <td className="px-4 py-2 text-gray-400">
+                          {isExpanded ? (
+                            <ChevronDownIcon className="h-4 w-4" />
+                          ) : (
+                            <ChevronRightIcon className="h-4 w-4" />
+                          )}
+                        </td>
+                        <td className="px-4 py-2 font-medium text-white">{tunnel.name}</td>
+                        <td className="px-4 py-2">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-700 text-slate-200 uppercase">
+                            {tunnel.kind}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 font-mono text-xs text-gray-300">{tunnel.local_addr ?? "—"}</td>
+                        <td className="px-4 py-2 font-mono text-xs text-gray-300">{tunnel.remote_addr ?? "—"}</td>
+                        <td className="px-4 py-2">
+                          <StatusBadge status={tunnel.enabled ? "active" : "inactive"} />
+                        </td>
+                        <td className="px-4 py-2 text-xs text-gray-400">
+                          {tunnel.last_seen ? new Date(tunnel.last_seen).toLocaleString() : "—"}
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr>
+                          <td colSpan={7} className="bg-slate-900/40">
+                            <TunnelTrafficChart routerId={routerId} tunnelName={tunnel.name} />
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -246,7 +276,10 @@ export function RouterDetailPage() {
                     BGP State
                   </th>
                   <th className="px-4 py-2 text-right">Prefixes (Rx / Tx)</th>
-                  <th className="px-4 py-2" title="Administrative state — whether the session is configured on (not shut down)">
+                  <th
+                    className="px-4 py-2"
+                    title="Administrative state — whether the session is configured on (not shut down)"
+                  >
                     Admin
                   </th>
                   <th className="px-4 py-2 text-right">Actions</th>
@@ -256,9 +289,7 @@ export function RouterDetailPage() {
                 {sessions.map((session) => (
                   <tr key={session.id}>
                     <td className="px-4 py-2 font-medium text-white">{session.name}</td>
-                    <td className="px-4 py-2 font-mono text-xs text-gray-300">
-                      {session.peer_ip ?? "—"}
-                    </td>
+                    <td className="px-4 py-2 font-mono text-xs text-gray-300">{session.peer_ip ?? "—"}</td>
                     <td className="px-4 py-2 font-mono text-xs">
                       {session.peer_asn != null ? (
                         <a
@@ -315,9 +346,7 @@ export function RouterDetailPage() {
                       <StatusBadge
                         status={session.enabled ? "enabled" : "disabled"}
                         colorOverride={
-                          session.enabled
-                            ? undefined
-                            : "border border-slate-600 bg-slate-700/40 text-slate-400"
+                          session.enabled ? undefined : "border border-slate-600 bg-slate-700/40 text-slate-400"
                         }
                       >
                         {session.enabled ? "Enabled" : "Disabled"}
@@ -358,11 +387,7 @@ export function RouterDetailPage() {
                               : "Administratively enable this session (sets Admin = Enabled). The peer must still come up before BGP State becomes Established."
                           }
                         >
-                          {togglingId === session.id
-                            ? "..."
-                            : session.enabled
-                              ? "Disable"
-                              : "Enable"}
+                          {togglingId === session.id ? "..." : session.enabled ? "Disable" : "Enable"}
                         </Button>
                       </div>
                     </td>

@@ -620,6 +620,8 @@ export interface AdminIpRangeInfo {
   use_full_range: boolean;
   assignment_count: number;
   available_ips?: number;
+  /** Routers that route this range, resolved via its access policy. Empty when none. */
+  routers: { id: number; name: string }[];
 }
 
 export interface AdminVmHistoryInfo {
@@ -720,6 +722,14 @@ export interface AdminBgpSessionInfo {
   prefixes_sent: number | null;
   enabled: boolean;
   direction: BgpSessionDirection;
+  last_seen: string | null;
+}
+
+export interface AdminRouterBgpRoute {
+  router_id: number;
+  prefix: string;
+  next_hop: string | null;
+  is_default: boolean;
   last_seen: string | null;
 }
 
@@ -1172,6 +1182,13 @@ export class AdminApi {
   async getUser(id: number) {
     const result = await this.handleResponse<ApiResponse<AdminUserInfo>>(
       await this.req(`/api/admin/v1/users/${id}`, "GET"),
+    );
+    return result.data;
+  }
+
+  async getUserByEmail(email: string) {
+    const result = await this.handleResponse<ApiResponse<AdminUserInfo>>(
+      await this.req("/api/admin/v1/users/by-email", "GET", undefined, { email }),
     );
     return result.data;
   }
@@ -2181,6 +2198,36 @@ export class AdminApi {
         session_id: sessionId,
         enabled,
       }),
+    );
+    return result.data;
+  }
+
+  async toggleTunnel(routerId: number, tunnelName: string, enabled: boolean) {
+    const result = await this.handleResponse<ApiResponse<{ job_id: string }>>(
+      await this.req(`/api/admin/v1/routers/${routerId}/tunnels/${encodeURIComponent(tunnelName)}/toggle`, "POST", {
+        enabled,
+      }),
+    );
+    return result.data;
+  }
+
+  async getBgpRoutes(routerId: number) {
+    const result = await this.handleResponse<ApiResponse<AdminRouterBgpRoute[]>>(
+      await this.req(`/api/admin/v1/routers/${routerId}/bgp/routes`, "GET"),
+    );
+    return result.data;
+  }
+
+  async setDefaultRoute(routerId: number, nextHop: string) {
+    const result = await this.handleResponse<ApiResponse<{ job_id: string }>>(
+      await this.req(`/api/admin/v1/routers/${routerId}/routes/default`, "POST", { next_hop: nextHop }),
+    );
+    return result.data;
+  }
+
+  async clearDefaultRoute(routerId: number) {
+    const result = await this.handleResponse<ApiResponse<{ job_id: string }>>(
+      await this.req(`/api/admin/v1/routers/${routerId}/routes/default`, "DELETE"),
     );
     return result.data;
   }

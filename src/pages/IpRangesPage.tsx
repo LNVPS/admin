@@ -98,6 +98,21 @@ export function IpRangesPage() {
               <span className="text-gray-500">No policy</span>
             )}
           </div>
+          {ipRange.routers && ipRange.routers.length > 0 && (
+            <div className="mt-1 flex flex-wrap items-center gap-1">
+              {ipRange.routers.map((router) => (
+                <Link
+                  key={router.id}
+                  to={`/routers/${router.id}`}
+                  className="inline-flex max-w-full items-center gap-1 rounded border border-slate-600/70 bg-slate-700/40 px-1.5 py-0.5 text-xs text-slate-300 hover:bg-slate-700 hover:text-white"
+                  title={`Router: ${router.name}`}
+                >
+                  <WifiIcon className="h-3 w-3 shrink-0 text-gray-400" />
+                  <span className="truncate">{router.name}</span>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </td>
       <td className="align-top text-gray-300">

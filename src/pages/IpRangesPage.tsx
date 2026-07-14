@@ -1,4 +1,12 @@
-import { EyeIcon, GlobeAltIcon, PencilIcon, PlusIcon, TrashIcon, WifiIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowPathIcon,
+  EyeIcon,
+  GlobeAltIcon,
+  PencilIcon,
+  PlusIcon,
+  TrashIcon,
+  WifiIcon,
+} from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/Button";
@@ -6,8 +14,10 @@ import { Modal } from "../components/Modal";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
+import { useToast } from "../hooks/useToast";
 import {
   type AdminAccessPolicyDetail,
+  type AdminDnsServerDetail,
   type AdminIpRangeInfo,
   type AdminRegionInfo,
   IpRangeAllocationMode,
@@ -20,9 +30,31 @@ export function IpRangesPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showFreeIpsModal, setShowFreeIpsModal] = useState(false);
   const [selectedIpRange, setSelectedIpRange] = useState<AdminIpRangeInfo | null>(null);
+  const [patchingId, setPatchingId] = useState<number | null>(null);
+  const { success, error: toastError } = useToast();
 
   const refreshData = () => {
     setRefreshTrigger((prev) => prev + 1);
+  };
+
+  const handlePatchDns = async (ipRange: AdminIpRangeInfo) => {
+    if (
+      !confirm(
+        `Re-apply forward + reverse DNS for all ${ipRange.assignment_count} assignment(s) in "${ipRange.cidr}"? This queues a background job.`,
+      )
+    ) {
+      return;
+    }
+    setPatchingId(ipRange.id);
+    try {
+      await adminApi.patchIpRangeDns(ipRange.id);
+      success(`DNS patch job queued for ${ipRange.cidr}`);
+    } catch (err) {
+      console.error("Failed to queue DNS patch:", err);
+      toastError(err instanceof Error ? err.message : "Failed to queue DNS patch");
+    } finally {
+      setPatchingId(null);
+    }
   };
 
   const handleEdit = (ipRange: AdminIpRangeInfo) => {
@@ -147,6 +179,16 @@ export function IpRangesPage() {
           <Button
             size="sm"
             variant="secondary"
+            onClick={() => handlePatchDns(ipRange)}
+            className="p-1"
+            title="Re-apply DNS for all assignments"
+            disabled={patchingId === ipRange.id}
+          >
+            <ArrowPathIcon className={`h-4 w-4 ${patchingId === ipRange.id ? "animate-spin" : ""}`} />
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
             onClick={() => handleDelete(ipRange)}
             className="text-red-400 hover:text-red-300 p-1"
             disabled={ipRange.assignment_count > 0}
@@ -253,6 +295,7 @@ function CreateIpRangeModal({
   const [error, setError] = useState<string | null>(null);
   const [regions, setRegions] = useState<AdminRegionInfo[]>([]);
   const [accessPolicies, setAccessPolicies] = useState<AdminAccessPolicyDetail[]>([]);
+  const [dnsServers, setDnsServers] = useState<AdminDnsServerDetail[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   const [formData, setFormData] = useState({
     cidr: "",
@@ -263,6 +306,9 @@ function CreateIpRangeModal({
     access_policy_id: "",
     allocation_mode: IpRangeAllocationMode.SEQUENTIAL,
     use_full_range: false,
+    forward_dns_server_id: "",
+    reverse_dns_server_id: "",
+    forward_zone_id: "",
   });
 
   useEffect(() => {
@@ -274,12 +320,14 @@ function CreateIpRangeModal({
   const fetchData = async () => {
     setLoadingData(true);
     try {
-      const [regionsResult, accessPoliciesResult] = await Promise.all([
+      const [regionsResult, accessPoliciesResult, dnsServersResult] = await Promise.all([
         adminApi.getRegions(),
         adminApi.getAccessPolicies(),
+        adminApi.getDnsServers({ limit: 100 }),
       ]);
       setRegions(regionsResult.data);
       setAccessPolicies(accessPoliciesResult.data);
+      setDnsServers(dnsServersResult.data);
     } catch (error) {
       console.error("Failed to fetch data:", error);
     } finally {
@@ -302,6 +350,9 @@ function CreateIpRangeModal({
         access_policy_id: formData.access_policy_id ? parseInt(formData.access_policy_id) : null,
         allocation_mode: formData.allocation_mode,
         use_full_range: formData.use_full_range,
+        forward_dns_server_id: formData.forward_dns_server_id ? parseInt(formData.forward_dns_server_id) : null,
+        reverse_dns_server_id: formData.reverse_dns_server_id ? parseInt(formData.reverse_dns_server_id) : null,
+        forward_zone_id: formData.forward_zone_id || null,
       };
 
       await adminApi.createIpRange(data);
@@ -316,6 +367,9 @@ function CreateIpRangeModal({
         access_policy_id: "",
         allocation_mode: IpRangeAllocationMode.SEQUENTIAL,
         use_full_range: false,
+        forward_dns_server_id: "",
+        reverse_dns_server_id: "",
+        forward_zone_id: "",
       });
     } catch (err) {
       console.error("Failed to create IP range:", err);
@@ -423,6 +477,57 @@ function CreateIpRangeModal({
           </div>
         </div>
 
+        <div className="border-t border-slate-700 pt-4">
+          <h3 className="text-sm font-medium text-white mb-1">DNS (Optional)</h3>
+          <p className="text-xs text-gray-400 mb-3">
+            Select which DNS provider manages forward (A/AAAA) and reverse (PTR) records for this range.
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-white mb-2">Forward DNS Server</label>
+              <select
+                value={formData.forward_dns_server_id}
+                onChange={(e) => setFormData({ ...formData, forward_dns_server_id: e.target.value })}
+                className=""
+                disabled={loadingData}
+              >
+                <option value="">None</option>
+                {dnsServers.map((dns) => (
+                  <option key={dns.id} value={dns.id.toString()}>
+                    {dns.name} ({dns.kind})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-white mb-2">Reverse DNS Server</label>
+              <select
+                value={formData.reverse_dns_server_id}
+                onChange={(e) => setFormData({ ...formData, reverse_dns_server_id: e.target.value })}
+                className=""
+                disabled={loadingData}
+              >
+                <option value="">None</option>
+                {dnsServers.map((dns) => (
+                  <option key={dns.id} value={dns.id.toString()}>
+                    {dns.name} ({dns.kind})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="mt-4">
+            <label className="block text-xs font-medium text-white mb-2">Forward Zone ID (Optional)</label>
+            <input
+              type="text"
+              value={formData.forward_zone_id}
+              onChange={(e) => setFormData({ ...formData, forward_zone_id: e.target.value })}
+              className=""
+              placeholder="Forward DNS zone ID"
+            />
+          </div>
+        </div>
+
         <div className="flex items-center space-x-4">
           <div className="flex items-center">
             <input
@@ -480,6 +585,7 @@ function EditIpRangeModal({
   const [error, setError] = useState<string | null>(null);
   const [regions, setRegions] = useState<AdminRegionInfo[]>([]);
   const [accessPolicies, setAccessPolicies] = useState<AdminAccessPolicyDetail[]>([]);
+  const [dnsServers, setDnsServers] = useState<AdminDnsServerDetail[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   const [formData, setFormData] = useState({
     cidr: ipRange.cidr,
@@ -490,6 +596,9 @@ function EditIpRangeModal({
     access_policy_id: ipRange.access_policy_id ? ipRange.access_policy_id.toString() : "",
     allocation_mode: ipRange.allocation_mode,
     use_full_range: ipRange.use_full_range,
+    forward_dns_server_id: ipRange.forward_dns_server_id ? ipRange.forward_dns_server_id.toString() : "",
+    reverse_dns_server_id: ipRange.reverse_dns_server_id ? ipRange.reverse_dns_server_id.toString() : "",
+    forward_zone_id: ipRange.forward_zone_id || "",
   });
 
   useEffect(() => {
@@ -501,12 +610,14 @@ function EditIpRangeModal({
   const fetchData = async () => {
     setLoadingData(true);
     try {
-      const [regionsResult, accessPoliciesResult] = await Promise.all([
+      const [regionsResult, accessPoliciesResult, dnsServersResult] = await Promise.all([
         adminApi.getRegions(),
         adminApi.getAccessPolicies(),
+        adminApi.getDnsServers({ limit: 100 }),
       ]);
       setRegions(regionsResult.data);
       setAccessPolicies(accessPoliciesResult.data);
+      setDnsServers(dnsServersResult.data);
     } catch (error) {
       console.error("Failed to fetch data:", error);
     } finally {
@@ -529,6 +640,9 @@ function EditIpRangeModal({
         access_policy_id: formData.access_policy_id ? parseInt(formData.access_policy_id) : null,
         allocation_mode: formData.allocation_mode,
         use_full_range: formData.use_full_range,
+        forward_dns_server_id: formData.forward_dns_server_id ? parseInt(formData.forward_dns_server_id) : null,
+        reverse_dns_server_id: formData.reverse_dns_server_id ? parseInt(formData.reverse_dns_server_id) : null,
+        forward_zone_id: formData.forward_zone_id || null,
       };
 
       await adminApi.updateIpRange(ipRange.id, updates);
@@ -636,6 +750,58 @@ function EditIpRangeModal({
               onChange={(e) => setFormData({ ...formData, reverse_zone_id: e.target.value })}
               className=""
               placeholder="Reverse DNS zone ID"
+            />
+          </div>
+        </div>
+
+        <div className="border-t border-slate-700 pt-4">
+          <h3 className="text-sm font-medium text-white mb-1">DNS (Optional)</h3>
+          <p className="text-xs text-gray-400 mb-3">
+            Select which DNS provider manages forward (A/AAAA) and reverse (PTR) records for this range. Use the Patch
+            DNS action on the list to re-apply records after changing these.
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-white mb-2">Forward DNS Server</label>
+              <select
+                value={formData.forward_dns_server_id}
+                onChange={(e) => setFormData({ ...formData, forward_dns_server_id: e.target.value })}
+                className=""
+                disabled={loadingData}
+              >
+                <option value="">None</option>
+                {dnsServers.map((dns) => (
+                  <option key={dns.id} value={dns.id.toString()}>
+                    {dns.name} ({dns.kind})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-white mb-2">Reverse DNS Server</label>
+              <select
+                value={formData.reverse_dns_server_id}
+                onChange={(e) => setFormData({ ...formData, reverse_dns_server_id: e.target.value })}
+                className=""
+                disabled={loadingData}
+              >
+                <option value="">None</option>
+                {dnsServers.map((dns) => (
+                  <option key={dns.id} value={dns.id.toString()}>
+                    {dns.name} ({dns.kind})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="mt-4">
+            <label className="block text-xs font-medium text-white mb-2">Forward Zone ID (Optional)</label>
+            <input
+              type="text"
+              value={formData.forward_zone_id}
+              onChange={(e) => setFormData({ ...formData, forward_zone_id: e.target.value })}
+              className=""
+              placeholder="Forward DNS zone ID"
             />
           </div>
         </div>

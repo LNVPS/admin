@@ -16,6 +16,7 @@ import {
   ListBulletIcon,
   MoonIcon,
   ServerIcon,
+  ServerStackIcon,
   SunIcon,
   UserGroupIcon,
   UsersIcon,
@@ -120,6 +121,7 @@ const navigation: NavSection[] = [
         requiredPermissions: ["access_policy::view"],
       },
       { name: "Routers", to: "/routers", icon: ServerIcon, requiredPermissions: ["router::view"] },
+      { name: "DNS Servers", to: "/dns-servers", icon: ServerStackIcon, requiredPermissions: ["dns_server::view"] },
       { name: "IP Space", to: "/ip-spaces", icon: GlobeAltIcon, requiredPermissions: ["ip_space::view"] },
     ],
   },
@@ -262,11 +264,7 @@ export function DashboardLayout() {
             className="flex w-full items-center rounded-lg px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white cursor-pointer"
             title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
           >
-            {theme === "dark" ? (
-              <SunIcon className="mr-3 h-5 w-5" />
-            ) : (
-              <MoonIcon className="mr-3 h-5 w-5" />
-            )}
+            {theme === "dark" ? <SunIcon className="mr-3 h-5 w-5" /> : <MoonIcon className="mr-3 h-5 w-5" />}
             {theme === "dark" ? "Light mode" : "Dark mode"}
           </button>
           <button

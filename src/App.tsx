@@ -11,6 +11,7 @@ import { AuditLogPage } from "./pages/AuditLogPage";
 import { BulkMessagePage } from "./pages/BulkMessagePage";
 import { CompaniesPage } from "./pages/CompaniesPage";
 import { CustomPricingPage } from "./pages/CustomPricingPage";
+import { DnsServersPage } from "./pages/DnsServersPage";
 import { HostsPage } from "./pages/HostsPage";
 import { IpAddressDetailsPage } from "./pages/IpAddressDetailsPage";
 import { IpRangesPage } from "./pages/IpRangesPage";
@@ -215,6 +216,14 @@ function AppContent() {
               element={
                 <PermissionGuard requiredPermissions={["ip_range::view"]}>
                   <IpAddressDetailsPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="dns-servers"
+              element={
+                <PermissionGuard requiredPermissions={["dns_server::view"]}>
+                  <DnsServersPage />
                 </PermissionGuard>
               }
             />

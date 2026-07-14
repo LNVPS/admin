@@ -52,6 +52,11 @@ export enum IpRangeAllocationMode {
   SLAAC_EUI64 = "slaac_eui64",
 }
 
+export enum DnsServerKind {
+  CLOUDFLARE = "cloudflare",
+  OVH = "ovh",
+}
+
 export enum NetworkAccessPolicyKind {
   STATIC_ARP = "static_arp",
 }
@@ -620,8 +625,24 @@ export interface AdminIpRangeInfo {
   use_full_range: boolean;
   assignment_count: number;
   available_ips?: number;
+  /** dns_server id used for forward (A/AAAA) records */
+  forward_dns_server_id: number | null;
+  /** dns_server id used for reverse (PTR) records */
+  reverse_dns_server_id: number | null;
+  /** Forward DNS zone id (provider specific, e.g. Cloudflare forward zone id) */
+  forward_zone_id: string | null;
   /** Routers that route this range, resolved via its access policy. Empty when none. */
   routers: { id: number; name: string }[];
+}
+
+export interface AdminDnsServerDetail {
+  id: number;
+  name: string;
+  enabled: boolean;
+  kind: DnsServerKind;
+  url: string;
+  /** Number of IP ranges referencing this DNS server (forward or reverse) */
+  ip_range_count: number;
 }
 
 export interface AdminVmHistoryInfo {
@@ -2034,6 +2055,9 @@ export class AdminApi {
     access_policy_id?: number | null;
     allocation_mode?: string;
     use_full_range?: boolean;
+    forward_dns_server_id?: number | null;
+    reverse_dns_server_id?: number | null;
+    forward_zone_id?: string | null;
   }) {
     const result = await this.handleResponse<ApiResponse<AdminIpRangeInfo>>(
       await this.req("/api/admin/v1/ip_ranges", "POST", data),
@@ -2052,6 +2076,9 @@ export class AdminApi {
       access_policy_id: number | null;
       allocation_mode: string;
       use_full_range: boolean;
+      forward_dns_server_id: number | null;
+      reverse_dns_server_id: number | null;
+      forward_zone_id: string | null;
     }>,
   ) {
     const result = await this.handleResponse<ApiResponse<AdminIpRangeInfo>>(
@@ -2069,6 +2096,55 @@ export class AdminApi {
       await this.req(`/api/admin/v1/ip_ranges/${id}/free_ips`, "GET"),
     );
     return result.data;
+  }
+
+  /** Queue a PatchIpRangeDns job to re-apply forward + reverse DNS for every assignment in the range. */
+  async patchIpRangeDns(id: number) {
+    const result = await this.handleResponse<ApiResponse<{ job_id: string }>>(
+      await this.req(`/api/admin/v1/ip_ranges/${id}/patch_dns`, "POST"),
+    );
+    return result.data;
+  }
+
+  // DNS Server Management
+  async getDnsServers(params?: { limit?: number; offset?: number }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminDnsServerDetail>>(
+      await this.req("/api/admin/v1/dns_servers", "GET", undefined, params),
+    );
+  }
+
+  async getDnsServer(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminDnsServerDetail>>(
+      await this.req(`/api/admin/v1/dns_servers/${id}`, "GET"),
+    );
+    return result.data;
+  }
+
+  async createDnsServer(data: { name: string; enabled?: boolean; kind: DnsServerKind; url?: string; token: string }) {
+    const result = await this.handleResponse<ApiResponse<AdminDnsServerDetail>>(
+      await this.req("/api/admin/v1/dns_servers", "POST", data),
+    );
+    return result.data;
+  }
+
+  async updateDnsServer(
+    id: number,
+    updates: Partial<{
+      name: string;
+      enabled: boolean;
+      kind: DnsServerKind;
+      url: string;
+      token: string;
+    }>,
+  ) {
+    const result = await this.handleResponse<ApiResponse<AdminDnsServerDetail>>(
+      await this.req(`/api/admin/v1/dns_servers/${id}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
+  async deleteDnsServer(id: number) {
+    await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/dns_servers/${id}`, "DELETE"));
   }
 
   // Access Policy Management

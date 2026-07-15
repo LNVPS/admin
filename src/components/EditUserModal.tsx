@@ -24,6 +24,8 @@ interface EditUserForm {
   billing_state: string;
   billing_postcode: string;
   billing_tax_id: string;
+  geo_country_code: string;
+  geo_ip: string;
 }
 
 export function EditUserModal({
@@ -46,6 +48,8 @@ export function EditUserModal({
     billing_state: "",
     billing_postcode: "",
     billing_tax_id: "",
+    geo_country_code: "",
+    geo_ip: "",
   });
 
   // Initialize form data when modal opens or user changes
@@ -63,6 +67,8 @@ export function EditUserModal({
         billing_state: user.billing_state || "",
         billing_postcode: user.billing_postcode || "",
         billing_tax_id: user.billing_tax_id || "",
+        geo_country_code: user.geo_country_code || "",
+        geo_ip: user.geo_ip || "",
       });
     }
   }, [isOpen, user]);
@@ -95,6 +101,9 @@ export function EditUserModal({
         billing_state: formData.billing_state || undefined,
         billing_postcode: formData.billing_postcode || undefined,
         billing_tax_id: formData.billing_tax_id || undefined,
+        // Geo evidence: send raw value so empty string clears the field
+        geo_country_code: formData.geo_country_code,
+        geo_ip: formData.geo_ip,
       };
 
       await adminApi.updateUser(user.id, updates);
@@ -271,6 +280,49 @@ export function EditUserModal({
                 onChange={handleInputChange}
                 className=""
                 placeholder="Postcode"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h4 className="text-sm font-medium text-white mb-1">
+            Geo Evidence
+          </h4>
+          <p className="text-xs text-gray-400 mb-2">
+            IP-derived geolocation. Editing bumps the resolved timestamp. Leave
+            blank to clear.
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-white mb-2">
+                Geo Country
+              </label>
+              <select
+                name="geo_country_code"
+                value={formData.geo_country_code}
+                onChange={handleInputChange}
+                className=""
+              >
+                <option value="">Not set</option>
+                {getAllCountries().map((country) => (
+                  <option key={country.code} value={country.code}>
+                    {country.name} ({country.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-white mb-2">
+                Geo IP
+              </label>
+              <input
+                type="text"
+                name="geo_ip"
+                value={formData.geo_ip}
+                onChange={handleInputChange}
+                className=""
+                placeholder="e.g. 203.0.113.5"
               />
             </div>
           </div>

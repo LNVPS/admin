@@ -440,6 +440,30 @@ export function UserDetailsPage() {
                 <div className="break-all font-mono text-white">{user.billing_tax_id}</div>
               </div>
             )}
+            <div className="border-t border-gray-700 pt-3 flex items-baseline gap-2 flex-wrap text-xs">
+              <span className="text-gray-400 uppercase tracking-wide shrink-0">Geo</span>
+              {user.geo_country_code || user.geo_ip || user.geo_updated ? (
+                <span className="text-gray-300 flex items-center gap-1.5 flex-wrap min-w-0">
+                  {user.geo_country_code && <span>{getCountryName(user.geo_country_code)}</span>}
+                  {user.geo_ip && (
+                    <>
+                      <span className="text-gray-600">·</span>
+                      <span className="font-mono break-all">{user.geo_ip}</span>
+                    </>
+                  )}
+                  {user.geo_updated && (
+                    <>
+                      <span className="text-gray-600">·</span>
+                      <span title={new Date(user.geo_updated).toLocaleString()}>
+                        {new Date(user.geo_updated).toLocaleDateString()}
+                      </span>
+                    </>
+                  )}
+                </span>
+              ) : (
+                <span className="text-gray-500">Not set</span>
+              )}
+            </div>
           </div>
         </div>
       </div>

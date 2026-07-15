@@ -264,6 +264,12 @@ export interface AdminUserInfo {
   billing_state: string | null;
   billing_postcode: string | null;
   billing_tax_id: string | null;
+  /** ISO 3166-1 alpha-3 country resolved from the client IP (VAT place-of-supply evidence) */
+  geo_country_code: string | null;
+  /** Last client IP geolocation was resolved from */
+  geo_ip: string | null;
+  /** When the geolocation was last resolved (auto-updated on admin edit) */
+  geo_updated: string | null;
   vm_count: number;
   last_login: string | null;
   is_admin: boolean;
@@ -1304,6 +1310,10 @@ export class AdminApi {
       billing_state: string;
       billing_postcode: string;
       billing_tax_id: string;
+      /** ISO 3166-1 alpha-3; empty string clears. Editing geo bumps geo_updated */
+      geo_country_code: string;
+      /** empty string clears */
+      geo_ip: string;
       admin_role: string;
     }>,
   ) {

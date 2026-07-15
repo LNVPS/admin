@@ -13,6 +13,7 @@ import {
   MagnifyingGlassIcon,
   XMarkIcon,
   ServerIcon,
+  ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 import { tryParseNostrLink } from "@snort/system";
 import { bech32ToHex } from "@snort/shared";
@@ -105,9 +106,9 @@ export function UsersPage() {
 
   const renderRow = (user: AdminUserInfo, index: number) => {
     const countryName = user.country_code ? getCountryName(user.country_code) : null;
-    const location = [user.billing_city, user.billing_state, countryName]
-      .filter(Boolean)
-      .join(", ");
+    const geoCountryName = user.geo_country_code ? getCountryName(user.geo_country_code) : null;
+    const countryMismatch =
+      !!user.country_code && !!user.geo_country_code && user.country_code !== user.geo_country_code;
     return (
     <tr key={user.id || index}>
       <td className="whitespace-nowrap align-top">
@@ -152,12 +153,25 @@ export function UsersPage() {
               <span className="text-gray-500 text-xs">No contact</span>
             )}
           </div>
-          {location ? (
-            <div className="mt-0.5 truncate text-xs text-slate-400" title={location}>
-              {location}
+          {countryName && (
+            <div className="mt-0.5 truncate text-xs text-slate-400" title={countryName}>
+              {countryName}
             </div>
-          ) : (
-            <div className="mt-0.5 text-xs text-slate-500">No location</div>
+          )}
+          {geoCountryName && (
+            <div
+              className={`flex items-center gap-1 truncate text-xs ${
+                countryMismatch ? "text-amber-400" : "text-slate-500"
+              }`}
+              title={
+                countryMismatch
+                  ? `Geo-coded country (${geoCountryName}) differs from billing country (${countryName})`
+                  : `Geo-coded from ${user.geo_ip ?? "IP"}`
+              }
+            >
+              {countryMismatch && <ExclamationTriangleIcon className="h-3 w-3 shrink-0" />}
+              <span className="truncate">Geo: {geoCountryName}</span>
+            </div>
           )}
         </div>
       </td>

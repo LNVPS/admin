@@ -18,6 +18,7 @@ import { useToast } from "../hooks/useToast";
 import {
   type AdminAccessPolicyDetail,
   type AdminDnsServerDetail,
+  type AdminDnsZone,
   type AdminIpRangeInfo,
   type AdminRegionInfo,
   IpRangeAllocationMode,
@@ -280,6 +281,73 @@ export function IpRangesPage() {
   );
 }
 
+// Zone select populated from the zones available on the selected DNS server
+function ZoneSelect({
+  label,
+  dnsServerId,
+  value,
+  onChange,
+}: {
+  label: string;
+  dnsServerId: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const adminApi = useAdminApi();
+  const [zones, setZones] = useState<AdminDnsZone[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!dnsServerId) {
+      setZones([]);
+      setError(null);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    adminApi
+      .getDnsServerZones(parseInt(dnsServerId))
+      .then((data) => {
+        if (!cancelled) setZones(data);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error("Failed to fetch DNS zones:", err);
+          setError("Failed to load zones");
+          setZones([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [dnsServerId, adminApi]);
+
+  const hasCurrentValue = value !== "" && !zones.some((zone) => zone.id === value);
+
+  return (
+    <div>
+      <label className="block text-xs font-medium text-white mb-2">{label}</label>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="" disabled={!dnsServerId || loading}>
+        <option value="">
+          {!dnsServerId ? "Select a DNS server first" : loading ? "Loading zones..." : "None"}
+        </option>
+        {hasCurrentValue && <option value={value}>{value}</option>}
+        {zones.map((zone) => (
+          <option key={zone.id} value={zone.id}>
+            {zone.name} ({zone.id})
+          </option>
+        ))}
+      </select>
+      {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+    </div>
+  );
+}
+
 // Create IP Range Modal Component
 function CreateIpRangeModal({
   isOpen,
@@ -465,16 +533,6 @@ function CreateIpRangeModal({
               <option value={IpRangeAllocationMode.SLAAC_EUI64}>SLAAC EUI-64</option>
             </select>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-white mb-2">Reverse Zone ID (Optional)</label>
-            <input
-              type="text"
-              value={formData.reverse_zone_id}
-              onChange={(e) => setFormData({ ...formData, reverse_zone_id: e.target.value })}
-              className=""
-              placeholder="Reverse DNS zone ID"
-            />
-          </div>
         </div>
 
         <div className="border-t border-slate-700 pt-4">
@@ -516,14 +574,18 @@ function CreateIpRangeModal({
               </select>
             </div>
           </div>
-          <div className="mt-4">
-            <label className="block text-xs font-medium text-white mb-2">Forward Zone ID (Optional)</label>
-            <input
-              type="text"
+          <div className="grid grid-cols-2 gap-4 mt-4">
+            <ZoneSelect
+              label="Forward Zone ID (Optional)"
+              dnsServerId={formData.forward_dns_server_id}
               value={formData.forward_zone_id}
-              onChange={(e) => setFormData({ ...formData, forward_zone_id: e.target.value })}
-              className=""
-              placeholder="Forward DNS zone ID"
+              onChange={(value) => setFormData({ ...formData, forward_zone_id: value })}
+            />
+            <ZoneSelect
+              label="Reverse Zone ID (Optional)"
+              dnsServerId={formData.reverse_dns_server_id}
+              value={formData.reverse_zone_id}
+              onChange={(value) => setFormData({ ...formData, reverse_zone_id: value })}
             />
           </div>
         </div>
@@ -742,16 +804,6 @@ function EditIpRangeModal({
               <option value={IpRangeAllocationMode.SLAAC_EUI64}>SLAAC EUI-64</option>
             </select>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-white mb-2">Reverse Zone ID (Optional)</label>
-            <input
-              type="text"
-              value={formData.reverse_zone_id}
-              onChange={(e) => setFormData({ ...formData, reverse_zone_id: e.target.value })}
-              className=""
-              placeholder="Reverse DNS zone ID"
-            />
-          </div>
         </div>
 
         <div className="border-t border-slate-700 pt-4">
@@ -794,14 +846,18 @@ function EditIpRangeModal({
               </select>
             </div>
           </div>
-          <div className="mt-4">
-            <label className="block text-xs font-medium text-white mb-2">Forward Zone ID (Optional)</label>
-            <input
-              type="text"
+          <div className="grid grid-cols-2 gap-4 mt-4">
+            <ZoneSelect
+              label="Forward Zone ID (Optional)"
+              dnsServerId={formData.forward_dns_server_id}
               value={formData.forward_zone_id}
-              onChange={(e) => setFormData({ ...formData, forward_zone_id: e.target.value })}
-              className=""
-              placeholder="Forward DNS zone ID"
+              onChange={(value) => setFormData({ ...formData, forward_zone_id: value })}
+            />
+            <ZoneSelect
+              label="Reverse Zone ID (Optional)"
+              dnsServerId={formData.reverse_dns_server_id}
+              value={formData.reverse_zone_id}
+              onChange={(value) => setFormData({ ...formData, reverse_zone_id: value })}
             />
           </div>
         </div>

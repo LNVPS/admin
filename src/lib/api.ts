@@ -645,6 +645,14 @@ export interface AdminDnsServerDetail {
   ip_range_count: number;
 }
 
+/** A DNS zone available on a DNS server (provider specific, e.g. a Cloudflare zone) */
+export interface AdminDnsZone {
+  /** Provider specific zone id (e.g. Cloudflare zone id) */
+  id: string;
+  /** Human readable zone name (e.g. example.com) */
+  name: string;
+}
+
 export interface AdminVmHistoryInfo {
   id: number;
   vm_id: number;
@@ -2145,6 +2153,14 @@ export class AdminApi {
 
   async deleteDnsServer(id: number) {
     await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/dns_servers/${id}`, "DELETE"));
+  }
+
+  /** List the DNS zones available on a given DNS server. */
+  async getDnsServerZones(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminDnsZone[]>>(
+      await this.req(`/api/admin/v1/dns_servers/${id}/zones`, "GET"),
+    );
+    return result.data;
   }
 
   // Access Policy Management

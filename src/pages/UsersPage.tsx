@@ -98,7 +98,7 @@ export function UsersPage() {
       <th>User</th>
       <th>Contact &amp; Location</th>
       <th>VMs &amp; Role</th>
-      <th>Activity</th>
+      <th>Created</th>
       <th className="text-right">Actions</th>
     </>
   );
@@ -184,28 +184,15 @@ export function UsersPage() {
           </span>
         </div>
       </td>
-      {/* Activity: created + last login */}
+      {/* Created date */}
       <td className="align-top">
         <div className="text-xs text-slate-400">
-          Created{" "}
           {new Date(user.created).toLocaleDateString("en-US", {
             month: "2-digit",
             day: "2-digit",
             year: "2-digit",
           })}
         </div>
-        {user.last_login ? (
-          <div className="text-xs text-green-400">
-            Login{" "}
-            {new Date(user.last_login).toLocaleDateString("en-US", {
-              month: "2-digit",
-              day: "2-digit",
-              year: "2-digit",
-            })}
-          </div>
-        ) : (
-          <div className="text-xs text-red-400">Never logged in</div>
-        )}
       </td>
       <td className="text-right align-top">
         <div className="flex justify-end space-x-2">
@@ -250,12 +237,6 @@ export function UsersPage() {
       withVMs: users.filter((user) => user.vm_count > 0).length,
       totalVMs: users.reduce((sum, user) => sum + user.vm_count, 0),
       withEmail: users.filter((user) => user.email).length,
-      recentLogins: users.filter(
-        (user) =>
-          user.last_login &&
-          new Date(user.last_login) >
-            new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-      ).length,
     };
 
     return (
@@ -287,12 +268,6 @@ export function UsersPage() {
               With Email:{" "}
               <span className="text-green-400 font-medium">
                 {stats.withEmail}
-              </span>
-            </span>
-            <span>
-              Active (30d):{" "}
-              <span className="text-green-300 font-medium">
-                {stats.recentLogins}
               </span>
             </span>
           </div>

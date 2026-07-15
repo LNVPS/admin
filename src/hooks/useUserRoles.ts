@@ -1,27 +1,18 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import type { UserRoleInfo } from "../lib/api";
 import { LoginState } from "../lib/login";
 
 export function useUserRoles() {
-  const [roles, setRoles] = useState<UserRoleInfo[]>([]);
-  const [permissions, setPermissions] = useState<string[]>([]);
+  // Read cached roles synchronously on the first render so the initial paint
+  // already reflects the user's permissions. Deferring this to a useEffect made
+  // every PermissionGuard/nav render once with zero permissions (a visible
+  // "Access Denied"/empty-nav flash) before the effect populated state.
+  const [roles] = useState<UserRoleInfo[]>(() => LoginState.getRoles() ?? []);
 
-  useEffect(() => {
-    // Only read from localStorage/cache - don't fetch from API
-    const cachedRoles = LoginState.getRoles();
-    if (cachedRoles) {
-      console.log("Using cached user roles from localStorage");
-      setRoles(cachedRoles);
-      const userPermissions = cachedRoles.flatMap(
-        (roleInfo) => roleInfo.role.permissions,
-      );
-      setPermissions([...new Set(userPermissions)]);
-    } else {
-      console.log("No cached user roles found in localStorage");
-      setRoles([]);
-      setPermissions([]);
-    }
-  }, []);
+  const permissions = useMemo(
+    () => [...new Set(roles.flatMap((roleInfo) => roleInfo.role.permissions))],
+    [roles],
+  );
 
   const hasPermission = (permission: string): boolean => {
     return permissions.includes(permission);

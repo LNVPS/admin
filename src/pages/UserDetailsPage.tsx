@@ -19,6 +19,7 @@ import { PaginatedTable } from "../components/PaginatedTable";
 import { PermissionGuard } from "../components/PermissionGuard";
 import { Profile } from "../components/Profile";
 import { StatusBadge } from "../components/StatusBadge";
+import { UserPaymentMethodsSection } from "../components/UserPaymentMethodsSection";
 import { getVmStatus, VmStatusBadge } from "../components/VmStatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { useUserRoles } from "../hooks/useUserRoles";
@@ -243,7 +244,11 @@ export function UserDetailsPage() {
   );
 
   const renderSubRow = (sub: AdminSubscriptionInfo, index: number) => (
-    <tr key={sub.id || index} className="cursor-pointer hover:bg-slate-700" onClick={() => navigate(`/subscriptions/${sub.id}`)}>
+    <tr
+      key={sub.id || index}
+      className="cursor-pointer hover:bg-slate-700"
+      onClick={() => navigate(`/subscriptions/${sub.id}`)}
+    >
       <td className="whitespace-nowrap align-top font-mono text-blue-400">#{sub.id}</td>
       <td className="align-top">
         <div className="min-w-0 max-w-[18rem]">
@@ -378,7 +383,9 @@ export function UserDetailsPage() {
           <div className="space-y-3 text-sm">
             <div className="min-w-0">
               <div className="text-gray-400">Email</div>
-              <div className="break-all text-white">{user.email || <span className="text-gray-500">Not provided</span>}</div>
+              <div className="break-all text-white">
+                {user.email || <span className="text-gray-500">Not provided</span>}
+              </div>
             </div>
             <div>
               <div className="text-gray-400">Contact Methods</div>
@@ -562,6 +569,11 @@ export function UserDetailsPage() {
             )}
           />
         </div>
+      </PermissionGuard>
+
+      {/* User's Saved Payment Methods */}
+      <PermissionGuard requiredPermissions={["user_payment_method::view"]} fallback={<></>}>
+        <UserPaymentMethodsSection userId={user.id} />
       </PermissionGuard>
 
       {/* User's Roles */}

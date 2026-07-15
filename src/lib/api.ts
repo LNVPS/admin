@@ -953,6 +953,74 @@ export interface AdminSubscriptionPaymentInfo {
   company_base_currency: string | null;
 }
 
+export type UserPaymentMethodProvider = "nwc" | "revolut";
+
+export interface AdminUserPaymentMethodInfo {
+  id: number;
+  user_id: number;
+  provider: UserPaymentMethodProvider;
+  name: string | null;
+  created: string;
+  has_external_customer_id: boolean;
+  card_brand: string | null;
+  card_last_four: string | null;
+  exp_month: number | null;
+  exp_year: number | null;
+  is_default: boolean;
+  enabled: boolean;
+}
+
+export type ResourceCostResourceType = "vm_host" | "ip_range" | "generic";
+export type ResourceCostType = "recurring" | "one_time";
+export type ResourceCostIntervalType = "day" | "month" | "year";
+
+export interface AdminResourceCostDetail {
+  id: number;
+  resource_type: ResourceCostResourceType;
+  resource_id: number;
+  label: string | null;
+  cost_type: ResourceCostType;
+  amount: number;
+  currency: string;
+  interval_amount: number | null;
+  interval_type: ResourceCostIntervalType | null;
+  billing_start: string | null;
+  billing_end: string | null;
+  created: string;
+  updated: string;
+}
+
+export interface CreateResourceCostRequest {
+  resource_type: ResourceCostResourceType;
+  resource_id?: number;
+  label?: string | null;
+  cost_type: ResourceCostType;
+  amount: number;
+  currency: string;
+  interval_amount?: number | null;
+  interval_type?: ResourceCostIntervalType | null;
+  billing_start?: string | null;
+  billing_end?: string | null;
+}
+
+export interface ProfitLossPeriod {
+  period: string;
+  revenue_net: number;
+  revenue_tax: number;
+  cost_recurring: number;
+  cost_one_time: number;
+  cost_total: number;
+  profit: number;
+}
+
+export interface ProfitLossReportData {
+  start_date: string;
+  end_date: string;
+  group_by: "month" | "year";
+  currency: string;
+  periods: ProfitLossPeriod[];
+}
+
 // Payment Method Config Provider Types for CREATE/UPDATE requests (with actual secrets)
 export interface LndProviderConfig {
   type: "lnd";
@@ -2775,6 +2843,13 @@ export class AdminApi {
     return result.data;
   }
 
+  async completeSubscriptionPayment(hexId: string) {
+    const result = await this.handleResponse<ApiResponse<AdminSubscriptionPaymentInfo>>(
+      await this.req(`/api/admin/v1/subscription_payments/${hexId}/complete`, "POST"),
+    );
+    return result.data;
+  }
+
   // Payment Method Config Management
   async getPaymentMethodConfigs(params?: { limit?: number; offset?: number; company_id?: number }) {
     return await this.handleResponse<PaginatedApiResponse<AdminPaymentMethodConfigInfo>>(
@@ -2830,6 +2905,86 @@ export class AdminApi {
 
   async deletePaymentMethodConfig(id: number) {
     await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/payment_methods/${id}`, "DELETE"));
+  }
+
+  // User Payment Methods (users' saved payment methods for auto-renewal)
+  async getUserPaymentMethods(params?: { limit?: number; offset?: number; user_id?: number }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminUserPaymentMethodInfo>>(
+      await this.req("/api/admin/v1/user_payment_methods", "GET", undefined, params),
+    );
+  }
+
+  async getUserPaymentMethod(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminUserPaymentMethodInfo>>(
+      await this.req(`/api/admin/v1/user_payment_methods/${id}`, "GET"),
+    );
+    return result.data;
+  }
+
+  async updateUserPaymentMethod(
+    id: number,
+    updates: Partial<{ is_default: boolean; enabled: boolean; name: string | null }>,
+  ) {
+    const result = await this.handleResponse<ApiResponse<AdminUserPaymentMethodInfo>>(
+      await this.req(`/api/admin/v1/user_payment_methods/${id}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
+  async deleteUserPaymentMethod(id: number) {
+    await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/user_payment_methods/${id}`, "DELETE"));
+  }
+
+  // Resource Cost Tracking
+  async getResourceCosts(params?: {
+    limit?: number;
+    offset?: number;
+    resource_type?: ResourceCostResourceType;
+    resource_id?: number;
+  }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminResourceCostDetail>>(
+      await this.req("/api/admin/v1/resource_costs", "GET", undefined, params),
+    );
+  }
+
+  async getResourceCost(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminResourceCostDetail>>(
+      await this.req(`/api/admin/v1/resource_costs/${id}`, "GET"),
+    );
+    return result.data;
+  }
+
+  async createResourceCost(data: CreateResourceCostRequest) {
+    const result = await this.handleResponse<ApiResponse<AdminResourceCostDetail>>(
+      await this.req("/api/admin/v1/resource_costs", "POST", data),
+    );
+    return result.data;
+  }
+
+  async updateResourceCost(id: number, updates: Partial<Omit<CreateResourceCostRequest, "resource_type">>) {
+    const result = await this.handleResponse<ApiResponse<AdminResourceCostDetail>>(
+      await this.req(`/api/admin/v1/resource_costs/${id}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
+  async deleteResourceCost(id: number) {
+    await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/resource_costs/${id}`, "DELETE"));
+  }
+
+  // Profit/Loss report
+  async getProfitLossReport(params: {
+    start_date: string;
+    end_date: string;
+    group_by?: "month" | "year";
+    company_id?: number;
+    region_id?: number;
+    currency?: string;
+  }) {
+    const result = await this.handleResponse<ApiResponse<ProfitLossReportData>>(
+      await this.req("/api/admin/v1/reports/profit-loss", "GET", undefined, params),
+    );
+    return result.data;
   }
 }
 

@@ -27,6 +27,8 @@ import { Profile } from "../components/Profile";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { useApiCall } from "../hooks/useApiCall";
+import { useToast } from "../hooks/useToast";
+import { useUserRoles } from "../hooks/useUserRoles";
 import { EditSubscriptionModal } from "./SubscriptionsPage";
 import {
   AdminPaymentMethod,
@@ -233,49 +235,51 @@ export function SubscriptionDetailPage() {
             {subscription.line_items.map((item) => {
               const linked = getLinkedResource(item.resource);
               return (
-              <div key={item.id} className="bg-gray-700 rounded-lg p-4 flex items-start justify-between gap-4">
-                <div className="min-w-0 flex-1">
-                  <div className="break-words font-medium text-white">{item.name}</div>
-                  {item.description && <div className="break-words text-sm text-gray-400">{item.description}</div>}
-                  <div className="mt-1 flex gap-4 text-sm text-gray-300">
-                    <span>
-                      Recurring: {formatCurrency(item.amount, subscription.currency)}{" "}
-                      {formatInterval(subscription.interval_amount, subscription.interval_type)}
-                    </span>
-                    {item.setup_amount > 0 && (
-                      <span>Setup: {formatCurrency(item.setup_amount, subscription.currency)}</span>
+                <div key={item.id} className="bg-gray-700 rounded-lg p-4 flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="break-words font-medium text-white">{item.name}</div>
+                    {item.description && <div className="break-words text-sm text-gray-400">{item.description}</div>}
+                    <div className="mt-1 flex gap-4 text-sm text-gray-300">
+                      <span>
+                        Recurring: {formatCurrency(item.amount, subscription.currency)}{" "}
+                        {formatInterval(subscription.interval_amount, subscription.interval_type)}
+                      </span>
+                      {item.setup_amount > 0 && (
+                        <span>Setup: {formatCurrency(item.setup_amount, subscription.currency)}</span>
+                      )}
+                    </div>
+                    {linked && (
+                      <Link
+                        to={linked.to}
+                        className="mt-1.5 inline-flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300"
+                      >
+                        <linked.icon className="h-4 w-4" />
+                        <span>{linked.label}</span>
+                        <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
+                      </Link>
+                    )}
+                    {item.configuration && (
+                      <div className="mt-1">
+                        <details className="text-xs">
+                          <summary className="text-gray-400 cursor-pointer hover:text-gray-300">
+                            Upgrade details
+                          </summary>
+                          <pre className="mt-1 p-2 bg-gray-800 rounded text-gray-300 overflow-x-auto">
+                            {JSON.stringify(item.configuration, null, 2)}
+                          </pre>
+                        </details>
+                      </div>
                     )}
                   </div>
-                  {linked && (
-                    <Link
-                      to={linked.to}
-                      className="mt-1.5 inline-flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300"
-                    >
-                      <linked.icon className="h-4 w-4" />
-                      <span>{linked.label}</span>
-                      <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
-                    </Link>
-                  )}
-                  {item.configuration && (
-                    <div className="mt-1">
-                      <details className="text-xs">
-                        <summary className="text-gray-400 cursor-pointer hover:text-gray-300">Upgrade details</summary>
-                        <pre className="mt-1 p-2 bg-gray-800 rounded text-gray-300 overflow-x-auto">
-                          {JSON.stringify(item.configuration, null, 2)}
-                        </pre>
-                      </details>
-                    </div>
-                  )}
+                  <div className="flex shrink-0 gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => setEditingLineItem(item)}>
+                      <PencilIcon className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDeleteLineItem(item)}>
+                      <TrashIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex shrink-0 gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => setEditingLineItem(item)}>
-                    <PencilIcon className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleDeleteLineItem(item)}>
-                    <TrashIcon className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
               );
             })}
           </div>
@@ -337,8 +341,35 @@ export function SubscriptionDetailPage() {
 
 function SubscriptionPaymentsTable({ subscriptionId, refreshKey }: { subscriptionId: number; refreshKey: number }) {
   const adminApi = useAdminApi();
+  const { success, error: showError } = useToast();
+  const { hasPermission } = useUserRoles();
   const [copiedPaymentId, setCopiedPaymentId] = useState<string | null>(null);
   const [copiedExternalId, setCopiedExternalId] = useState<string | null>(null);
+  const [completingId, setCompletingId] = useState<string | null>(null);
+  const [localRefresh, setLocalRefresh] = useState(0);
+
+  const canCompletePayments = hasPermission("subscription_payments::update");
+
+  const handleCompletePayment = async (payment: AdminSubscriptionPaymentInfo) => {
+    if (
+      !confirm(
+        `Mark payment ${payment.id.slice(0, 8)}... (${formatCurrency(payment.amount, payment.currency)}) as paid? This extends the subscription by 30 days and activates it.`,
+      )
+    ) {
+      return;
+    }
+    setCompletingId(payment.id);
+    try {
+      await adminApi.completeSubscriptionPayment(payment.id);
+      success("Payment marked as paid");
+      setLocalRefresh((prev) => prev + 1);
+    } catch (error) {
+      console.error("Failed to complete payment:", error);
+      showError("Failed to complete payment", error instanceof Error ? error.message : undefined);
+    } finally {
+      setCompletingId(null);
+    }
+  };
 
   const handleCopyPaymentId = async (paymentId: string) => {
     try {
@@ -463,9 +494,7 @@ function SubscriptionPaymentsTable({ subscriptionId, refreshKey }: { subscriptio
               </div>
             )}
             {payment.tax > 0 && <div>Tax: {formatCurrency(payment.tax, payment.currency)}</div>}
-            {payment.processing_fee > 0 && (
-              <div>Fee: {formatCurrency(payment.processing_fee, payment.currency)}</div>
-            )}
+            {payment.processing_fee > 0 && <div>Fee: {formatCurrency(payment.processing_fee, payment.currency)}</div>}
           </div>
         </div>
       </td>
@@ -520,6 +549,18 @@ function SubscriptionPaymentsTable({ subscriptionId, refreshKey }: { subscriptio
                 : "Pending"}
           </span>
         </div>
+        {!payment.is_paid && canCompletePayments && (
+          <Button
+            size="sm"
+            variant="secondary"
+            className="mt-1.5"
+            disabled={completingId === payment.id}
+            onClick={() => handleCompletePayment(payment)}
+            title="Manually mark this payment as paid (extends subscription by 30 days)"
+          >
+            {completingId === payment.id ? "Completing..." : "Mark paid"}
+          </Button>
+        )}
       </td>
       {/* Date */}
       <td className="align-top text-gray-400 text-sm">
@@ -551,7 +592,7 @@ function SubscriptionPaymentsTable({ subscriptionId, refreshKey }: { subscriptio
       loadingMessage="Loading payments..."
       minWidth="950px"
       inlineError={true}
-      dependencies={[subscriptionId, refreshKey]}
+      dependencies={[subscriptionId, refreshKey, localRefresh]}
       calculateStats={(payments, total) => (
         <div className="flex gap-4 text-sm text-gray-400">
           <span>

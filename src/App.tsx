@@ -21,9 +21,11 @@ import { JobHistoryPage } from "./pages/JobHistoryPage";
 import { LoginPage } from "./pages/LoginPage";
 import { OsImagesPage } from "./pages/OsImagesPage";
 import { PaymentMethodsPage } from "./pages/PaymentMethodsPage";
+import { ProfitLossReportPage } from "./pages/ProfitLossReportPage";
 import { ReferralsPage } from "./pages/ReferralsPage";
 import { ReferralsReportPage } from "./pages/ReferralsReportPage";
 import { RegionsPage } from "./pages/RegionsPage";
+import { ResourceCostsPage } from "./pages/ResourceCostsPage";
 import { RolesPage } from "./pages/RolesPage";
 import { RouterDetailPage } from "./pages/RouterDetailPage";
 import { RoutersPage } from "./pages/RoutersPage";
@@ -312,6 +314,22 @@ function AppContent() {
               element={
                 <PermissionGuard requiredPermissions={["subscriptions::view"]}>
                   <SubscriptionDetailPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="resource-costs"
+              element={
+                <PermissionGuard requiredPermissions={["resource_cost::view"]}>
+                  <ResourceCostsPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="profit-loss"
+              element={
+                <PermissionGuard requiredPermissions={["analytics::view"]}>
+                  <ProfitLossReportPage />
                 </PermissionGuard>
               }
             />

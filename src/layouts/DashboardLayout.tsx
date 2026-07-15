@@ -15,6 +15,7 @@ import {
   KeyIcon,
   ListBulletIcon,
   MoonIcon,
+  ScaleIcon,
   ServerIcon,
   ServerStackIcon,
   SunIcon,
@@ -26,6 +27,8 @@ import React, { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { ServerSelector } from "../components/ServerSelector";
 import { TasksWidget } from "../components/TasksWidget";
+import { ToastContainer } from "../components/Toast";
+import { useToast } from "../hooks/useToast";
 import { useTheme } from "../hooks/useTheme";
 import { useUserRoles } from "../hooks/useUserRoles";
 import { LoginState } from "../lib/login";
@@ -157,6 +160,12 @@ const navigation: NavSection[] = [
         requiredPermissions: ["payment_method_config::view"],
       },
       { name: "Referrals", to: "/referrals", icon: UserGroupIcon, requiredPermissions: ["virtual_machines::view"] },
+      {
+        name: "Resource Costs",
+        to: "/resource-costs",
+        icon: BanknotesIcon,
+        requiredPermissions: ["resource_cost::view"],
+      },
     ],
   },
   {
@@ -165,6 +174,7 @@ const navigation: NavSection[] = [
     items: [
       { name: "Sales", to: "/sales-report", icon: ChartBarIcon, requiredPermissions: ["analytics::view"] },
       { name: "Referrals", to: "/referrals-report", icon: ChartBarIcon, requiredPermissions: ["analytics::view"] },
+      { name: "Profit & Loss", to: "/profit-loss", icon: ScaleIcon, requiredPermissions: ["analytics::view"] },
     ],
   },
 ];
@@ -175,6 +185,7 @@ export function DashboardLayout() {
   const location = useLocation();
   const { hasAnyPermission } = useUserRoles();
   const { theme, toggleTheme } = useTheme();
+  const { toasts, dismiss } = useToast();
 
   const handleLogout = () => {
     LoginState.logout();
@@ -293,6 +304,9 @@ export function DashboardLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Toast notifications */}
+      <ToastContainer toasts={toasts} onDismiss={dismiss} />
 
       {/* Mobile backdrop */}
       {sidebarOpen && (

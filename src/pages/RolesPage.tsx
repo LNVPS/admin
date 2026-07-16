@@ -1,17 +1,13 @@
-import { useState, useMemo, useCallback } from "react";
+import { PencilIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { useCallback, useMemo, useState } from "react";
+import { Button } from "../components/Button";
+import { countActiveFilters, FilterBar, FilterButton, type FilterField } from "../components/FilterBar";
+import { Modal } from "../components/Modal";
+import { PaginatedTable } from "../components/PaginatedTable";
+import { StatsHeader } from "../components/StatsHeader";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { useApiCall } from "../hooks/useApiCall";
-import { PaginatedTable } from "../components/PaginatedTable";
-import { Button } from "../components/Button";
-import { Modal } from "../components/Modal";
 import type { AdminRoleInfo, PaginatedApiResponse } from "../lib/api";
-import {
-  PlusIcon,
-  PencilIcon,
-  TrashIcon,
-  FunnelIcon,
-  XMarkIcon,
-} from "@heroicons/react/24/outline";
 
 export function RolesPage() {
   const adminApi = useAdminApi();
@@ -30,10 +26,7 @@ export function RolesPage() {
     data: rolesResponse,
     loading: rolesLoading,
     error: rolesError,
-  } = useApiCall(
-    () => adminApi.getRoles({ limit: 1000, offset: 0 }),
-    [refreshTrigger],
-  );
+  } = useApiCall(() => adminApi.getRoles({ limit: 1000, offset: 0 }), [refreshTrigger]);
 
   const allRoles = rolesResponse?.data || [];
 
@@ -82,10 +75,7 @@ export function RolesPage() {
 
   // Create a wrapper API function that returns filtered results
   const filteredApiCall = useCallback(
-    async (params: {
-      limit: number;
-      offset: number;
-    }): Promise<PaginatedApiResponse<AdminRoleInfo>> => {
+    async (params: { limit: number; offset: number }): Promise<PaginatedApiResponse<AdminRoleInfo>> => {
       // Apply pagination to filtered results
       const startIndex = params.offset;
       const endIndex = startIndex + params.limit;
@@ -107,6 +97,31 @@ export function RolesPage() {
   };
 
   const hasActiveFilters = resourceFilter || actionFilter;
+
+  const filterFields: FilterField[] = [
+    {
+      kind: "select",
+      key: "resource",
+      label: "Resource",
+      value: resourceFilter,
+      onChange: setResourceFilter,
+      options: [
+        { value: "", label: "All resources" },
+        ...getUniqueResources().map((resource) => ({ value: resource, label: resource })),
+      ],
+    },
+    {
+      kind: "select",
+      key: "action",
+      label: "Action",
+      value: actionFilter,
+      onChange: setActionFilter,
+      options: [
+        { value: "", label: "All actions" },
+        ...getUniqueActions().map((action) => ({ value: action, label: action })),
+      ],
+    },
+  ];
 
   const handleEdit = (role: AdminRoleInfo) => {
     setSelectedRole(role);
@@ -146,14 +161,9 @@ export function RolesPage() {
         <div className="min-w-0 max-w-[22rem]">
           <div className="truncate font-medium text-slate-100" title={role.name}>
             {role.name}
-            {role.is_system_role && (
-              <span className="ml-1.5 text-xs text-slate-400">(system)</span>
-            )}
+            {role.is_system_role && <span className="ml-1.5 text-xs text-slate-400">(system)</span>}
           </div>
-          <div
-            className="mt-0.5 truncate text-xs text-slate-400"
-            title={role.description || undefined}
-          >
+          <div className="mt-0.5 truncate text-xs text-slate-400" title={role.description || undefined}>
             {role.description || "No description"}
           </div>
         </div>
@@ -162,17 +172,15 @@ export function RolesPage() {
         <div className="flex max-w-[22rem] flex-wrap gap-1">
           {role.permissions && role.permissions.length > 0 ? (
             <>
-              {role.permissions
-                .slice(0, 3)
-                .map((permission: string, idx: number) => (
-                  <span
-                    key={idx}
-                    className="inline-flex max-w-[12rem] truncate px-2 py-0.5 font-mono text-xs rounded-full bg-blue-900 text-blue-300"
-                    title={permission}
-                  >
-                    {permission}
-                  </span>
-                ))}
+              {role.permissions.slice(0, 3).map((permission: string, idx: number) => (
+                <span
+                  key={idx}
+                  className="inline-flex max-w-[12rem] truncate px-2 py-0.5 font-mono text-xs rounded-full bg-blue-900 text-blue-300"
+                  title={permission}
+                >
+                  {permission}
+                </span>
+              ))}
               {role.permissions.length > 3 && (
                 <span className="inline-flex px-2 py-0.5 font-semibold text-xs rounded-full bg-gray-600 text-gray-300">
                   +{role.permissions.length - 3} more
@@ -217,138 +225,27 @@ export function RolesPage() {
     };
 
     return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Roles</h1>
-            <div className="mt-2 flex gap-4 text-sm text-gray-400">
-              <span>
-                Total:{" "}
-                <span className="text-white font-medium">{stats.total}</span>
-              </span>
-              <span>
-                System:{" "}
-                <span className="text-blue-400 font-medium">
-                  {stats.systemRoles}
-                </span>
-              </span>
-              <span>
-                Custom:{" "}
-                <span className="text-green-400 font-medium">
-                  {stats.customRoles}
-                </span>
-              </span>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="secondary"
+      <StatsHeader
+        title="Roles"
+        stats={[
+          { label: "Total", value: stats.total },
+          { label: "System", value: stats.systemRoles, tone: "accent" },
+          { label: "Custom", value: stats.customRoles, tone: "success" },
+        ]}
+        actions={
+          <>
+            <FilterButton
+              open={showFilters}
+              activeCount={countActiveFilters(filterFields)}
               onClick={() => setShowFilters(!showFilters)}
-              className={
-                hasActiveFilters ? "text-blue-400 border-blue-400" : ""
-              }
-            >
-              <FunnelIcon className="h-4 w-4 mr-2" />
-              Filters
-              {hasActiveFilters && (
-                <span className="ml-1 px-1.5 py-0.5 text-xs font-semibold text-slate-950 bg-blue-500 rounded-full">
-                  {(resourceFilter ? 1 : 0) + (actionFilter ? 1 : 0)}
-                </span>
-              )}
-            </Button>
+            />
             <Button onClick={() => setShowCreateModal(true)}>
               <PlusIcon className="h-4 w-4 mr-2" />
               Add Role
             </Button>
-          </div>
-        </div>
-
-        {/* Filter Panel */}
-        {showFilters && (
-          <div className="bg-slate-800 border border-slate-600 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-white">
-                Filter Roles by Permissions
-              </h3>
-              {hasActiveFilters && (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={clearFilters}
-                  className="text-gray-400 hover:text-white"
-                >
-                  <XMarkIcon className="h-4 w-4 mr-1" />
-                  Clear
-                </Button>
-              )}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-300 mb-2">
-                  Resource
-                </label>
-                <select
-                  value={resourceFilter}
-                  onChange={(e) => setResourceFilter(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white text-sm"
-                >
-                  <option value="">All resources</option>
-                  {getUniqueResources().map((resource) => (
-                    <option key={resource} value={resource}>
-                      {resource}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-300 mb-2">
-                  Action
-                </label>
-                <select
-                  value={actionFilter}
-                  onChange={(e) => setActionFilter(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white text-sm"
-                >
-                  <option value="">All actions</option>
-                  {getUniqueActions().map((action) => (
-                    <option key={action} value={action}>
-                      {action}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            {hasActiveFilters && (
-              <div className="mt-3 pt-3 border-t border-slate-600">
-                <div className="flex flex-wrap gap-2">
-                  {resourceFilter && (
-                    <div className="inline-flex items-center px-2 py-1 bg-blue-500/10 text-blue-400 ring-1 ring-inset ring-blue-500/30 text-xs rounded-full">
-                      Resource: {resourceFilter}
-                      <button
-                        onClick={() => setResourceFilter("")}
-                        className="ml-1 hover:text-white"
-                      >
-                        <XMarkIcon className="h-3 w-3" />
-                      </button>
-                    </div>
-                  )}
-                  {actionFilter && (
-                    <div className="inline-flex items-center px-2 py-1 bg-green-500/10 text-green-400 ring-1 ring-inset ring-green-500/30 text-xs rounded-full">
-                      Action: {actionFilter}
-                      <button
-                        onClick={() => setActionFilter("")}
-                        className="ml-1 hover:text-white"
-                      >
-                        <XMarkIcon className="h-3 w-3" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+          </>
+        }
+      />
     );
   };
 
@@ -366,9 +263,7 @@ export function RolesPage() {
       <div className="flex min-h-[400px] items-center justify-center">
         <div className="text-center">
           <p className="text-red-400 mb-4">Failed to load roles</p>
-          <Button onClick={() => setRefreshTrigger((prev) => prev + 1)}>
-            Retry
-          </Button>
+          <Button onClick={() => setRefreshTrigger((prev) => prev + 1)}>Retry</Button>
         </div>
       </div>
     );
@@ -378,6 +273,14 @@ export function RolesPage() {
     <div className="space-y-6">
       <PaginatedTable
         apiCall={filteredApiCall}
+        toolbar={
+          <FilterBar
+            open={showFilters}
+            fields={filterFields}
+            onClear={clearFilters}
+            onClose={() => setShowFilters(false)}
+          />
+        }
         renderHeader={renderHeader}
         renderRow={renderRow}
         calculateStats={calculateStats}
@@ -389,20 +292,14 @@ export function RolesPage() {
         renderEmptyState={() => (
           <div className="text-center py-8">
             <p className="text-gray-400">
-              {hasActiveFilters
-                ? "No roles match the selected filters"
-                : "No roles found"}
+              {hasActiveFilters ? "No roles match the selected filters" : "No roles found"}
             </p>
           </div>
         )}
       />
 
       {/* Create Role Modal */}
-      <CreateRoleModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onSuccess={refreshData}
-      />
+      <CreateRoleModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} onSuccess={refreshData} />
 
       {/* Edit Role Modal */}
       {selectedRole && (
@@ -518,9 +415,7 @@ function CreateRoleModal({
     <Modal isOpen={isOpen} onClose={onClose} title="Create New Role" size="xl">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs font-medium text-white mb-2">
-            Role Name *
-          </label>
+          <label className="block text-xs font-medium text-white mb-2">Role Name *</label>
           <input
             type="text"
             value={formData.name}
@@ -531,23 +426,17 @@ function CreateRoleModal({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-white mb-2">
-            Description
-          </label>
+          <label className="block text-xs font-medium text-white mb-2">Description</label>
           <textarea
             value={formData.description}
-            onChange={(e) =>
-              setFormData({ ...formData, description: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             className=""
             rows={3}
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-white mb-2">
-            Permissions
-          </label>
+          <label className="block text-xs font-medium text-white mb-2">Permissions</label>
           <div className="max-h-60 overflow-y-auto border border-slate-600 rounded p-3 bg-slate-800">
             <div className="grid grid-cols-2 gap-2">
               {AVAILABLE_PERMISSIONS.map((permission) => (
@@ -559,10 +448,7 @@ function CreateRoleModal({
                     onChange={() => togglePermission(permission)}
                     className=""
                   />
-                  <label
-                    htmlFor={`create-${permission}`}
-                    className="ml-2 text-xs text-white font-mono"
-                  >
+                  <label htmlFor={`create-${permission}`} className="ml-2 text-xs text-white font-mono">
                     {permission}
                   </label>
                 </div>
@@ -636,9 +522,7 @@ function EditRoleModal({
     <Modal isOpen={isOpen} onClose={onClose} title="Edit Role" size="xl">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs font-medium text-white mb-2">
-            Role Name *
-          </label>
+          <label className="block text-xs font-medium text-white mb-2">Role Name *</label>
           <input
             type="text"
             value={formData.name}
@@ -649,23 +533,17 @@ function EditRoleModal({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-white mb-2">
-            Description
-          </label>
+          <label className="block text-xs font-medium text-white mb-2">Description</label>
           <textarea
             value={formData.description}
-            onChange={(e) =>
-              setFormData({ ...formData, description: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             className=""
             rows={3}
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-white mb-2">
-            Permissions
-          </label>
+          <label className="block text-xs font-medium text-white mb-2">Permissions</label>
           <div className="max-h-60 overflow-y-auto border border-slate-600 rounded p-3 bg-slate-800">
             <div className="grid grid-cols-2 gap-2">
               {AVAILABLE_PERMISSIONS.map((permission) => (
@@ -677,10 +555,7 @@ function EditRoleModal({
                     onChange={() => togglePermission(permission)}
                     className=""
                   />
-                  <label
-                    htmlFor={`edit-${permission}`}
-                    className="ml-2 text-xs text-white font-mono"
-                  >
+                  <label htmlFor={`edit-${permission}`} className="ml-2 text-xs text-white font-mono">
                     {permission}
                   </label>
                 </div>

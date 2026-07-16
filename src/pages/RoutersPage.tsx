@@ -14,6 +14,7 @@ import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
 import { OvhCredentialsInput } from "../components/OvhCredentialsInput";
 import { PaginatedTable } from "../components/PaginatedTable";
+import { StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { type AdminRouterDetail, RouterKind } from "../lib/api";
@@ -140,29 +141,21 @@ export function RoutersPage() {
     };
 
     return (
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Routers</h1>
-          <div className="mt-2 flex gap-4 text-sm text-gray-400">
-            <span>
-              Total: <span className="text-white font-medium">{stats.total}</span>
-            </span>
-            <span>
-              Enabled: <span className="text-green-400 font-medium">{stats.enabled}</span>
-            </span>
-            <span>
-              Disabled: <span className="text-yellow-400 font-medium">{stats.disabled}</span>
-            </span>
-            <span>
-              Policies: <span className="text-blue-400 font-medium">{stats.totalPolicies}</span>
-            </span>
-          </div>
-        </div>
-        <Button onClick={() => setShowCreateModal(true)}>
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Add Router
-        </Button>
-      </div>
+      <StatsHeader
+        title="Routers"
+        stats={[
+          { label: "Total", value: stats.total },
+          { label: "Enabled", value: stats.enabled, tone: "success" },
+          { label: "Disabled", value: stats.disabled, tone: "warning" },
+          { label: "Policies", value: stats.totalPolicies, tone: "accent" },
+        ]}
+        actions={
+          <Button onClick={() => setShowCreateModal(true)}>
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Add Router
+          </Button>
+        }
+      />
     );
   };
 

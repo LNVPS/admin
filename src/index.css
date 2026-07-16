@@ -128,7 +128,11 @@ html.light {
   --color-gray-900: #eef1f5;
   --color-gray-950: #0b0e14;
 
-  /* Accent (blue→green): darker greens so links/fills read on white. */
+  /* Accent (blue→green): darker greens so links/fills read on white.
+     100/200 are used as *text* on the light `blue-900` tint (pills/badges),
+     so they must stay dark enough to read — not the light values @theme gives. */
+  --color-blue-100: oklch(0.45 0.13 142);
+  --color-blue-200: oklch(0.5 0.14 142);
   --color-blue-300: oklch(0.55 0.15 142);
   --color-blue-400: oklch(0.58 0.16 142); /* links */
   --color-blue-500: oklch(0.62 0.17 142); /* primary fills (dark label) */
@@ -160,6 +164,17 @@ html.light {
 /* Softer, lighter accent glow for the light background. */
 html.light body {
   background-image: radial-gradient(1100px 460px at 82% -12%, oklch(0.62 0.17 142 / 0.07), transparent 72%);
+}
+
+/* Active sidebar link: the @theme accent text (bright green / light teal) reads
+   fine on the dark sidebar but is too pale on the light tint. Darken just the
+   active link's text in light mode; dark mode keeps its brighter accent. */
+html.light .nav-active-blue {
+  color: oklch(0.44 0.14 142);
+}
+
+html.light .nav-active-teal {
+  color: oklch(0.48 0.09 205);
 }
 
 /* Display font for headings */
@@ -242,6 +257,28 @@ button:disabled {
 
 .animate-spin {
   animation: spin 1s linear infinite;
+}
+
+/* Filter panel reveal */
+@keyframes filter-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-filter-reveal {
+  animation: filter-reveal 160ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-filter-reveal {
+    animation: none;
+  }
 }
 
 /* Toast notifications */

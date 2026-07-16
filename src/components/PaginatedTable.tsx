@@ -25,6 +25,9 @@ interface PaginatedTableProps<T> {
   // Optional stats calculation
   calculateStats?: (items: T[], totalItems: number, error?: Error | null) => React.ReactNode;
 
+  // Optional content rendered between the stats header and the table (e.g. a filter panel)
+  toolbar?: React.ReactNode;
+
   // Table styling
   tableClassName?: string;
   minWidth?: string;
@@ -43,6 +46,7 @@ export function PaginatedTable<T>({
   loadingMessage = "Loading...",
   dependencies = [],
   calculateStats,
+  toolbar,
   tableClassName = "",
   minWidth = "1200px",
   inlineError = false,
@@ -68,16 +72,10 @@ export function PaginatedTable<T>({
     [currentPage, ...dependencies],
   );
 
+  // Non-inline errors still take over the whole view (loading never does — the
+  // spinner is confined to the table section so the header/filters stay put).
   if (error && !inlineError) {
     return <ErrorState error={error} onRetry={retry} action={errorAction} />;
-  }
-
-  if (loading && !inlineError) {
-    return (
-      <div className="flex py-4 items-center justify-center">
-        <div className="text-white">{loadingMessage}</div>
-      </div>
-    );
   }
 
   const items = response?.data || [];
@@ -95,12 +93,16 @@ export function PaginatedTable<T>({
       {/* Stats Section */}
       {calculateStats && calculateStats(items, totalItems, error)}
 
+      {/* Toolbar (filters, etc.) — sits under the header, above the table */}
+      {toolbar}
+
       {/* Table */}
       <Card>
         <div className="p-0">
-          {inlineError && loading ? (
-            <div className="flex py-4 items-center justify-center">
-              <div className="text-white">{loadingMessage}</div>
+          {loading ? (
+            <div className="flex items-center justify-center gap-3 py-12">
+              <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-600 border-t-blue-500" />
+              <span className="text-sm text-slate-400">{loadingMessage}</span>
             </div>
           ) : inlineError && error ? (
             <div className="flex py-4 items-center justify-center">

@@ -61,14 +61,14 @@ const ACCENTS: Record<
     rail: "border-slate-700/70",
     node: "bg-slate-600 ring-slate-800",
     activeNode: "bg-blue-400 ring-blue-400/30",
-    activeLink: "bg-blue-500/10 text-blue-400 ring-1 ring-inset ring-blue-500/30",
+    activeLink: "nav-active-blue bg-blue-500/10 text-blue-400 ring-1 ring-inset ring-blue-500/30",
     sectionIcon: "text-slate-500",
   },
   teal: {
     rail: "border-teal-400/25",
     node: "bg-teal-500/40 ring-slate-800",
     activeNode: "bg-teal-300 ring-teal-400/40",
-    activeLink: "bg-teal-500/10 text-teal-200 ring-1 ring-inset ring-teal-400/30",
+    activeLink: "nav-active-teal bg-teal-500/10 text-teal-200 ring-1 ring-inset ring-teal-400/30",
     sectionIcon: "text-teal-400",
   },
 };

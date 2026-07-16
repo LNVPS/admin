@@ -1276,7 +1276,14 @@ export class AdminApi {
   }
 
   // User Management
-  async getUsers(params?: { limit?: number; offset?: number; search?: string }) {
+  async getUsers(params?: {
+    limit?: number;
+    offset?: number;
+    search?: string;
+    region_id?: number;
+    role?: AdminUserRole;
+    has_vms?: boolean;
+  }) {
     return await this.handleResponse<PaginatedApiResponse<AdminUserInfo>>(
       await this.req("/api/admin/v1/users", "GET", undefined, params),
     );

@@ -1,12 +1,14 @@
-import { EyeIcon, FunnelIcon, PlayIcon, PlusIcon, StopIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { EyeIcon, PlayIcon, PlusIcon, StopIcon } from "@heroicons/react/24/outline";
 import { bech32ToHex } from "@snort/shared";
 import { tryParseNostrLink } from "@snort/system";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../components/Button";
 import { CreateVmModal } from "../components/CreateVmModal";
+import { countActiveFilters, FilterBar, FilterButton, type FilterField } from "../components/FilterBar";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { Profile } from "../components/Profile";
+import { type StatItem, StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { getVmStatus, VmStatusBadge } from "../components/VmStatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
@@ -72,6 +74,54 @@ export function VMsPage() {
     });
     setRefreshTrigger((prev) => prev + 1);
   };
+
+  const filterFields: FilterField[] = [
+    {
+      kind: "number",
+      key: "user_id",
+      label: "User ID",
+      value: filters.user_id,
+      placeholder: "Enter user ID",
+      onChange: (value) => handleFilterChange("user_id", value),
+    },
+    {
+      kind: "select",
+      key: "host_id",
+      label: "Host",
+      value: filters.host_id,
+      onChange: (value) => handleFilterChange("host_id", value),
+      options: [
+        { value: "", label: "All hosts" },
+        ...hosts.map((host) => ({ value: String(host.id), label: `${host.name} (${host.region.name})` })),
+      ],
+    },
+    {
+      kind: "select",
+      key: "region_id",
+      label: "Region",
+      value: filters.region_id,
+      onChange: (value) => handleFilterChange("region_id", value),
+      options: [
+        { value: "", label: "All regions" },
+        ...regions.map((region) => ({ value: String(region.id), label: region.name })),
+      ],
+    },
+    {
+      kind: "text",
+      key: "pubkey",
+      label: "Public key",
+      value: filters.pubkey,
+      placeholder: "hex, npub, or nprofile",
+      onChange: (value) => handleFilterChange("pubkey", value),
+    },
+    {
+      kind: "checkbox",
+      key: "include_deleted",
+      label: "Include deleted VMs",
+      value: filters.include_deleted,
+      onChange: (value) => handleFilterChange("include_deleted", value),
+    },
+  ];
 
   const parsePubkey = (pubkey: string): string => {
     const trimmedPubkey = pubkey.trim();
@@ -238,16 +288,6 @@ export function VMsPage() {
     </tr>
   );
 
-  const getActiveFilterCount = () => {
-    let count = 0;
-    if (filters.user_id) count++;
-    if (filters.host_id) count++;
-    if (filters.pubkey.trim()) count++;
-    if (filters.region_id) count++;
-    if (filters.include_deleted) count++;
-    return count;
-  };
-
   const calculateStats = (vms: AdminVmInfo[], totalItems: number) => {
     const stats = {
       total: totalItems,
@@ -257,172 +297,71 @@ export function VMsPage() {
       deleted: vms.filter((vm) => vm.deleted).length,
     };
 
-    const activeFilters = getActiveFilterCount();
-
-    const statCells = [
-      { label: "Total", value: stats.total, text: "text-cyan-400", dot: "bg-cyan-400" },
-      { label: "Running", value: stats.running, text: "text-green-400", dot: "bg-green-400" },
-      { label: "Stopped", value: stats.stopped, text: "text-red-400", dot: "bg-red-500" },
-      { label: "New / pending", value: stats.new, text: "text-yellow-400", dot: "bg-yellow-400" },
+    const statItems: StatItem[] = [
+      { label: "Total", value: stats.total, tone: "accent" },
+      { label: "Running", value: stats.running, tone: "success" },
+      { label: "Stopped", value: stats.stopped, tone: "danger" },
+      { label: "New / pending", value: stats.new, tone: "warning" },
     ];
     if (filters.include_deleted) {
-      statCells.push({ label: "Deleted", value: stats.deleted, text: "text-slate-400", dot: "bg-slate-500" });
+      statItems.push({ label: "Deleted", value: stats.deleted, tone: "muted" });
     }
 
     return (
-      <div className="space-y-5">
-        <div className="flex items-start justify-between gap-6 flex-wrap">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Virtual Machines</h1>
-            <p className="mt-2 text-sm text-slate-400">
-              {stats.total} instances across {regions.length || "—"} regions · {stats.running} running
-            </p>
-          </div>
-          <div className="flex items-center space-x-2">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const id = vmIdInput.trim();
-              if (id && !isNaN(Number(id))) {
-                navigate(`/vms/${id}`);
-                setVmIdInput("");
-              }
-            }}
-            className="flex items-center space-x-1"
-          >
-            <input
-              type="number"
-              value={vmIdInput}
-              onChange={(e) => setVmIdInput(e.target.value)}
-              placeholder="Go to VM ID"
-              className="w-32 px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-md text-white text-sm focus:outline-none focus:border-blue-500"
-            />
-            <Button variant="secondary" type="submit" disabled={!vmIdInput.trim()}>
-              Go
+      <StatsHeader
+        title="Virtual Machines"
+        stats={statItems}
+        actions={
+          <>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const id = vmIdInput.trim();
+                if (id && !isNaN(Number(id))) {
+                  navigate(`/vms/${id}`);
+                  setVmIdInput("");
+                }
+              }}
+              className="flex items-center space-x-1"
+            >
+              <input
+                type="number"
+                value={vmIdInput}
+                onChange={(e) => setVmIdInput(e.target.value)}
+                placeholder="Go to VM ID"
+                className="w-32 px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-md text-white text-sm focus:outline-none focus:border-blue-500"
+              />
+              <Button variant="secondary" type="submit" disabled={!vmIdInput.trim()}>
+                Go
+              </Button>
+            </form>
+            <Button variant="primary" onClick={() => setShowCreateVmModal(true)}>
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Create VM
             </Button>
-          </form>
-          <Button variant="primary" onClick={() => setShowCreateVmModal(true)}>
-            <PlusIcon className="h-4 w-4 mr-2" />
-            Create VM
-          </Button>
-          <Button variant="secondary" onClick={() => setShowFilters(!showFilters)} className="relative">
-            <FunnelIcon className="h-4 w-4 mr-2" />
-            Filters
-            {activeFilters > 0 && (
-              <span className="absolute -top-1 -right-1 bg-blue-500 text-slate-950 font-semibold text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                {activeFilters}
-              </span>
-            )}
-          </Button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-px overflow-hidden rounded-lg border border-slate-700 bg-slate-700">
-          {statCells.map((cell) => (
-            <div key={cell.label} className="bg-slate-800 px-5 py-4">
-              <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                <span className={`h-1.5 w-1.5 rounded-full ${cell.dot}`} />
-                {cell.label}
-              </div>
-              <div className={`font-display mt-2 text-3xl font-extrabold ${cell.text}`}>{cell.value}</div>
-            </div>
-          ))}
-        </div>
-      </div>
+            <FilterButton
+              open={showFilters}
+              activeCount={countActiveFilters(filterFields)}
+              onClick={() => setShowFilters(!showFilters)}
+            />
+          </>
+        }
+      />
     );
   };
 
   return (
     <div className="space-y-4">
-      {/* Filter Panel */}
-      {showFilters && (
-        <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium text-white">Filters</h3>
-            <Button variant="secondary" onClick={() => setShowFilters(false)} className="p-1">
-              <XMarkIcon className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">User ID</label>
-              <input
-                type="number"
-                value={filters.user_id}
-                onChange={(e) => handleFilterChange("user_id", e.target.value)}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
-                placeholder="Enter user ID"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Host</label>
-              <select
-                value={filters.host_id}
-                onChange={(e) => handleFilterChange("host_id", e.target.value)}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
-              >
-                <option value="">All hosts</option>
-                {hosts.map((host) => (
-                  <option key={host.id} value={host.id}>
-                    {host.name} ({host.region.name})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Region</label>
-              <select
-                value={filters.region_id}
-                onChange={(e) => handleFilterChange("region_id", e.target.value)}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
-              >
-                <option value="">All regions</option>
-                {regions.map((region) => (
-                  <option key={region.id} value={region.id}>
-                    {region.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Public Key</label>
-              <input
-                type="text"
-                value={filters.pubkey}
-                onChange={(e) => handleFilterChange("pubkey", e.target.value)}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
-                placeholder="Enter pubkey (hex, npub, or nprofile)"
-              />
-            </div>
-
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="include_deleted"
-                checked={filters.include_deleted}
-                onChange={(e) => handleFilterChange("include_deleted", e.target.checked)}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label htmlFor="include_deleted" className="ml-2 text-sm text-gray-300">
-                Include deleted VMs
-              </label>
-            </div>
-
-            <div className="flex items-end">
-              <Button variant="secondary" onClick={clearFilters} className="w-full">
-                Clear All Filters
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <PaginatedTable
         apiCall={(params) => adminApi.getVMs({ ...params, ...getApiFilters() })}
+        toolbar={
+          <FilterBar
+            open={showFilters}
+            fields={filterFields}
+            onClear={clearFilters}
+            onClose={() => setShowFilters(false)}
+          />
+        }
         renderHeader={renderHeader}
         renderRow={renderRow}
         calculateStats={calculateStats}

@@ -1,27 +1,17 @@
-import { useState, useEffect } from "react";
-import { useAdminApi } from "../hooks/useAdminApi";
-import { PaginatedTable } from "../components/PaginatedTable";
+import { KeyIcon, PencilIcon, PlusIcon, ServerIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
-import type {
-  AdminAccessPolicyDetail,
-  AdminRouterDetail,
-  NetworkAccessPolicyKind,
-} from "../lib/api";
-import {
-  KeyIcon,
-  PlusIcon,
-  PencilIcon,
-  TrashIcon,
-  ServerIcon,
-} from "@heroicons/react/24/outline";
+import { PaginatedTable } from "../components/PaginatedTable";
+import { StatsHeader } from "../components/StatsHeader";
+import { useAdminApi } from "../hooks/useAdminApi";
+import type { AdminAccessPolicyDetail, AdminRouterDetail, NetworkAccessPolicyKind } from "../lib/api";
 
 export function AccessPoliciesPage() {
   const adminApi = useAdminApi();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedPolicy, setSelectedPolicy] =
-    useState<AdminAccessPolicyDetail | null>(null);
+  const [selectedPolicy, setSelectedPolicy] = useState<AdminAccessPolicyDetail | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const refreshData = () => {
@@ -41,9 +31,7 @@ export function AccessPoliciesPage() {
       return;
     }
 
-    if (
-      confirm(`Are you sure you want to delete access policy "${policy.name}"?`)
-    ) {
+    if (confirm(`Are you sure you want to delete access policy "${policy.name}"?`)) {
       try {
         await adminApi.deleteAccessPolicy(policy.id);
         refreshData();
@@ -68,10 +56,7 @@ export function AccessPoliciesPage() {
     <tr key={policy.id || index}>
       <td className="whitespace-nowrap align-top font-mono text-white">{policy.id}</td>
       <td className="align-top">
-        <div
-          className="min-w-0 max-w-[18rem] truncate font-medium text-white"
-          title={policy.name}
-        >
+        <div className="min-w-0 max-w-[18rem] truncate font-medium text-white" title={policy.name}>
           {policy.name}
         </div>
       </td>
@@ -92,10 +77,7 @@ export function AccessPoliciesPage() {
             <span className="text-gray-500">No router</span>
           )}
           {policy.interface ? (
-            <div
-              className="mt-0.5 truncate font-mono text-xs text-slate-400"
-              title={policy.interface}
-            >
+            <div className="mt-0.5 truncate font-mono text-xs text-slate-400" title={policy.interface}>
               {policy.interface}
             </div>
           ) : (
@@ -108,12 +90,7 @@ export function AccessPoliciesPage() {
       </td>
       <td className="text-right align-top">
         <div className="flex justify-end space-x-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => handleEdit(policy)}
-            className="p-1"
-          >
+          <Button size="sm" variant="secondary" onClick={() => handleEdit(policy)} className="p-1">
             <PencilIcon className="h-4 w-4" />
           </Button>
           <Button
@@ -137,54 +114,30 @@ export function AccessPoliciesPage() {
     </div>
   );
 
-  const calculateStats = (
-    policies: AdminAccessPolicyDetail[],
-    totalItems: number,
-  ) => {
+  const calculateStats = (policies: AdminAccessPolicyDetail[], totalItems: number) => {
     const stats = {
       total: totalItems,
       withRouters: policies.filter((policy) => policy.router_id).length,
       withInterfaces: policies.filter((policy) => policy.interface).length,
-      totalRanges: policies.reduce(
-        (sum, policy) => sum + policy.ip_range_count,
-        0,
-      ),
+      totalRanges: policies.reduce((sum, policy) => sum + policy.ip_range_count, 0),
     };
 
     return (
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Access Policies</h1>
-          <div className="mt-2 flex gap-4 text-sm text-gray-400">
-            <span>
-              Total:{" "}
-              <span className="text-white font-medium">{stats.total}</span>
-            </span>
-            <span>
-              With Routers:{" "}
-              <span className="text-blue-400 font-medium">
-                {stats.withRouters}
-              </span>
-            </span>
-            <span>
-              With Interfaces:{" "}
-              <span className="text-green-400 font-medium">
-                {stats.withInterfaces}
-              </span>
-            </span>
-            <span>
-              IP Ranges:{" "}
-              <span className="text-purple-400 font-medium">
-                {stats.totalRanges}
-              </span>
-            </span>
-          </div>
-        </div>
-        <Button onClick={() => setShowCreateModal(true)}>
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Add Policy
-        </Button>
-      </div>
+      <StatsHeader
+        title="Access Policies"
+        stats={[
+          { label: "Total", value: stats.total },
+          { label: "With Routers", value: stats.withRouters, tone: "accent" },
+          { label: "With Interfaces", value: stats.withInterfaces, tone: "success" },
+          { label: "IP Ranges", value: stats.totalRanges, tone: "purple" },
+        ]}
+        actions={
+          <Button onClick={() => setShowCreateModal(true)}>
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Add Policy
+          </Button>
+        }
+      />
     );
   };
 
@@ -297,9 +250,7 @@ function CreateAccessPolicyModal({
     <Modal isOpen={isOpen} onClose={onClose} title="Create New Access Policy">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs font-medium text-white mb-2">
-            Policy Name *
-          </label>
+          <label className="block text-xs font-medium text-white mb-2">Policy Name *</label>
           <input
             type="text"
             value={formData.name}
@@ -310,9 +261,7 @@ function CreateAccessPolicyModal({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-white mb-2">
-            Kind
-          </label>
+          <label className="block text-xs font-medium text-white mb-2">Kind</label>
           <select
             value={formData.kind}
             onChange={(e) => setFormData({ ...formData, kind: e.target.value })}
@@ -323,40 +272,29 @@ function CreateAccessPolicyModal({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-white mb-2">
-            Router (Optional)
-          </label>
+          <label className="block text-xs font-medium text-white mb-2">Router (Optional)</label>
           <select
             value={formData.router_id}
-            onChange={(e) =>
-              setFormData({ ...formData, router_id: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, router_id: e.target.value })}
             className=""
             disabled={loadingRouters}
           >
             <option value="">Select a router...</option>
             {routers.map((router) => (
               <option key={router.id} value={router.id.toString()}>
-                {router.name} ({router.kind.replace("_", " ")})
-                {!router.enabled && " - DISABLED"}
+                {router.name} ({router.kind.replace("_", " ")}){!router.enabled && " - DISABLED"}
               </option>
             ))}
           </select>
-          {loadingRouters && (
-            <p className="text-xs text-gray-400 mt-1">Loading routers...</p>
-          )}
+          {loadingRouters && <p className="text-xs text-gray-400 mt-1">Loading routers...</p>}
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-white mb-2">
-            Interface (Optional)
-          </label>
+          <label className="block text-xs font-medium text-white mb-2">Interface (Optional)</label>
           <input
             type="text"
             value={formData.interface}
-            onChange={(e) =>
-              setFormData({ ...formData, interface: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, interface: e.target.value })}
             className=""
             placeholder="e.g., eth0, wlan0"
           />
@@ -442,9 +380,7 @@ function EditAccessPolicyModal({
     <Modal isOpen={isOpen} onClose={onClose} title="Edit Access Policy">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs font-medium text-white mb-2">
-            Policy Name *
-          </label>
+          <label className="block text-xs font-medium text-white mb-2">Policy Name *</label>
           <input
             type="text"
             value={formData.name}
@@ -455,9 +391,7 @@ function EditAccessPolicyModal({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-white mb-2">
-            Kind
-          </label>
+          <label className="block text-xs font-medium text-white mb-2">Kind</label>
           <select
             value={formData.kind}
             onChange={(e) =>
@@ -473,40 +407,29 @@ function EditAccessPolicyModal({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-white mb-2">
-            Router (Optional)
-          </label>
+          <label className="block text-xs font-medium text-white mb-2">Router (Optional)</label>
           <select
             value={formData.router_id}
-            onChange={(e) =>
-              setFormData({ ...formData, router_id: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, router_id: e.target.value })}
             className=""
             disabled={loadingRouters}
           >
             <option value="">Select a router...</option>
             {routers.map((router) => (
               <option key={router.id} value={router.id.toString()}>
-                {router.name} ({router.kind.replace("_", " ")})
-                {!router.enabled && " - DISABLED"}
+                {router.name} ({router.kind.replace("_", " ")}){!router.enabled && " - DISABLED"}
               </option>
             ))}
           </select>
-          {loadingRouters && (
-            <p className="text-xs text-gray-400 mt-1">Loading routers...</p>
-          )}
+          {loadingRouters && <p className="text-xs text-gray-400 mt-1">Loading routers...</p>}
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-white mb-2">
-            Interface (Optional)
-          </label>
+          <label className="block text-xs font-medium text-white mb-2">Interface (Optional)</label>
           <input
             type="text"
             value={formData.interface}
-            onChange={(e) =>
-              setFormData({ ...formData, interface: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, interface: e.target.value })}
             className=""
             placeholder="e.g., eth0, wlan0"
           />

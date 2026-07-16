@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
 import { PaginatedTable } from "../components/PaginatedTable";
+import { StatsHeader } from "../components/StatsHeader";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { useApiCall } from "../hooks/useApiCall";
 import { useToast } from "../hooks/useToast";
@@ -148,38 +149,32 @@ export function ResourceCostsPage() {
     const recurring = costs.filter((c) => c.cost_type === "recurring").length;
     const oneTime = costs.filter((c) => c.cost_type === "one_time").length;
     return (
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Resource Costs</h1>
-          <div className="mt-2 flex gap-4 text-sm text-gray-400">
-            <span>
-              Total: <span className="text-white font-medium">{totalItems}</span>
-            </span>
-            <span>
-              Recurring: <span className="text-blue-400 font-medium">{recurring}</span>
-            </span>
-            <span>
-              One-time: <span className="text-yellow-400 font-medium">{oneTime}</span>
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value as ResourceCostResourceType | "")}
-            className="!w-auto"
-          >
-            <option value="">All resource types</option>
-            <option value="vm_host">Hosts</option>
-            <option value="ip_range">IP Ranges</option>
-            <option value="generic">Generic</option>
-          </select>
-          <Button onClick={() => setShowCreateModal(true)}>
-            <PlusIcon className="h-4 w-4 mr-2" />
-            Add Cost
-          </Button>
-        </div>
-      </div>
+      <StatsHeader
+        title="Resource Costs"
+        stats={[
+          { label: "Total", value: totalItems },
+          { label: "Recurring", value: recurring, tone: "accent" },
+          { label: "One-time", value: oneTime, tone: "warning" },
+        ]}
+        actions={
+          <>
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value as ResourceCostResourceType | "")}
+              className="!w-auto"
+            >
+              <option value="">All resource types</option>
+              <option value="vm_host">Hosts</option>
+              <option value="ip_range">IP Ranges</option>
+              <option value="generic">Generic</option>
+            </select>
+            <Button onClick={() => setShowCreateModal(true)}>
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Add Cost
+            </Button>
+          </>
+        }
+      />
     );
   };
 

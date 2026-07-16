@@ -32,3 +32,7 @@ dist-ssr
 !.yarn/versions
 # Cloudflare Wrangler cache
 .wrangler/
+
+# local scratch / tooling
+poc/
+.playwright-mcp/

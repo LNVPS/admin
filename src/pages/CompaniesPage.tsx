@@ -1,22 +1,17 @@
+import { BuildingOfficeIcon, PencilIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
-import { useAdminApi } from "../hooks/useAdminApi";
-import { PaginatedTable } from "../components/PaginatedTable";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
+import { PaginatedTable } from "../components/PaginatedTable";
+import { StatsHeader } from "../components/StatsHeader";
+import { useAdminApi } from "../hooks/useAdminApi";
 import type { AdminCompanyInfo } from "../lib/api";
-import {
-  BuildingOfficeIcon,
-  PlusIcon,
-  PencilIcon,
-  TrashIcon,
-} from "@heroicons/react/24/outline";
 
 export function CompaniesPage() {
   const adminApi = useAdminApi();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedCompany, setSelectedCompany] =
-    useState<AdminCompanyInfo | null>(null);
+  const [selectedCompany, setSelectedCompany] = useState<AdminCompanyInfo | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const refreshData = () => {
@@ -62,9 +57,7 @@ export function CompaniesPage() {
   );
 
   const renderRow = (company: AdminCompanyInfo, index: number) => {
-    const cityLine = [company.city, company.state, company.postcode]
-      .filter(Boolean)
-      .join(", ");
+    const cityLine = [company.city, company.state, company.postcode].filter(Boolean).join(", ");
     return (
       <tr key={company.id || index}>
         <td className="whitespace-nowrap align-top text-white">{company.id}</td>
@@ -74,9 +67,7 @@ export function CompaniesPage() {
             <div className="truncate font-medium text-white" title={company.name}>
               {company.name}
             </div>
-            <div className="mt-0.5 truncate font-mono text-xs text-blue-400">
-              {company.base_currency}
-            </div>
+            <div className="mt-0.5 truncate font-mono text-xs text-blue-400">{company.base_currency}</div>
             {company.tax_id && (
               <div className="truncate text-xs text-slate-400" title={company.tax_id}>
                 Tax ID: {company.tax_id}
@@ -102,9 +93,7 @@ export function CompaniesPage() {
                 {cityLine}
               </div>
             )}
-            {company.country_code && (
-              <div className="mt-0.5 text-xs text-slate-500">{company.country_code}</div>
-            )}
+            {company.country_code && <div className="mt-0.5 text-xs text-slate-500">{company.country_code}</div>}
           </div>
         </td>
         {/* Contact: email / phone */}
@@ -129,12 +118,7 @@ export function CompaniesPage() {
         </td>
         <td className="text-right align-top">
           <div className="flex justify-end space-x-2">
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => handleEdit(company)}
-              className="p-1"
-            >
+            <Button size="sm" variant="secondary" onClick={() => handleEdit(company)} className="p-1">
               <PencilIcon className="h-4 w-4" />
             </Button>
             <Button
@@ -159,48 +143,28 @@ export function CompaniesPage() {
     </div>
   );
 
-  const calculateStats = (
-    companies: AdminCompanyInfo[],
-    totalItems: number,
-  ) => {
+  const calculateStats = (companies: AdminCompanyInfo[], totalItems: number) => {
     const stats = {
       total: totalItems,
-      totalRegions: companies.reduce(
-        (sum, company) => sum + company.region_count,
-        0,
-      ),
-      withRegions: companies.filter((company) => company.region_count > 0)
-        .length,
+      totalRegions: companies.reduce((sum, company) => sum + company.region_count, 0),
+      withRegions: companies.filter((company) => company.region_count > 0).length,
     };
 
     return (
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Companies</h1>
-          <div className="mt-2 flex gap-4 text-sm text-gray-400">
-            <span>
-              Total:{" "}
-              <span className="text-white font-medium">{stats.total}</span>
-            </span>
-            <span>
-              With Regions:{" "}
-              <span className="text-blue-400 font-medium">
-                {stats.withRegions}
-              </span>
-            </span>
-            <span>
-              Total Regions:{" "}
-              <span className="text-green-400 font-medium">
-                {stats.totalRegions}
-              </span>
-            </span>
-          </div>
-        </div>
-        <Button onClick={() => setShowCreateModal(true)}>
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Add Company
-        </Button>
-      </div>
+      <StatsHeader
+        title="Companies"
+        stats={[
+          { label: "Total", value: stats.total },
+          { label: "With Regions", value: stats.withRegions, tone: "accent" },
+          { label: "Total Regions", value: stats.totalRegions, tone: "success" },
+        ]}
+        actions={
+          <Button onClick={() => setShowCreateModal(true)}>
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Add Company
+          </Button>
+        }
+      />
     );
   };
 
@@ -220,11 +184,7 @@ export function CompaniesPage() {
       />
 
       {/* Create Company Modal */}
-      <CreateCompanyModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onSuccess={refreshData}
-      />
+      <CreateCompanyModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} onSuccess={refreshData} />
 
       {/* Edit Company Modal */}
       {selectedCompany && (
@@ -314,9 +274,7 @@ function CreateCompanyModal({
     <Modal isOpen={isOpen} onClose={onClose} title="Create New Company">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs font-medium text-white mb-2">
-            Company Name *
-          </label>
+          <label className="block text-xs font-medium text-white mb-2">Company Name *</label>
           <input
             type="text"
             value={formData.name}
@@ -327,14 +285,10 @@ function CreateCompanyModal({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-white mb-2">
-            Base Currency *
-          </label>
+          <label className="block text-xs font-medium text-white mb-2">Base Currency *</label>
           <select
             value={formData.base_currency}
-            onChange={(e) =>
-              setFormData({ ...formData, base_currency: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, base_currency: e.target.value })}
             className=""
             required
           >
@@ -351,28 +305,20 @@ function CreateCompanyModal({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              Address Line 1
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">Address Line 1</label>
             <input
               type="text"
               value={formData.address_1}
-              onChange={(e) =>
-                setFormData({ ...formData, address_1: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, address_1: e.target.value })}
               className=""
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              Address Line 2
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">Address Line 2</label>
             <input
               type="text"
               value={formData.address_2}
-              onChange={(e) =>
-                setFormData({ ...formData, address_2: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, address_2: e.target.value })}
               className=""
             />
           </div>
@@ -380,41 +326,29 @@ function CreateCompanyModal({
 
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              City
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">City</label>
             <input
               type="text"
               value={formData.city}
-              onChange={(e) =>
-                setFormData({ ...formData, city: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, city: e.target.value })}
               className=""
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              State/Province
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">State/Province</label>
             <input
               type="text"
               value={formData.state}
-              onChange={(e) =>
-                setFormData({ ...formData, state: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, state: e.target.value })}
               className=""
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              Postal Code
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">Postal Code</label>
             <input
               type="text"
               value={formData.postcode}
-              onChange={(e) =>
-                setFormData({ ...formData, postcode: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, postcode: e.target.value })}
               className=""
             />
           </div>
@@ -422,29 +356,21 @@ function CreateCompanyModal({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              Country Code
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">Country Code</label>
             <input
               type="text"
               value={formData.country_code}
-              onChange={(e) =>
-                setFormData({ ...formData, country_code: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, country_code: e.target.value })}
               className=""
               placeholder="e.g., US, CA, GB"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              Tax ID
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">Tax ID</label>
             <input
               type="text"
               value={formData.tax_id}
-              onChange={(e) =>
-                setFormData({ ...formData, tax_id: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, tax_id: e.target.value })}
               className=""
             />
           </div>
@@ -452,28 +378,20 @@ function CreateCompanyModal({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              Phone
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">Phone</label>
             <input
               type="tel"
               value={formData.phone}
-              onChange={(e) =>
-                setFormData({ ...formData, phone: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               className=""
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              Email
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">Email</label>
             <input
               type="email"
               value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className=""
             />
           </div>
@@ -553,9 +471,7 @@ function EditCompanyModal({
     <Modal isOpen={isOpen} onClose={onClose} title="Edit Company">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs font-medium text-white mb-2">
-            Company Name *
-          </label>
+          <label className="block text-xs font-medium text-white mb-2">Company Name *</label>
           <input
             type="text"
             value={formData.name}
@@ -566,14 +482,10 @@ function EditCompanyModal({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-white mb-2">
-            Base Currency *
-          </label>
+          <label className="block text-xs font-medium text-white mb-2">Base Currency *</label>
           <select
             value={formData.base_currency}
-            onChange={(e) =>
-              setFormData({ ...formData, base_currency: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, base_currency: e.target.value })}
             className=""
             required
           >
@@ -590,28 +502,20 @@ function EditCompanyModal({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              Address Line 1
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">Address Line 1</label>
             <input
               type="text"
               value={formData.address_1}
-              onChange={(e) =>
-                setFormData({ ...formData, address_1: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, address_1: e.target.value })}
               className=""
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              Address Line 2
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">Address Line 2</label>
             <input
               type="text"
               value={formData.address_2}
-              onChange={(e) =>
-                setFormData({ ...formData, address_2: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, address_2: e.target.value })}
               className=""
             />
           </div>
@@ -619,41 +523,29 @@ function EditCompanyModal({
 
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              City
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">City</label>
             <input
               type="text"
               value={formData.city}
-              onChange={(e) =>
-                setFormData({ ...formData, city: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, city: e.target.value })}
               className=""
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              State/Province
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">State/Province</label>
             <input
               type="text"
               value={formData.state}
-              onChange={(e) =>
-                setFormData({ ...formData, state: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, state: e.target.value })}
               className=""
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              Postal Code
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">Postal Code</label>
             <input
               type="text"
               value={formData.postcode}
-              onChange={(e) =>
-                setFormData({ ...formData, postcode: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, postcode: e.target.value })}
               className=""
             />
           </div>
@@ -661,29 +553,21 @@ function EditCompanyModal({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              Country Code
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">Country Code</label>
             <input
               type="text"
               value={formData.country_code}
-              onChange={(e) =>
-                setFormData({ ...formData, country_code: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, country_code: e.target.value })}
               className=""
               placeholder="e.g., US, CA, GB"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              Tax ID
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">Tax ID</label>
             <input
               type="text"
               value={formData.tax_id}
-              onChange={(e) =>
-                setFormData({ ...formData, tax_id: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, tax_id: e.target.value })}
               className=""
             />
           </div>
@@ -691,28 +575,20 @@ function EditCompanyModal({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              Phone
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">Phone</label>
             <input
               type="tel"
               value={formData.phone}
-              onChange={(e) =>
-                setFormData({ ...formData, phone: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               className=""
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              Email
-            </label>
+            <label className="block text-xs font-medium text-white mb-2">Email</label>
             <input
               type="email"
               value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className=""
             />
           </div>

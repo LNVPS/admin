@@ -1,10 +1,12 @@
-import { DocumentTextIcon, FunnelIcon, PencilIcon, PlusIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { DocumentTextIcon, PencilIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "../components/Button";
+import { countActiveFilters, FilterBar, FilterButton, type FilterField } from "../components/FilterBar";
 import { Modal } from "../components/Modal";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { Profile } from "../components/Profile";
+import { StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import type { AdminSubscriptionInfo } from "../lib/api";
@@ -74,11 +76,37 @@ export function SubscriptionsPage() {
     setRefreshTrigger((prev) => prev + 1);
   };
 
-  const activeFilters =
-    (filters.user_id ? 1 : 0) +
-    (filters.search ? 1 : 0) +
-    (filters.show_inactive ? 1 : 0) +
-    (filters.auto_renewal ? 1 : 0);
+  const filterFields: FilterField[] = [
+    {
+      kind: "number",
+      key: "user_id",
+      label: "User ID",
+      value: filters.user_id,
+      placeholder: "Filter by user ID",
+      onChange: (value) => handleFilterChange("user_id", value),
+    },
+    {
+      kind: "select",
+      key: "auto_renewal",
+      label: "Auto-renewal",
+      value: filters.auto_renewal,
+      onChange: (value) => handleFilterChange("auto_renewal", value),
+      options: [
+        { value: "", label: "All" },
+        { value: "true", label: "Enabled" },
+        { value: "false", label: "Disabled" },
+      ],
+    },
+    {
+      kind: "checkbox",
+      key: "show_inactive",
+      label: "Show inactive",
+      value: filters.show_inactive === "true",
+      onChange: (checked) => handleFilterChange("show_inactive", checked ? "true" : ""),
+    },
+  ];
+
+  const activeFilters = countActiveFilters(filterFields);
 
   const getApiFilters = () => {
     const apiFilters: {
@@ -142,11 +170,7 @@ export function SubscriptionsPage() {
   );
 
   const renderRow = (sub: AdminSubscriptionInfo, index: number) => (
-    <tr
-      key={sub.id || index}
-      onClick={() => navigate(`/subscriptions/${sub.id}`)}
-      className="cursor-pointer"
-    >
+    <tr key={sub.id || index} onClick={() => navigate(`/subscriptions/${sub.id}`)} className="cursor-pointer">
       <td className="whitespace-nowrap align-top text-white">{sub.id}</td>
       {/* Name + user */}
       <td className="align-top">
@@ -259,132 +283,71 @@ export function SubscriptionsPage() {
     };
 
     return (
-      <div className="flex items-start justify-between gap-6 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Subscriptions</h1>
-          <div className="mt-2 flex gap-4 text-sm text-gray-400">
-            <span>
-              Total: <span className="text-white font-medium">{stats.total}</span>
-            </span>
-            <span>
-              Active: <span className="text-green-400 font-medium">{stats.active}</span>
-            </span>
-            <span>
-              Auto-renew: <span className="text-blue-400 font-medium">{stats.autoRenew}</span>
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center space-x-2 flex-wrap gap-y-2">
-          <div className="w-56">
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search name or description"
-              className="!py-1.5 text-sm"
-            />
-          </div>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const id = subIdInput.trim();
-              if (id && !Number.isNaN(Number(id))) {
-                navigate(`/subscriptions/${id}`);
-                setSubIdInput("");
-              }
-            }}
-            className="flex items-center space-x-1"
-          >
-            <div className="w-28">
+      <StatsHeader
+        title="Subscriptions"
+        stats={[
+          { label: "Total", value: stats.total },
+          { label: "Active", value: stats.active, tone: "success" },
+          { label: "Auto-renew", value: stats.autoRenew, tone: "accent" },
+        ]}
+        actions={
+          <>
+            <div className="w-56">
               <input
-                type="number"
-                value={subIdInput}
-                onChange={(e) => setSubIdInput(e.target.value)}
-                placeholder="Go to ID"
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search name or description"
                 className="!py-1.5 text-sm"
               />
             </div>
-            <Button variant="secondary" type="submit" disabled={!subIdInput.trim()}>
-              Go
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const id = subIdInput.trim();
+                if (id && !Number.isNaN(Number(id))) {
+                  navigate(`/subscriptions/${id}`);
+                  setSubIdInput("");
+                }
+              }}
+              className="flex items-center space-x-1"
+            >
+              <div className="w-28">
+                <input
+                  type="number"
+                  value={subIdInput}
+                  onChange={(e) => setSubIdInput(e.target.value)}
+                  placeholder="Go to ID"
+                  className="!py-1.5 text-sm"
+                />
+              </div>
+              <Button variant="secondary" type="submit" disabled={!subIdInput.trim()}>
+                Go
+              </Button>
+            </form>
+            <Button onClick={() => setShowCreateModal(true)}>
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Create
             </Button>
-          </form>
-          <Button onClick={() => setShowCreateModal(true)}>
-            <PlusIcon className="h-4 w-4 mr-2" />
-            Create
-          </Button>
-          <Button variant="secondary" onClick={() => setShowFilters(!showFilters)} className="relative">
-            <FunnelIcon className="h-4 w-4 mr-2" />
-            Filters
-            {activeFilters > 0 && (
-              <span className="absolute -top-1 -right-1 bg-blue-500 text-slate-950 font-semibold text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                {activeFilters}
-              </span>
-            )}
-          </Button>
-        </div>
-      </div>
+            <FilterButton open={showFilters} activeCount={activeFilters} onClick={() => setShowFilters(!showFilters)} />
+          </>
+        }
+      />
     );
   };
 
   return (
     <div className="space-y-4">
-      {showFilters && (
-        <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium text-white">Filters</h3>
-            <Button variant="secondary" onClick={() => setShowFilters(false)} className="p-1">
-              <XMarkIcon className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">User ID</label>
-              <input
-                type="number"
-                value={filters.user_id}
-                onChange={(e) => handleFilterChange("user_id", e.target.value)}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
-                placeholder="Filter by user ID"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Auto-renewal</label>
-              <select
-                value={filters.auto_renewal}
-                onChange={(e) => handleFilterChange("auto_renewal", e.target.value)}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
-              >
-                <option value="">All</option>
-                <option value="true">Enabled</option>
-                <option value="false">Disabled</option>
-              </select>
-            </div>
-
-            <div className="flex items-end">
-              <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={filters.show_inactive === "true"}
-                  onChange={(e) => handleFilterChange("show_inactive", e.target.checked ? "true" : "")}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                Show inactive
-              </label>
-            </div>
-
-            <div className="flex items-end md:col-span-3">
-              <Button variant="secondary" onClick={clearFilters} disabled={activeFilters === 0}>
-                Clear All Filters
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <PaginatedTable
         apiCall={(params) => adminApi.getSubscriptions({ ...params, ...getApiFilters() })}
+        toolbar={
+          <FilterBar
+            open={showFilters}
+            fields={filterFields}
+            onClear={clearFilters}
+            onClose={() => setShowFilters(false)}
+          />
+        }
         renderHeader={renderHeader}
         renderRow={renderRow}
         renderEmptyState={renderEmptyState}

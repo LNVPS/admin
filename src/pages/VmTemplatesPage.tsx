@@ -4,6 +4,7 @@ import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
 import { MultiSelect } from "../components/MultiSelect";
 import { PaginatedTable } from "../components/PaginatedTable";
+import { StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import {
@@ -195,10 +196,7 @@ export function VmTemplatesPage() {
         {/* Deployment: region + active VMs */}
         <td className="align-top text-gray-300">
           <div className="min-w-0 max-w-[12rem]">
-            <div
-              className="truncate text-white"
-              title={template.region_name || `Region ${template.region_id}`}
-            >
+            <div className="truncate text-white" title={template.region_name || `Region ${template.region_id}`}>
               {template.region_name || `Region ${template.region_id}`}
             </div>
             <div className="mt-0.5 flex items-center text-xs text-slate-400">
@@ -212,17 +210,11 @@ export function VmTemplatesPage() {
         <td className="align-top">
           <div className="flex flex-wrap gap-1">
             <StatusBadge status={template.enabled ? "enabled" : "disabled"} />
-            {template.expires && new Date(template.expires) < new Date() && (
-              <StatusBadge status="expired" />
-            )}
+            {template.expires && new Date(template.expires) < new Date() && <StatusBadge status="expired" />}
           </div>
-          <div className="mt-1 text-xs text-slate-400">
-            Created {new Date(template.created).toLocaleDateString()}
-          </div>
+          <div className="mt-1 text-xs text-slate-400">Created {new Date(template.created).toLocaleDateString()}</div>
           {template.expires && (
-            <div className="text-xs text-slate-500">
-              Expires {new Date(template.expires).toLocaleDateString()}
-            </div>
+            <div className="text-xs text-slate-500">Expires {new Date(template.expires).toLocaleDateString()}</div>
           )}
         </td>
         <td className="text-right align-top">
@@ -261,32 +253,22 @@ export function VmTemplatesPage() {
     };
 
     return (
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">VM Templates</h1>
-          <div className="mt-2 flex gap-4 text-sm text-gray-400">
-            <span>
-              Total: <span className="text-white font-medium">{stats.total}</span>
-            </span>
-            <span>
-              Enabled: <span className="text-green-400 font-medium">{stats.enabled}</span>
-            </span>
-            <span>
-              Disabled: <span className="text-red-400 font-medium">{stats.disabled}</span>
-            </span>
-            <span>
-              Expired: <span className="text-orange-400 font-medium">{stats.expired}</span>
-            </span>
-            <span>
-              Active VMs: <span className="text-purple-400 font-medium">{stats.totalActiveVMs}</span>
-            </span>
-          </div>
-        </div>
-        <Button onClick={handleCreate}>
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Add Template
-        </Button>
-      </div>
+      <StatsHeader
+        title="VM Templates"
+        stats={[
+          { label: "Total", value: stats.total },
+          { label: "Enabled", value: stats.enabled, tone: "success" },
+          { label: "Disabled", value: stats.disabled, tone: "danger" },
+          { label: "Expired", value: stats.expired, tone: "orange" },
+          { label: "Active VMs", value: stats.totalActiveVMs, tone: "purple" },
+        ]}
+        actions={
+          <Button onClick={handleCreate}>
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Add Template
+          </Button>
+        }
+      />
     );
   };
 

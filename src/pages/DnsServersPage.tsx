@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
 import { PaginatedTable } from "../components/PaginatedTable";
+import { StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { useToast } from "../hooks/useToast";
@@ -132,23 +133,19 @@ export function DnsServersPage() {
       enabled: servers.filter((s) => s.enabled).length,
     };
     return (
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">DNS Servers</h1>
-          <div className="mt-2 flex gap-4 text-sm text-gray-400">
-            <span>
-              Total: <span className="text-white font-medium">{stats.total}</span>
-            </span>
-            <span>
-              Enabled: <span className="text-green-400 font-medium">{stats.enabled}</span>
-            </span>
-          </div>
-        </div>
-        <Button onClick={() => setShowCreateModal(true)}>
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Add DNS Server
-        </Button>
-      </div>
+      <StatsHeader
+        title="DNS Servers"
+        stats={[
+          { label: "Total", value: stats.total },
+          { label: "Enabled", value: stats.enabled, tone: "success" },
+        ]}
+        actions={
+          <Button onClick={() => setShowCreateModal(true)}>
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Add DNS Server
+          </Button>
+        }
+      />
     );
   };
 

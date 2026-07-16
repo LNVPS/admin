@@ -1,24 +1,18 @@
-import { useState, useEffect } from "react";
-import { useAdminApi } from "../hooks/useAdminApi";
-import { PaginatedTable } from "../components/PaginatedTable";
-import { StatusBadge } from "../components/StatusBadge";
+import { GlobeAltIcon, PencilIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
-import type { AdminRegionInfo, AdminCompanyInfo } from "../lib/api";
-import {
-  GlobeAltIcon,
-  PlusIcon,
-  PencilIcon,
-  TrashIcon,
-} from "@heroicons/react/24/outline";
+import { PaginatedTable } from "../components/PaginatedTable";
+import { StatsHeader } from "../components/StatsHeader";
+import { StatusBadge } from "../components/StatusBadge";
+import { useAdminApi } from "../hooks/useAdminApi";
+import type { AdminCompanyInfo, AdminRegionInfo } from "../lib/api";
 
 export function RegionsPage() {
   const adminApi = useAdminApi();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedRegion, setSelectedRegion] = useState<AdminRegionInfo | null>(
-    null,
-  );
+  const [selectedRegion, setSelectedRegion] = useState<AdminRegionInfo | null>(null);
   const [companies, setCompanies] = useState<AdminCompanyInfo[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -105,19 +99,12 @@ export function RegionsPage() {
       <td className="align-top text-gray-300">
         <div className="text-xs space-y-0.5">
           <div className="text-blue-400">{region.total_cpu_cores} cores</div>
-          <div className="text-blue-300">
-            {Math.round(region.total_memory_bytes / (1024 * 1024 * 1024))} GB
-          </div>
+          <div className="text-blue-300">{Math.round(region.total_memory_bytes / (1024 * 1024 * 1024))} GB</div>
         </div>
       </td>
       <td className="whitespace-nowrap text-right align-top">
         <div className="flex justify-end space-x-1">
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => handleEdit(region)}
-            className="p-1"
-          >
+          <Button size="sm" variant="secondary" onClick={() => handleEdit(region)} className="p-1">
             <PencilIcon className="h-3 w-3" />
           </Button>
           <Button
@@ -147,56 +134,27 @@ export function RegionsPage() {
       disabled: regions.filter((region) => !region.enabled).length,
       totalHosts: regions.reduce((sum, region) => sum + region.host_count, 0),
       totalVMs: regions.reduce((sum, region) => sum + region.total_vms, 0),
-      totalCPU: regions.reduce(
-        (sum, region) => sum + region.total_cpu_cores,
-        0,
-      ),
+      totalCPU: regions.reduce((sum, region) => sum + region.total_cpu_cores, 0),
     };
 
     return (
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Regions</h1>
-          <div className="mt-2 flex gap-4 text-sm text-gray-400">
-            <span>
-              Total:{" "}
-              <span className="text-white font-medium">{stats.total}</span>
-            </span>
-            <span>
-              Enabled:{" "}
-              <span className="text-green-400 font-medium">
-                {stats.enabled}
-              </span>
-            </span>
-            <span>
-              Disabled:{" "}
-              <span className="text-red-400 font-medium">{stats.disabled}</span>
-            </span>
-            <span>
-              Hosts:{" "}
-              <span className="text-purple-400 font-medium">
-                {stats.totalHosts}
-              </span>
-            </span>
-            <span>
-              VMs:{" "}
-              <span className="text-green-400 font-medium">
-                {stats.totalVMs}
-              </span>
-            </span>
-            <span>
-              CPU:{" "}
-              <span className="text-blue-400 font-medium">
-                {stats.totalCPU}
-              </span>
-            </span>
-          </div>
-        </div>
-        <Button onClick={() => setShowCreateModal(true)}>
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Add Region
-        </Button>
-      </div>
+      <StatsHeader
+        title="Regions"
+        stats={[
+          { label: "Total", value: stats.total },
+          { label: "Enabled", value: stats.enabled, tone: "success" },
+          { label: "Disabled", value: stats.disabled, tone: "danger" },
+          { label: "Hosts", value: stats.totalHosts, tone: "purple" },
+          { label: "VMs", value: stats.totalVMs, tone: "success" },
+          { label: "CPU", value: stats.totalCPU, tone: "accent" },
+        ]}
+        actions={
+          <Button onClick={() => setShowCreateModal(true)}>
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Add Region
+          </Button>
+        }
+      />
     );
   };
 
@@ -284,9 +242,7 @@ function CreateRegionModal({
     <Modal isOpen={isOpen} onClose={onClose} title="Create New Region">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-white mb-2">
-            Region Name *
-          </label>
+          <label className="block text-sm font-medium text-white mb-2">Region Name *</label>
           <input
             type="text"
             value={formData.name}
@@ -298,14 +254,10 @@ function CreateRegionModal({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-white mb-2">
-            Company
-          </label>
+          <label className="block text-sm font-medium text-white mb-2">Company</label>
           <select
             value={formData.company_id}
-            onChange={(e) =>
-              setFormData({ ...formData, company_id: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, company_id: e.target.value })}
             className=""
           >
             <option value="">No company</option>
@@ -322,9 +274,7 @@ function CreateRegionModal({
             type="checkbox"
             id="enabled"
             checked={formData.enabled}
-            onChange={(e) =>
-              setFormData({ ...formData, enabled: e.target.checked })
-            }
+            onChange={(e) => setFormData({ ...formData, enabled: e.target.checked })}
             className="h-4 w-4 text-blue-600 bg-slate-800 border-slate-600 rounded"
           />
           <label htmlFor="enabled" className="ml-2 text-sm text-white">
@@ -390,9 +340,7 @@ function EditRegionModal({
     <Modal isOpen={isOpen} onClose={onClose} title="Edit Region">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-white mb-2">
-            Region Name *
-          </label>
+          <label className="block text-sm font-medium text-white mb-2">Region Name *</label>
           <input
             type="text"
             value={formData.name}
@@ -403,14 +351,10 @@ function EditRegionModal({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-white mb-2">
-            Company
-          </label>
+          <label className="block text-sm font-medium text-white mb-2">Company</label>
           <select
             value={formData.company_id}
-            onChange={(e) =>
-              setFormData({ ...formData, company_id: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, company_id: e.target.value })}
             className=""
           >
             <option value="">No company</option>
@@ -427,9 +371,7 @@ function EditRegionModal({
             type="checkbox"
             id="enabled-edit"
             checked={formData.enabled}
-            onChange={(e) =>
-              setFormData({ ...formData, enabled: e.target.checked })
-            }
+            onChange={(e) => setFormData({ ...formData, enabled: e.target.checked })}
             className="h-4 w-4 text-blue-600 bg-slate-800 border-slate-600 rounded"
           />
           <label htmlFor="enabled-edit" className="ml-2 text-sm text-white">

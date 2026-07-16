@@ -2,13 +2,13 @@ import {
   ArrowPathIcon,
   ChartBarIcon,
   MagnifyingGlassIcon,
-  ServerIcon,
   UserGroupIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { PaginatedTable } from "../components/PaginatedTable";
+import { StatsHeader } from "../components/StatsHeader";
 import { useAdminApi } from "../hooks/useAdminApi";
 import type { AdminVmInfo } from "../lib/api";
 import { formatBytes } from "../utils/formatBytes";
@@ -63,32 +63,13 @@ export function ReferralsPage() {
     const uniqueRegions = new Set(items.map((vm) => vm.region_name)).size;
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-slate-800 rounded-lg p-4 flex items-center gap-3">
-          <ServerIcon className="h-8 w-8 text-blue-500 shrink-0" />
-          <div>
-            <p className="text-gray-400 text-sm">Referred VMs (page)</p>
-            <p className="text-white font-semibold text-lg">{items.length}</p>
-            <p className="text-blue-400 text-xs">of {total} total</p>
-          </div>
-        </div>
-        <div className="bg-slate-800 rounded-lg p-4 flex items-center gap-3">
-          <UserGroupIcon className="h-8 w-8 text-green-500 shrink-0" />
-          <div>
-            <p className="text-gray-400 text-sm">Unique Ref Codes</p>
-            <p className="text-white font-semibold text-lg">{uniqueCodes}</p>
-            <p className="text-green-400 text-xs">on this page</p>
-          </div>
-        </div>
-        <div className="bg-slate-800 rounded-lg p-4 flex items-center gap-3">
-          <ChartBarIcon className="h-8 w-8 text-purple-500 shrink-0" />
-          <div>
-            <p className="text-gray-400 text-sm">Regions</p>
-            <p className="text-white font-semibold text-lg">{uniqueRegions}</p>
-            <p className="text-purple-400 text-xs">on this page</p>
-          </div>
-        </div>
-      </div>
+      <StatsHeader
+        stats={[
+          { label: "Referred VMs (page)", value: `${items.length} of ${total}` },
+          { label: "Unique Ref Codes", value: uniqueCodes, tone: "success" },
+          { label: "Regions", value: uniqueRegions, tone: "purple" },
+        ]}
+      />
     );
   };
 

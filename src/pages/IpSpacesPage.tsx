@@ -10,9 +10,10 @@ import { useState } from "react";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
 import { PaginatedTable } from "../components/PaginatedTable";
+import { StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
-import { type AdminAvailableIpSpaceInfo, type AdminIpSpacePricingInfo } from "../lib/api";
+import type { AdminAvailableIpSpaceInfo, AdminIpSpacePricingInfo } from "../lib/api";
 
 export function IpSpacesPage() {
   const adminApi = useAdminApi();
@@ -160,29 +161,21 @@ export function IpSpacesPage() {
     };
 
     return (
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">IP Space for Sale</h1>
-          <div className="mt-2 flex gap-4 text-sm text-gray-400">
-            <span>
-              Total: <span className="text-white font-medium">{stats.total}</span>
-            </span>
-            <span>
-              Available: <span className="text-green-400 font-medium">{stats.available}</span>
-            </span>
-            <span>
-              Reserved: <span className="text-yellow-400 font-medium">{stats.reserved}</span>
-            </span>
-            <span>
-              Pricing Tiers: <span className="text-blue-400 font-medium">{stats.totalPricingTiers}</span>
-            </span>
-          </div>
-        </div>
-        <Button onClick={() => setShowCreateModal(true)}>
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Add IP Space
-        </Button>
-      </div>
+      <StatsHeader
+        title="IP Space for Sale"
+        stats={[
+          { label: "Total", value: stats.total },
+          { label: "Available", value: stats.available, tone: "success" },
+          { label: "Reserved", value: stats.reserved, tone: "warning" },
+          { label: "Pricing Tiers", value: stats.totalPricingTiers, tone: "accent" },
+        ]}
+        actions={
+          <Button onClick={() => setShowCreateModal(true)}>
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Add IP Space
+          </Button>
+        }
+      />
     );
   };
 

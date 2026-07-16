@@ -12,6 +12,7 @@ import { Link } from "react-router-dom";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
 import { PaginatedTable } from "../components/PaginatedTable";
+import { StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { useToast } from "../hooks/useToast";
@@ -215,23 +216,19 @@ export function IpRangesPage() {
     };
 
     return (
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">IP Ranges</h1>
-          <div className="mt-2 flex gap-4 text-sm text-gray-400">
-            <span>
-              Total: <span className="text-white font-medium">{stats.total}</span>
-            </span>
-            <span>
-              Enabled: <span className="text-green-400 font-medium">{stats.enabled}</span>
-            </span>
-          </div>
-        </div>
-        <Button onClick={() => setShowCreateModal(true)}>
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Add IP Range
-        </Button>
-      </div>
+      <StatsHeader
+        title="IP Ranges"
+        stats={[
+          { label: "Total", value: stats.total },
+          { label: "Enabled", value: stats.enabled, tone: "success" },
+        ]}
+        actions={
+          <Button onClick={() => setShowCreateModal(true)}>
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Add IP Range
+          </Button>
+        }
+      />
     );
   };
 
@@ -333,9 +330,7 @@ function ZoneSelect({
     <div>
       <label className="block text-xs font-medium text-white mb-2">{label}</label>
       <select value={value} onChange={(e) => onChange(e.target.value)} className="" disabled={!dnsServerId || loading}>
-        <option value="">
-          {!dnsServerId ? "Select a DNS server first" : loading ? "Loading zones..." : "None"}
-        </option>
+        <option value="">{!dnsServerId ? "Select a DNS server first" : loading ? "Loading zones..." : "None"}</option>
         {hasCurrentValue && <option value={value}>{value}</option>}
         {zones.map((zone) => (
           <option key={zone.id} value={zone.id}>

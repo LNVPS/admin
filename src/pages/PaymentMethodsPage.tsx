@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
 import { PaginatedTable } from "../components/PaginatedTable";
+import { StatsHeader } from "../components/StatsHeader";
 import { useAdminApi } from "../hooks/useAdminApi";
 import type {
   AdminCompanyInfo,
@@ -174,10 +175,7 @@ export function PaymentMethodsPage() {
               )}
             </div>
             {config.supported_currencies && config.supported_currencies.length > 0 && (
-              <div
-                className="mt-1 truncate text-xs text-slate-400"
-                title={config.supported_currencies.join(", ")}
-              >
+              <div className="mt-1 truncate text-xs text-slate-400" title={config.supported_currencies.join(", ")}>
                 {config.supported_currencies.join(", ")}
               </div>
             )}
@@ -249,29 +247,21 @@ export function PaymentMethodsPage() {
     };
 
     return (
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Payment Methods</h1>
-          <div className="mt-2 flex gap-4 text-sm text-gray-400">
-            <span>
-              Total: <span className="text-white font-medium">{stats.total}</span>
-            </span>
-            <span>
-              Enabled: <span className="text-green-400 font-medium">{stats.enabled}</span>
-            </span>
-            <span>
-              Lightning: <span className="text-yellow-400 font-medium">{stats.lightning}</span>
-            </span>
-            <span>
-              Fiat: <span className="text-blue-400 font-medium">{stats.fiat}</span>
-            </span>
-          </div>
-        </div>
-        <Button onClick={() => setShowCreateModal(true)}>
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Add Payment Method
-        </Button>
-      </div>
+      <StatsHeader
+        title="Payment Methods"
+        stats={[
+          { label: "Total", value: stats.total },
+          { label: "Enabled", value: stats.enabled, tone: "success" },
+          { label: "Lightning", value: stats.lightning, tone: "warning" },
+          { label: "Fiat", value: stats.fiat, tone: "accent" },
+        ]}
+        actions={
+          <Button onClick={() => setShowCreateModal(true)}>
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Add Payment Method
+          </Button>
+        }
+      />
     );
   };
 

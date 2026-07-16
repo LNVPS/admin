@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
 import { PaginatedTable } from "../components/PaginatedTable";
+import { StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { type AdminVmOsImageInfo, ApiOsDistribution } from "../lib/api";
@@ -136,32 +137,22 @@ export function OsImagesPage() {
     };
 
     return (
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">OS Images</h1>
-          <div className="mt-2 flex gap-4 text-sm text-gray-400">
-            <span>
-              Total: <span className="text-white font-medium">{stats.total}</span>
-            </span>
-            <span>
-              Enabled: <span className="text-green-400 font-medium">{stats.enabled}</span>
-            </span>
-            <span>
-              Disabled: <span className="text-red-400 font-medium">{stats.disabled}</span>
-            </span>
-            <span>
-              Distributions: <span className="text-blue-400 font-medium">{stats.distributions}</span>
-            </span>
-            <span>
-              Active VMs: <span className="text-purple-400 font-medium">{stats.totalActiveVMs}</span>
-            </span>
-          </div>
-        </div>
-        <Button onClick={openCreate}>
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Add OS Image
-        </Button>
-      </div>
+      <StatsHeader
+        title="OS Images"
+        stats={[
+          { label: "Total", value: stats.total },
+          { label: "Enabled", value: stats.enabled, tone: "success" },
+          { label: "Disabled", value: stats.disabled, tone: "danger" },
+          { label: "Distributions", value: stats.distributions, tone: "accent" },
+          { label: "Active VMs", value: stats.totalActiveVMs, tone: "purple" },
+        ]}
+        actions={
+          <Button onClick={openCreate}>
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Add OS Image
+          </Button>
+        }
+      />
     );
   };
 

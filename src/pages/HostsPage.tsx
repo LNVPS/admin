@@ -7,6 +7,7 @@ import { MultiSelect } from "../components/MultiSelect";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { Pill } from "../components/Pill";
 import { ProxmoxTokenInput } from "../components/ProxmoxTokenInput";
+import { StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import type { AdminHostInfo, AdminRegionInfo, VmHostKind } from "../lib/api";
@@ -150,9 +151,7 @@ export function HostsPage() {
           <div>
             Disk {(host.load_disk * 100).toFixed(0)}% / {(host.calculated_load.disk_load * 100).toFixed(0)}%
           </div>
-          <div className="font-medium text-white">
-            Overall {(host.calculated_load.overall_load * 100).toFixed(0)}%
-          </div>
+          <div className="font-medium text-white">Overall {(host.calculated_load.overall_load * 100).toFixed(0)}%</div>
           <div className="mt-1">
             <span
               className={`inline-flex px-1.5 py-0.5 font-medium rounded ${
@@ -190,38 +189,23 @@ export function HostsPage() {
     };
 
     return (
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Hosts</h1>
-          <div className="mt-2 flex gap-4 text-sm text-gray-400">
-            <span>
-              Total: <span className="text-white font-medium">{stats.total}</span>
-            </span>
-            <span>
-              Enabled: <span className="text-green-400 font-medium">{stats.enabled}</span>
-            </span>
-            <span>
-              Disabled: <span className="text-red-400 font-medium">{stats.disabled}</span>
-            </span>
-            <span>
-              CPU: <span className="text-blue-400 font-medium">{stats.totalCPU} cores</span>
-            </span>
-            <span>
-              Memory: <span className="text-purple-400 font-medium">{formatBytes(stats.totalMemory)}</span>
-            </span>
-            <span>
-              Disks:{" "}
-              <span className="text-orange-400 font-medium">
-                {stats.totalDisks} ({formatBytes(stats.totalDiskSpace)})
-              </span>
-            </span>
-          </div>
-        </div>
-        <Button onClick={handleCreate} className="flex items-center gap-2">
-          <PlusIcon className="h-4 w-4" />
-          Create Host
-        </Button>
-      </div>
+      <StatsHeader
+        title="Hosts"
+        stats={[
+          { label: "Total", value: stats.total },
+          { label: "Enabled", value: stats.enabled, tone: "success" },
+          { label: "Disabled", value: stats.disabled, tone: "danger" },
+          { label: "CPU", value: `${stats.totalCPU} cores`, tone: "accent" },
+          { label: "Memory", value: formatBytes(stats.totalMemory), tone: "purple" },
+          { label: "Disks", value: `${stats.totalDisks} (${formatBytes(stats.totalDiskSpace)})`, tone: "orange" },
+        ]}
+        actions={
+          <Button onClick={handleCreate} className="flex items-center gap-2">
+            <PlusIcon className="h-4 w-4" />
+            Create Host
+          </Button>
+        }
+      />
     );
   };
 

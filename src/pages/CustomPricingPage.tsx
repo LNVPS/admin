@@ -10,6 +10,7 @@ import { useState } from "react";
 import { Button } from "../components/Button";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { PricingModal } from "../components/PricingModal";
+import { StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import type { AdminCustomPricingInfo } from "../lib/api";
@@ -207,29 +208,21 @@ export function CustomPricingPage() {
     };
 
     return (
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Custom Pricing Models</h1>
-          <div className="mt-2 flex gap-4 text-sm text-gray-400">
-            <span>
-              Total: <span className="text-white font-medium">{stats.total}</span>
-            </span>
-            <span>
-              Enabled: <span className="text-green-400 font-medium">{stats.enabled}</span>
-            </span>
-            <span>
-              Disabled: <span className="text-red-400 font-medium">{stats.disabled}</span>
-            </span>
-            <span>
-              Templates: <span className="text-blue-400 font-medium">{stats.totalTemplates}</span>
-            </span>
-          </div>
-        </div>
-        <Button onClick={handleCreate} className="flex items-center gap-2">
-          <PlusIcon className="h-4 w-4" />
-          Create Pricing Model
-        </Button>
-      </div>
+      <StatsHeader
+        title="Custom Pricing Models"
+        stats={[
+          { label: "Total", value: stats.total },
+          { label: "Enabled", value: stats.enabled, tone: "success" },
+          { label: "Disabled", value: stats.disabled, tone: "danger" },
+          { label: "Templates", value: stats.totalTemplates, tone: "accent" },
+        ]}
+        actions={
+          <Button onClick={handleCreate} className="flex items-center gap-2">
+            <PlusIcon className="h-4 w-4" />
+            Create Pricing Model
+          </Button>
+        }
+      />
     );
   };
 

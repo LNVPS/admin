@@ -48,9 +48,15 @@ export function ResourceCostsPage() {
   // Resource name lookups for display
   const { data: hosts } = useApiCall(async () => (await adminApi.getHosts({ limit: 100 })).data, []);
   const { data: ipRanges } = useApiCall(async () => (await adminApi.getIpRanges({ limit: 100 })).data, []);
+  const { data: regions } = useApiCall(async () => (await adminApi.getRegions({ limit: 100 })).data, []);
 
   const resourceName = (cost: AdminResourceCostDetail): string => {
-    if (cost.resource_type === "generic") return cost.label ?? "Generic";
+    if (cost.resource_type === "generic") {
+      const region = regions?.find((r) => r.id === cost.resource_id);
+      const regionLabel = region ? region.name : cost.resource_id ? `Region #${cost.resource_id}` : null;
+      const base = cost.label ?? "Generic";
+      return regionLabel ? `${base} · ${regionLabel}` : base;
+    }
     if (cost.resource_type === "vm_host") {
       const host = hosts?.find((h) => h.id === cost.resource_id);
       return host ? host.name : `Host #${cost.resource_id}`;
@@ -249,6 +255,7 @@ function ResourceCostModal({
 
   const { data: hosts } = useApiCall(async () => (await adminApi.getHosts({ limit: 100 })).data, []);
   const { data: ipRanges } = useApiCall(async () => (await adminApi.getIpRanges({ limit: 100 })).data, []);
+  const { data: regions } = useApiCall(async () => (await adminApi.getRegions({ limit: 100 })).data, []);
 
   // Default the resource selection when the type changes on create
   useEffect(() => {
@@ -259,8 +266,11 @@ function ResourceCostModal({
     if (formData.resource_type === "ip_range" && ipRanges?.length && !formData.resource_id) {
       setFormData((f) => ({ ...f, resource_id: String(ipRanges[0].id) }));
     }
+    if (formData.resource_type === "generic" && regions?.length && !formData.resource_id) {
+      setFormData((f) => ({ ...f, resource_id: String(regions[0].id) }));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.resource_type, hosts, ipRanges]);
+  }, [formData.resource_type, hosts, ipRanges, regions]);
 
   const isRecurring = formData.cost_type === "recurring";
   const isGeneric = formData.resource_type === "generic";
@@ -276,7 +286,7 @@ function ResourceCostModal({
     try {
       const payload: CreateResourceCostRequest = {
         resource_type: formData.resource_type,
-        resource_id: isGeneric ? 0 : Number.parseInt(formData.resource_id, 10),
+        resource_id: Number.parseInt(formData.resource_id, 10),
         label: formData.label || null,
         cost_type: formData.cost_type,
         amount: toSmallestUnits(amount, formData.currency),
@@ -340,37 +350,48 @@ function ResourceCostModal({
           </div>
         </div>
 
-        {!isGeneric && (
-          <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              {formData.resource_type === "vm_host" ? "Host *" : "IP Range *"}
-            </label>
-            <select
-              value={formData.resource_id}
-              onChange={(e) => setFormData({ ...formData, resource_id: e.target.value })}
-              disabled={!!cost}
-              required
-            >
-              <option value="" disabled>
-                Select...
-              </option>
-              {formData.resource_type === "vm_host"
-                ? hosts?.map((h) => (
-                    <option key={h.id} value={h.id}>
-                      {h.name} ({h.region.name})
-                    </option>
-                  ))
-                : ipRanges?.map((r) => (
+        <div>
+          <label className="block text-xs font-medium text-white mb-2">
+            {formData.resource_type === "vm_host"
+              ? "Host *"
+              : formData.resource_type === "ip_range"
+                ? "IP Range *"
+                : "Region *"}
+          </label>
+          <select
+            value={formData.resource_id}
+            onChange={(e) => setFormData({ ...formData, resource_id: e.target.value })}
+            disabled={!!cost && !isGeneric}
+            required
+          >
+            <option value="" disabled>
+              Select...
+            </option>
+            {formData.resource_type === "vm_host"
+              ? hosts?.map((h) => (
+                  <option key={h.id} value={h.id}>
+                    {h.name} ({h.region.name})
+                  </option>
+                ))
+              : formData.resource_type === "ip_range"
+                ? ipRanges?.map((r) => (
                     <option key={r.id} value={r.id}>
                       {r.cidr} {r.region_name ? `(${r.region_name})` : ""}
                     </option>
+                  ))
+                : regions?.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
                   ))}
-            </select>
-            {formData.resource_type === "ip_range" && isRecurring && (
-              <p className="mt-1 text-xs text-slate-400">For IP ranges, the amount is the cost for the entire block.</p>
-            )}
-          </div>
-        )}
+          </select>
+          {formData.resource_type === "ip_range" && isRecurring && (
+            <p className="mt-1 text-xs text-slate-400">For IP ranges, the amount is the cost for the entire block.</p>
+          )}
+          {isGeneric && (
+            <p className="mt-1 text-xs text-slate-400">Generic costs are attributed to the selected region.</p>
+          )}
+        </div>
 
         <div>
           <label className="block text-xs font-medium text-white mb-2">Label {isGeneric ? "*" : "(optional)"}</label>

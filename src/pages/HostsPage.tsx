@@ -1,4 +1,4 @@
-import { CogIcon, PencilIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { ArrowDownTrayIcon, CogIcon, PencilIcon, PlusIcon, UserIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
 import { HostDiskEditor } from "../components/HostDiskEditor";
@@ -10,7 +10,8 @@ import { ProxmoxTokenInput } from "../components/ProxmoxTokenInput";
 import { StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
-import type { AdminHostInfo, AdminRegionInfo, VmHostKind } from "../lib/api";
+import { useToast } from "../hooks/useToast";
+import type { AdminHostInfo, AdminRegionInfo, AdminUnmanagedVm, AdminUserInfo, VmHostKind } from "../lib/api";
 import { CpuArch, CpuFeature, CpuMfg } from "../lib/api";
 import { formatBytes } from "../utils/formatBytes";
 
@@ -19,6 +20,7 @@ export function HostsPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDiskEditor, setShowDiskEditor] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [selectedHost, setSelectedHost] = useState<AdminHostInfo | null>(null);
   const [regions, setRegions] = useState<AdminRegionInfo[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -49,6 +51,11 @@ export function HostsPage() {
   const handleManageDisks = (host: AdminHostInfo) => {
     setSelectedHost(host);
     setShowDiskEditor(true);
+  };
+
+  const handleImport = (host: AdminHostInfo) => {
+    setSelectedHost(host);
+    setShowImportModal(true);
   };
 
   const renderHeader = () => (
@@ -167,9 +174,22 @@ export function HostsPage() {
         <StatusBadge status={host.enabled ? "enabled" : "disabled"} />
       </td>
       <td className="text-right align-top">
-        <Button size="sm" variant="secondary" onClick={() => handleEdit(host)} className="p-1">
-          <PencilIcon className="h-4 w-4" />
-        </Button>
+        <div className="flex justify-end gap-1">
+          {host.kind === "proxmox" && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => handleImport(host)}
+              className="p-1"
+              title="Import existing VMs"
+            >
+              <ArrowDownTrayIcon className="h-4 w-4" />
+            </Button>
+          )}
+          <Button size="sm" variant="secondary" onClick={() => handleEdit(host)} className="p-1" title="Edit host">
+            <PencilIcon className="h-4 w-4" />
+          </Button>
+        </div>
       </td>
     </tr>
   );
@@ -251,6 +271,19 @@ export function HostsPage() {
           isOpen={showDiskEditor}
           onClose={() => {
             setShowDiskEditor(false);
+            setSelectedHost(null);
+          }}
+          host={selectedHost}
+          onSuccess={refreshData}
+        />
+      )}
+
+      {/* Import VM Modal */}
+      {selectedHost && (
+        <ImportVmModal
+          isOpen={showImportModal}
+          onClose={() => {
+            setShowImportModal(false);
             setSelectedHost(null);
           }}
           host={selectedHost}
@@ -971,6 +1004,211 @@ function EditHostModal({
           </Button>
         </div>
       </form>
+    </Modal>
+  );
+}
+
+// Import VM Modal Component
+function ImportVmModal({
+  isOpen,
+  onClose,
+  host,
+  onSuccess,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  host: AdminHostInfo;
+  onSuccess: () => void;
+}) {
+  const adminApi = useAdminApi();
+  const { success, error } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [discovering, setDiscovering] = useState(false);
+  const [discoverError, setDiscoverError] = useState<string | null>(null);
+  const [unmanaged, setUnmanaged] = useState<AdminUnmanagedVm[] | null>(null);
+  const [users, setUsers] = useState<AdminUserInfo[]>([]);
+  const [selectedVmId, setSelectedVmId] = useState<number | null>(null);
+  const [userId, setUserId] = useState("");
+  const [reason, setReason] = useState("");
+
+  // Load users once when opened
+  useEffect(() => {
+    if (!isOpen) return;
+    adminApi
+      .getUsers({ limit: 1000 })
+      .then((res) => setUsers(res.data))
+      .catch((err) => console.error("Failed to load users:", err));
+  }, [isOpen]);
+
+  // Reset state when reopened for a different host
+  useEffect(() => {
+    if (isOpen) {
+      setUnmanaged(null);
+      setSelectedVmId(null);
+      setUserId("");
+      setReason("");
+      setDiscoverError(null);
+    }
+  }, [isOpen, host.id]);
+
+  const discover = async () => {
+    setDiscovering(true);
+    setDiscoverError(null);
+    try {
+      const vms = await adminApi.getUnmanagedVms(host.id);
+      setUnmanaged(vms);
+    } catch (err) {
+      setDiscoverError(err instanceof Error ? err.message : "Failed to discover unmanaged VMs");
+    } finally {
+      setDiscovering(false);
+    }
+  };
+
+  const handleImport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedVmId == null || !userId) return;
+    setLoading(true);
+    try {
+      const res = await adminApi.importVm(host.id, {
+        host_vm_id: selectedVmId,
+        user_id: parseInt(userId, 10),
+        ...(reason.trim() ? { reason: reason.trim() } : {}),
+      });
+      success(`VM import job dispatched (Job ID: ${res.job_id}). Follow progress in Job History.`);
+      onSuccess();
+      onClose();
+    } catch (err) {
+      error(err instanceof Error ? err.message : "Failed to import VM");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title={`Import VMs — ${host.name}`} size="2xl">
+      <div className="space-y-4">
+        <p className="text-sm text-gray-400">
+          Discover VMs running on this host that are not tracked in the database and import one, assigning it to a user.
+          Billing uses the region's custom pricing (required). Discovery dispatches a worker job and may take up to ~30s.
+          Proxmox hosts only.
+        </p>
+
+        {!unmanaged && (
+          <div className="flex items-center gap-3">
+            <Button onClick={discover} disabled={discovering}>
+              {discovering ? "Discovering..." : "Discover Unmanaged VMs"}
+            </Button>
+            {discoverError && <span className="text-sm text-red-400">{discoverError}</span>}
+          </div>
+        )}
+
+        {unmanaged && unmanaged.length === 0 && (
+          <div className="rounded-md border border-gray-700 bg-gray-800 p-4 text-sm text-gray-300">
+            No unmanaged VMs found on this host.
+            <button type="button" onClick={discover} className="ml-2 text-blue-400 hover:underline">
+              Retry
+            </button>
+          </div>
+        )}
+
+        {unmanaged && unmanaged.length > 0 && (
+          <form onSubmit={handleImport} className="space-y-4">
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <label className="block text-xs font-medium text-white">Select VM to import *</label>
+                <button type="button" onClick={discover} className="text-xs text-blue-400 hover:underline">
+                  {discovering ? "Refreshing..." : "Refresh"}
+                </button>
+              </div>
+              <div className="max-h-64 overflow-y-auto rounded-md border border-gray-700">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-gray-800 text-left text-xs uppercase tracking-wider text-gray-400">
+                    <tr>
+                      <th className="px-2 py-1.5"></th>
+                      <th className="px-2 py-1.5">VM ID</th>
+                      <th className="px-2 py-1.5">DB ID</th>
+                      <th className="px-2 py-1.5">Name</th>
+                      <th className="px-2 py-1.5">CPU</th>
+                      <th className="px-2 py-1.5">RAM</th>
+                      <th className="px-2 py-1.5">Disk</th>
+                      <th className="px-2 py-1.5">State</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-800">
+                    {unmanaged.map((vm) => (
+                      <tr
+                        key={vm.host_vm_id}
+                        className={`cursor-pointer hover:bg-gray-800 ${
+                          selectedVmId === vm.host_vm_id ? "bg-blue-900/40" : ""
+                        }`}
+                        onClick={() => setSelectedVmId(vm.host_vm_id)}
+                      >
+                        <td className="px-2 py-1.5">
+                          <input
+                            type="radio"
+                            name="unmanaged-vm"
+                            checked={selectedVmId === vm.host_vm_id}
+                            onChange={() => setSelectedVmId(vm.host_vm_id)}
+                          />
+                        </td>
+                        <td className="px-2 py-1.5 font-mono text-white">{vm.host_vm_id}</td>
+                        <td className="px-2 py-1.5 font-mono text-gray-400">{vm.mapped_vm_id ?? "—"}</td>
+                        <td className="px-2 py-1.5 text-gray-300">{vm.name ?? "—"}</td>
+                        <td className="px-2 py-1.5 text-gray-300">{vm.cpu}</td>
+                        <td className="px-2 py-1.5 text-gray-300">{formatBytes(vm.memory)}</td>
+                        <td className="px-2 py-1.5 text-gray-300">{formatBytes(vm.disk_size)}</td>
+                        <td className="px-2 py-1.5">
+                          <span
+                            className={`inline-flex rounded px-1.5 py-0.5 text-xs font-medium ${
+                              vm.running ? "bg-green-900 text-green-300" : "bg-gray-700 text-gray-400"
+                            }`}
+                          >
+                            {vm.running ? "running" : "stopped"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-xs font-medium text-white">
+                <UserIcon className="mr-2 inline h-4 w-4" />
+                Assign to User *
+              </label>
+              <select value={userId} onChange={(e) => setUserId(e.target.value)} required>
+                <option value="">Select a user...</option>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.email || `${user.pubkey.slice(0, 16)}...`} (ID: {user.id})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-xs font-medium text-white">Reason (optional)</label>
+              <input
+                type="text"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Recorded in VM history metadata"
+              />
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-2">
+              <Button type="button" variant="secondary" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading || selectedVmId == null || !userId}>
+                {loading ? "Importing..." : "Import VM"}
+              </Button>
+            </div>
+          </form>
+        )}
+      </div>
     </Modal>
   );
 }

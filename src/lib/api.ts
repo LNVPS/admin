@@ -464,6 +464,25 @@ export interface AdminHostDisk {
   enabled: boolean;
 }
 
+/** A VM discovered on a host that is not tracked in the database (import candidate). */
+export interface AdminUnmanagedVm {
+  /** Raw host VM id (e.g. Proxmox vmid). */
+  host_vm_id: number;
+  /** Database id this VM would map to on import (vmid - 100). */
+  mapped_vm_id: number | null;
+  name: string | null;
+  /** Allocated CPU cores. */
+  cpu: number;
+  /** Allocated memory in bytes. */
+  memory: number;
+  /** Primary disk size in bytes. */
+  disk_size: number;
+  /** Storage pool backing the primary disk. */
+  disk_storage: string | null;
+  mac_address: string | null;
+  running: boolean;
+}
+
 export interface RegionDeleteResponse {
   success: boolean;
   message: string;
@@ -1712,6 +1731,32 @@ export class AdminApi {
   ) {
     const result = await this.handleResponse<ApiResponse<AdminHostDisk>>(
       await this.req(`/api/admin/v1/hosts/${hostId}/disks`, "POST", data),
+    );
+    return result.data;
+  }
+
+  /**
+   * Discover VMs that exist on the host but are not tracked in the database
+   * (import candidates). Dispatches a worker discovery job and waits for the
+   * reply — requires a running worker + Redis and may take up to ~30s.
+   * Proxmox hosts only.
+   */
+  async getUnmanagedVms(hostId: number) {
+    const result = await this.handleResponse<ApiResponse<AdminUnmanagedVm[]>>(
+      await this.req(`/api/admin/v1/hosts/${hostId}/vms/unmanaged`, "GET"),
+    );
+    return result.data;
+  }
+
+  /**
+   * Import an existing host VM into the database and assign it to a user.
+   * Billing uses the region's custom pricing (required). Work is performed
+   * asynchronously by the worker; the returned `job_id` can be followed on the
+   * job feedback WebSocket. Proxmox hosts only.
+   */
+  async importVm(hostId: number, data: { host_vm_id: number; user_id: number; reason?: string }) {
+    const result = await this.handleResponse<ApiResponse<{ job_id: string }>>(
+      await this.req(`/api/admin/v1/hosts/${hostId}/vms/import`, "POST", data),
     );
     return result.data;
   }

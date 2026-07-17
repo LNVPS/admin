@@ -353,7 +353,7 @@ export function ReferralsReportPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <UserGroupIcon className="h-8 w-8 text-blue-500" />
-          <h1 className="text-2xl font-bold text-white">Referrals Report</h1>
+          <h1 className="text-2xl font-bold text-white">Referral Usage Report</h1>
         </div>
         <div className="flex gap-2">
           <Button

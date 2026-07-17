@@ -11,6 +11,7 @@ import {
   CurrencyDollarIcon,
   DocumentDuplicateIcon,
   DocumentTextIcon,
+  GiftIcon,
   GlobeAltIcon,
   KeyIcon,
   ListBulletIcon,
@@ -19,7 +20,6 @@ import {
   ServerIcon,
   ServerStackIcon,
   SunIcon,
-  UserGroupIcon,
   UsersIcon,
   WifiIcon,
 } from "@heroicons/react/24/outline";
@@ -28,8 +28,8 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { ServerSelector } from "../components/ServerSelector";
 import { TasksWidget } from "../components/TasksWidget";
 import { ToastContainer } from "../components/Toast";
-import { useToast } from "../hooks/useToast";
 import { useTheme } from "../hooks/useTheme";
+import { useToast } from "../hooks/useToast";
 import { useUserRoles } from "../hooks/useUserRoles";
 import { LoginState } from "../lib/login";
 
@@ -159,7 +159,12 @@ const navigation: NavSection[] = [
         icon: CreditCardIcon,
         requiredPermissions: ["payment_method_config::view"],
       },
-      { name: "Referrals", to: "/referrals", icon: UserGroupIcon, requiredPermissions: ["virtual_machines::view"] },
+      {
+        name: "Referral Program",
+        to: "/referral-program",
+        icon: GiftIcon,
+        requiredPermissions: ["referral::view", "virtual_machines::view"],
+      },
       {
         name: "Resource Costs",
         to: "/resource-costs",
@@ -173,7 +178,7 @@ const navigation: NavSection[] = [
     icon: ChartBarIcon,
     items: [
       { name: "Sales", to: "/sales-report", icon: ChartBarIcon, requiredPermissions: ["analytics::view"] },
-      { name: "Referrals", to: "/referrals-report", icon: ChartBarIcon, requiredPermissions: ["analytics::view"] },
+      { name: "Referral Usage", to: "/referrals-report", icon: ChartBarIcon, requiredPermissions: ["analytics::view"] },
       { name: "Profit & Loss", to: "/profit-loss", icon: ScaleIcon, requiredPermissions: ["analytics::view"] },
     ],
   },

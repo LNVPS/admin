@@ -614,6 +614,8 @@ export interface AdminCompanyInfo {
   postcode: string | null;
   phone: string | null;
   email: string | null;
+  /** Default referral commission (whole %) applied to a referred VM's first payment. */
+  referral_rate: number;
   region_count: number;
 }
 
@@ -829,6 +831,57 @@ export interface ReferralUsageTimeSeriesReportData {
   start_date: string;
   end_date: string;
   referrals: ReferralRecord[];
+}
+
+// Referral Program Management
+
+/** Payout method for a referral enrollment. */
+export type ReferralMode = "lightning_address" | "nwc" | "account_credit";
+
+/**
+ * A referral enrollment as seen by admins. Never exposes NWC secrets
+ * (the NWC connection lives on the user's payment method, not here).
+ */
+export interface AdminReferralInfo {
+  id: number;
+  user_id: number;
+  /** Owner's Nostr pubkey (hex), for cross-referencing with users. */
+  user_pubkey: string;
+  code: string;
+  lightning_address: string | null;
+  mode: ReferralMode;
+  /** Per-referrer commission override (whole %); null = use company default. */
+  referral_rate: number | null;
+  created: string;
+}
+
+/** Per-currency earned commission for a referral. */
+export interface AdminReferralEarning {
+  currency: string;
+  /** Commission earned = sum of (first payment * effective_rate%) in this currency. */
+  amount: number;
+}
+
+/** A payout record for a referral (admin view; includes preimage for audit). */
+export interface AdminReferralPayoutInfo {
+  id: number;
+  amount: number;
+  currency: string;
+  created: string;
+  is_paid: boolean;
+  invoice: string | null;
+  /** Payment preimage (hex), when the payout has been settled. */
+  pre_image: string | null;
+}
+
+/** Full referral detail: enrollment + earnings + payout history + counts. */
+export interface AdminReferralDetail extends AdminReferralInfo {
+  earned: AdminReferralEarning[];
+  payouts: AdminReferralPayoutInfo[];
+  /** Referred VMs that made at least one payment. */
+  referrals_success: number;
+  /** Referred VMs that never made a payment. */
+  referrals_failed: number;
 }
 
 export interface AdminVmIpAssignmentInfo {
@@ -2090,9 +2143,12 @@ export class AdminApi {
     state?: string | null;
     country_code?: string | null;
     tax_id?: string | null;
+    base_currency?: string;
     postcode?: string | null;
     phone?: string | null;
     email?: string | null;
+    /** Default referral commission (whole %); must be >= 0. */
+    referral_rate?: number;
   }) {
     const result = await this.handleResponse<ApiResponse<AdminCompanyInfo>>(
       await this.req("/api/admin/v1/companies", "POST", data),
@@ -2110,9 +2166,12 @@ export class AdminApi {
       state: string | null;
       country_code: string | null;
       tax_id: string | null;
+      base_currency: string;
       postcode: string | null;
       phone: string | null;
       email: string | null;
+      /** Default referral commission (whole %); must be >= 0. */
+      referral_rate: number;
     }>,
   ) {
     const result = await this.handleResponse<ApiResponse<AdminCompanyInfo>>(
@@ -2583,6 +2642,59 @@ export class AdminApi {
   }) {
     const result = await this.handleResponse<ApiResponse<ReferralUsageTimeSeriesReportData>>(
       await this.req("/api/admin/v1/reports/referral-usage/time-series", "GET", undefined, params),
+    );
+    return result.data;
+  }
+
+  // Referral Program Management
+  async getReferrals(params?: { limit?: number; offset?: number; search?: string }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminReferralInfo>>(
+      await this.req("/api/admin/v1/referrals", "GET", undefined, params),
+    );
+  }
+
+  async getReferral(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminReferralDetail>>(
+      await this.req(`/api/admin/v1/referrals/${id}`, "GET"),
+    );
+    return result.data;
+  }
+
+  /**
+   * Update a referral's commission override.
+   * Pass a number to set, `null` to clear to the company default.
+   */
+  async updateReferral(id: number, updates: { referral_rate: number | null }) {
+    const result = await this.handleResponse<ApiResponse<AdminReferralDetail>>(
+      await this.req(`/api/admin/v1/referrals/${id}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
+  async getReferralPayouts(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminReferralPayoutInfo[]>>(
+      await this.req(`/api/admin/v1/referrals/${id}/payouts`, "GET"),
+    );
+    return result.data;
+  }
+
+  async createReferralPayout(
+    id: number,
+    data: { amount: number; currency: string; invoice?: string; is_paid?: boolean },
+  ) {
+    const result = await this.handleResponse<ApiResponse<AdminReferralPayoutInfo>>(
+      await this.req(`/api/admin/v1/referrals/${id}/payouts`, "POST", data),
+    );
+    return result.data;
+  }
+
+  async updateReferralPayout(
+    id: number,
+    payoutId: number,
+    updates: { is_paid?: boolean; invoice?: string | null; pre_image?: string | null },
+  ) {
+    const result = await this.handleResponse<ApiResponse<AdminReferralPayoutInfo>>(
+      await this.req(`/api/admin/v1/referrals/${id}/payouts/${payoutId}`, "PATCH", updates),
     );
     return result.data;
   }

@@ -100,4 +100,7 @@ export type Permission =
   | "subscription_line_items::create"
   | "subscription_line_items::update"
   | "subscription_line_items::delete"
-  | "subscription_payments::view";
+  | "subscription_payments::view"
+  | "referral::view"
+  | "referral::create"
+  | "referral::update";

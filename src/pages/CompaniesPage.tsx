@@ -68,6 +68,7 @@ export function CompaniesPage() {
               {company.name}
             </div>
             <div className="mt-0.5 truncate font-mono text-xs text-blue-400">{company.base_currency}</div>
+            <div className="truncate text-xs text-slate-400">Referral rate: {company.referral_rate}%</div>
             {company.tax_id && (
               <div className="truncate text-xs text-slate-400" title={company.tax_id}>
                 Tax ID: {company.tax_id}
@@ -397,6 +398,21 @@ function CreateCompanyModal({
           </div>
         </div>
 
+        <div>
+          <label className="block text-xs font-medium text-white mb-2">Referral Rate (%)</label>
+          <input
+            type="number"
+            step="0.1"
+            min="0"
+            value={formData.referral_rate}
+            onChange={(e) => setFormData({ ...formData, referral_rate: e.target.value })}
+            className=""
+          />
+          <p className="mt-1 text-xs text-slate-400">
+            Default commission applied to a referred VM's first payment when the referrer has no override.
+          </p>
+        </div>
+
         <div className="flex justify-end space-x-3 pt-4">
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
@@ -436,6 +452,7 @@ function EditCompanyModal({
     postcode: company.postcode || "",
     phone: company.phone || "",
     email: company.email || "",
+    referral_rate: String(company.referral_rate ?? 0),
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -455,6 +472,7 @@ function EditCompanyModal({
         postcode: formData.postcode || null,
         phone: formData.phone || null,
         email: formData.email || null,
+        referral_rate: parseFloat(formData.referral_rate) || 0,
       };
 
       await adminApi.updateCompany(company.id, updates);
@@ -592,6 +610,21 @@ function EditCompanyModal({
               className=""
             />
           </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-white mb-2">Referral Rate (%)</label>
+          <input
+            type="number"
+            step="0.1"
+            min="0"
+            value={formData.referral_rate}
+            onChange={(e) => setFormData({ ...formData, referral_rate: e.target.value })}
+            className=""
+          />
+          <p className="mt-1 text-xs text-slate-400">
+            Default commission applied to a referred VM's first payment when the referrer has no override.
+          </p>
         </div>
 
         <div className="flex justify-end space-x-3 pt-4">

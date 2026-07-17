@@ -29,7 +29,6 @@ import { useAdminApi } from "../hooks/useAdminApi";
 import { useApiCall } from "../hooks/useApiCall";
 import { useToast } from "../hooks/useToast";
 import { useUserRoles } from "../hooks/useUserRoles";
-import { EditSubscriptionModal } from "./SubscriptionsPage";
 import {
   AdminPaymentMethod,
   type AdminSubscriptionInfo,
@@ -38,6 +37,7 @@ import {
   type AdminSubscriptionPaymentInfo,
 } from "../lib/api";
 import { formatCurrency } from "../utils/currency";
+import { EditSubscriptionModal } from "./SubscriptionsPage";
 
 export function SubscriptionDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -493,7 +493,12 @@ function SubscriptionPaymentsTable({ subscriptionId, refreshKey }: { subscriptio
                 Base: {formatBaseAmount(payment.amount, payment.currency, payment.rate, payment.company_base_currency)}
               </div>
             )}
-            {payment.tax > 0 && <div>Tax: {formatCurrency(payment.tax, payment.currency)}</div>}
+            {payment.tax > 0 && (
+              <>
+                <div>Net: {formatCurrency(payment.amount - payment.tax, payment.currency)}</div>
+                <div>Tax: {formatCurrency(payment.tax, payment.currency)}</div>
+              </>
+            )}
             {payment.processing_fee > 0 && <div>Fee: {formatCurrency(payment.processing_fee, payment.currency)}</div>}
           </div>
         </div>

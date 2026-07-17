@@ -1,7 +1,7 @@
 import { NostrSystem } from "@snort/system";
 import { SnortContext } from "@snort/system-react";
 import { useEffect } from "react";
-import { Route, BrowserRouter as Router, Routes } from "react-router-dom";
+import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-dom";
 import { PermissionGuard } from "./components/PermissionGuard";
 import { SmartRedirect } from "./components/SmartRedirect";
 import { ProtectedLayout } from "./layouts/ProtectedLayout";
@@ -22,7 +22,8 @@ import { LoginPage } from "./pages/LoginPage";
 import { OsImagesPage } from "./pages/OsImagesPage";
 import { PaymentMethodsPage } from "./pages/PaymentMethodsPage";
 import { ProfitLossReportPage } from "./pages/ProfitLossReportPage";
-import { ReferralsPage } from "./pages/ReferralsPage";
+import { ReferralProgramDetailPage } from "./pages/ReferralProgramDetailPage";
+import { ReferralProgramPage } from "./pages/ReferralProgramPage";
 import { ReferralsReportPage } from "./pages/ReferralsReportPage";
 import { RegionsPage } from "./pages/RegionsPage";
 import { ResourceCostsPage } from "./pages/ResourceCostsPage";
@@ -261,11 +262,21 @@ function AppContent() {
                 </PermissionGuard>
               }
             />
+            {/* Old Referred VMs page merged into the Referral Program tabs */}
+            <Route path="referrals" element={<Navigate to="/referral-program?tab=vms" replace />} />
             <Route
-              path="referrals"
+              path="referral-program"
               element={
-                <PermissionGuard requiredPermissions={["virtual_machines::view"]}>
-                  <ReferralsPage />
+                <PermissionGuard requiredPermissions={["referral::view", "virtual_machines::view"]}>
+                  <ReferralProgramPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="referral-program/:id"
+              element={
+                <PermissionGuard requiredPermissions={["referral::view"]}>
+                  <ReferralProgramDetailPage />
                 </PermissionGuard>
               }
             />

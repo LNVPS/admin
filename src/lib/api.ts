@@ -1080,6 +1080,33 @@ export interface ProfitLossReportData {
   periods: ProfitLossPeriod[];
 }
 
+export type OssReportPeriod = "quarter" | "bimonthly";
+
+export interface OssReportRow {
+  /** Filing period bucket, e.g. "2026-Q1" or "2026-B1". */
+  period: string;
+  company_id: number;
+  company_name: string;
+  /** Seller company base currency. */
+  currency: string;
+  /** Destination member state (ISO 3166-1 alpha-3). */
+  country_code: string;
+  /** Applied VAT rate (whole %). */
+  vat_rate: number;
+  /** Net sales total in smallest currency units. */
+  net_total: number;
+  /** VAT total in smallest currency units. */
+  tax_total: number;
+  transaction_count: number;
+}
+
+export interface OssReportData {
+  start_date: string;
+  end_date: string;
+  period: OssReportPeriod;
+  rows: OssReportRow[];
+}
+
 // Payment Method Config Provider Types for CREATE/UPDATE requests (with actual secrets)
 export interface LndProviderConfig {
   type: "lnd";
@@ -2661,10 +2688,11 @@ export class AdminApi {
   }
 
   /**
-   * Update a referral's commission override.
-   * Pass a number to set, `null` to clear to the company default.
+   * Update a referral's code and/or commission override.
+   * `referral_rate`: pass a number to set, `null` to clear to the company default, omit to leave unchanged.
+   * `code`: rename the referral code (non-empty, unique). Renaming cascades to existing VM `ref_code`s.
    */
-  async updateReferral(id: number, updates: { referral_rate: number | null }) {
+  async updateReferral(id: number, updates: { referral_rate?: number | null; code?: string }) {
     const result = await this.handleResponse<ApiResponse<AdminReferralDetail>>(
       await this.req(`/api/admin/v1/referrals/${id}`, "PATCH", updates),
     );
@@ -3112,6 +3140,14 @@ export class AdminApi {
   }) {
     const result = await this.handleResponse<ApiResponse<ProfitLossReportData>>(
       await this.req("/api/admin/v1/reports/profit-loss", "GET", undefined, params),
+    );
+    return result.data;
+  }
+
+  // OSS (One-Stop Shop) VAT report
+  async getOssReport(params: { start_date: string; end_date: string; company_id?: number; period?: OssReportPeriod }) {
+    const result = await this.handleResponse<ApiResponse<OssReportData>>(
+      await this.req("/api/admin/v1/reports/oss", "GET", undefined, params),
     );
     return result.data;
   }

@@ -13,6 +13,7 @@ import {
   DocumentTextIcon,
   GiftIcon,
   GlobeAltIcon,
+  GlobeEuropeAfricaIcon,
   KeyIcon,
   ListBulletIcon,
   MoonIcon,
@@ -180,6 +181,7 @@ const navigation: NavSection[] = [
       { name: "Sales", to: "/sales-report", icon: ChartBarIcon, requiredPermissions: ["analytics::view"] },
       { name: "Referral Usage", to: "/referrals-report", icon: ChartBarIcon, requiredPermissions: ["analytics::view"] },
       { name: "Profit & Loss", to: "/profit-loss", icon: ScaleIcon, requiredPermissions: ["analytics::view"] },
+      { name: "OSS VAT", to: "/oss-report", icon: GlobeEuropeAfricaIcon, requiredPermissions: ["analytics::view"] },
     ],
   },
 ];

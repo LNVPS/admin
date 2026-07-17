@@ -96,7 +96,7 @@ export function ReferralProgramDetailPage() {
             canUpdate ? (
               <Button variant="ghost" size="sm" onClick={() => setShowEditRate(true)}>
                 <PencilIcon className="h-4 w-4" />
-                Edit Rate
+                Edit
               </Button>
             ) : undefined
           }
@@ -304,6 +304,7 @@ function EditRateModal({
 }) {
   const api = useAdminApi();
   const { success } = useToast();
+  const [code, setCode] = useState(referral.code);
   const [useDefault, setUseDefault] = useState(referral.referral_rate == null);
   const [rate, setRate] = useState(referral.referral_rate != null ? String(referral.referral_rate) : "");
   const [submitting, setSubmitting] = useState(false);
@@ -312,6 +313,11 @@ function EditRateModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    const trimmedCode = code.trim();
+    if (!trimmedCode) {
+      setError("Code must not be empty");
+      return;
+    }
     let value: number | null = null;
     if (!useDefault) {
       const parsed = parseFloat(rate);
@@ -321,22 +327,39 @@ function EditRateModal({
       }
       value = parsed;
     }
+    const updates: { referral_rate: number | null; code?: string } = { referral_rate: value };
+    if (trimmedCode !== referral.code) {
+      updates.code = trimmedCode;
+    }
     setSubmitting(true);
     try {
-      await api.updateReferral(referral.id, { referral_rate: value });
-      success("Commission rate updated");
+      await api.updateReferral(referral.id, updates);
+      success("Referral updated");
       onSuccess();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update rate");
+      setError(err instanceof Error ? err.message : "Failed to update referral");
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} title="Edit Commission Rate" icon={PencilIcon}>
+    <Modal isOpen={true} onClose={onClose} title="Edit Referral" icon={PencilIcon}>
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Referral Code</label>
+          <input
+            type="text"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white font-mono"
+            required
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            Renaming cascades to existing VMs that recorded the old code, preserving prior attribution.
+          </p>
+        </div>
         <label className="flex items-center gap-2 text-sm text-slate-200">
           <input type="checkbox" checked={useDefault} onChange={(e) => setUseDefault(e.target.checked)} />
           Use company default rate

@@ -20,6 +20,7 @@ import { JobHistoryPage } from "./pages/JobHistoryPage";
 // Import pages (we'll create these next)
 import { LoginPage } from "./pages/LoginPage";
 import { OsImagesPage } from "./pages/OsImagesPage";
+import { OssReportPage } from "./pages/OssReportPage";
 import { PaymentMethodsPage } from "./pages/PaymentMethodsPage";
 import { ProfitLossReportPage } from "./pages/ProfitLossReportPage";
 import { ReferralProgramDetailPage } from "./pages/ReferralProgramDetailPage";
@@ -341,6 +342,14 @@ function AppContent() {
               element={
                 <PermissionGuard requiredPermissions={["analytics::view"]}>
                   <ProfitLossReportPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="oss-report"
+              element={
+                <PermissionGuard requiredPermissions={["analytics::view"]}>
+                  <OssReportPage />
                 </PermissionGuard>
               }
             />

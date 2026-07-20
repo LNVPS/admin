@@ -1359,12 +1359,11 @@ export class AdminApi {
           (error as any).errorCode = rsp.status;
           (error as any).isHtmlError = true;
         } else {
-          // If it's not JSON and not HTML, treat as plain text error
-          const message =
-            text.length > 200
-              ? `HTTP ${rsp.status}: ${rsp.statusText}`
-              : `HTTP ${rsp.status}: ${text || rsp.statusText}`;
-          error = new Error(message);
+          // If it's not JSON and not HTML, treat as plain text error.
+          // Keep the body (truncated) - it usually contains the actual failure reason.
+          const trimmed = text.trim();
+          const snippet = trimmed.length > 500 ? `${trimmed.slice(0, 500)}…` : trimmed;
+          error = new Error(`HTTP ${rsp.status}: ${snippet || rsp.statusText}`);
           (error as any).errorCode = rsp.status;
         }
       }

@@ -8,17 +8,22 @@ import {
 } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
+import { CloudImagePickerModal } from "../components/CloudImagePickerModal";
 import { Modal } from "../components/Modal";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { type AdminVmOsImageInfo, ApiOsDistribution } from "../lib/api";
+import type { StandardCloudImage } from "../lib/cloudImageCatalog";
 import { confirmDialog } from "../services/confirmService";
+import { toastService } from "../services/toastService";
 
 export function OsImagesPage() {
   const adminApi = useAdminApi();
   const [modalImage, setModalImage] = useState<AdminVmOsImageInfo | null | undefined>(undefined);
+  const [showPicker, setShowPicker] = useState(false);
+  const [prefill, setPrefill] = useState<StandardCloudImage | undefined>(undefined);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const refreshData = () => {
@@ -26,15 +31,23 @@ export function OsImagesPage() {
   };
 
   // undefined = closed, null = create, AdminVmOsImageInfo = edit
-  const openCreate = () => setModalImage(null);
-  const openEdit = (image: AdminVmOsImageInfo) => setModalImage(image);
+  const openCreate = (imagePrefill?: StandardCloudImage) => {
+    setPrefill(imagePrefill);
+    setModalImage(null);
+  };
+  const openEdit = (image: AdminVmOsImageInfo) => {
+    setPrefill(undefined);
+    setModalImage(image);
+  };
   const closeModal = () => setModalImage(undefined);
 
   const handleDownload = async (image: AdminVmOsImageInfo) => {
     try {
       await adminApi.downloadVmOsImage(image.id);
+      toastService.success("Image download triggered");
     } catch (error) {
       console.error("Failed to trigger download for OS image:", error);
+      toastService.error(error instanceof Error ? error.message : "Failed to trigger download");
     }
   };
 
@@ -50,6 +63,7 @@ export function OsImagesPage() {
         refreshData();
       } catch (error) {
         console.error("Failed to delete OS image:", error);
+        toastService.error(error instanceof Error ? error.message : "Failed to delete OS image");
       }
     }
   };
@@ -153,7 +167,7 @@ export function OsImagesPage() {
           { label: "Active VMs", value: stats.totalActiveVMs, tone: "purple" },
         ]}
         actions={
-          <Button onClick={openCreate}>
+          <Button onClick={() => setShowPicker(true)}>
             <PlusIcon className="h-4 w-4 mr-2" />
             Add OS Image
           </Button>
@@ -177,9 +191,23 @@ export function OsImagesPage() {
         minWidth="800px"
       />
 
+      <CloudImagePickerModal
+        isOpen={showPicker}
+        onClose={() => setShowPicker(false)}
+        onSelect={(image) => {
+          setShowPicker(false);
+          openCreate(image);
+        }}
+        onCustom={() => {
+          setShowPicker(false);
+          openCreate();
+        }}
+      />
+
       <OsImageModal
         isOpen={modalImage !== undefined}
         image={modalImage ?? undefined}
+        prefill={prefill}
         onClose={closeModal}
         onSuccess={() => {
           refreshData();
@@ -208,16 +236,19 @@ const EMPTY_FORM = {
 function OsImageModal({
   isOpen,
   image,
+  prefill,
   onClose,
   onSuccess,
 }: {
   isOpen: boolean;
   image?: AdminVmOsImageInfo;
+  prefill?: StandardCloudImage;
   onClose: () => void;
   onSuccess: () => void;
 }) {
   const adminApi = useAdminApi();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState(EMPTY_FORM);
 
   const isEdit = image !== undefined;
@@ -225,6 +256,7 @@ function OsImageModal({
   // Sync form data whenever the modal opens or the target image changes
   useEffect(() => {
     if (!isOpen) return;
+    setError(null);
     setFormData(
       isEdit
         ? {
@@ -238,13 +270,25 @@ function OsImageModal({
             sha2: image.sha2 || "",
             sha2_url: image.sha2_url || "",
           }
-        : EMPTY_FORM,
+        : {
+            ...EMPTY_FORM,
+            ...(prefill && {
+              distribution: prefill.distribution,
+              flavour: prefill.flavour,
+              version: prefill.version,
+              url: prefill.url,
+              default_username: prefill.default_username,
+              sha2_url: prefill.sha2_url || "",
+              release_date: prefill.release_date || EMPTY_FORM.release_date,
+            }),
+          },
     );
-  }, [isOpen, image, isEdit]);
+  }, [isOpen, image, isEdit, prefill]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
 
     const payload = {
       distribution: formData.distribution,
@@ -265,8 +309,9 @@ function OsImageModal({
         await adminApi.createVmOsImage(payload);
       }
       onSuccess();
-    } catch (error) {
-      console.error(`Failed to ${isEdit ? "update" : "create"} OS image:`, error);
+    } catch (err) {
+      console.error(`Failed to ${isEdit ? "update" : "create"} OS image:`, err);
+      setError(err instanceof Error ? err.message : `Failed to ${isEdit ? "update" : "create"} OS image`);
     } finally {
       setLoading(false);
     }
@@ -277,6 +322,9 @@ function OsImageModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEdit ? "Edit OS Image" : "Create New OS Image"} size="2xl">
       <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="bg-red-900/20 border border-red-500/30 text-red-400 px-3 py-2 rounded text-sm">{error}</div>
+        )}
         <div className="grid grid-cols-3 gap-4">
           <div>
             <label htmlFor="os-distribution" className="block text-xs font-medium text-white mb-2">

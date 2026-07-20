@@ -22,19 +22,28 @@ export function OssReportPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Form state
-  const [startDate, setStartDate] = useState(() => {
-    const date = new Date();
-    date.setMonth(date.getMonth() - 3);
-    return date.toISOString().split("T")[0];
-  });
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const now = new Date();
+  const [year, setYear] = useState(() => now.getFullYear());
   const [period, setPeriod] = useState<OssReportPeriod>("quarter");
+  // Selected bucket: 1-4 for quarters, 1-6 for bimonthly
+  const [bucket, setBucket] = useState<number>(() => Math.floor(now.getMonth() / 3) + 1);
   const [companyId, setCompanyId] = useState<number | null>(null);
+
+  // Derive the exact calendar date range for the selected filing period
+  const getDateRange = (): { startDate: string; endDate: string } => {
+    const monthsPerPeriod = period === "quarter" ? 3 : 2;
+    const startMonth = (bucket - 1) * monthsPerPeriod;
+    const start = new Date(year, startMonth, 1);
+    const end = new Date(year, startMonth + monthsPerPeriod, 0);
+    const fmt = (d: Date) => d.toISOString().split("T")[0];
+    return { startDate: fmt(start), endDate: fmt(end) };
+  };
 
   const loadReport = async () => {
     try {
       setLoading(true);
       setError(null);
+      const { startDate, endDate } = getDateRange();
       const data = await api.getOssReport({
         start_date: startDate,
         end_date: endDate,
@@ -160,18 +169,52 @@ export function OssReportPage() {
       <Card>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Start Date</label>
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">End Date</label>
-            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            <label className="block text-sm font-medium text-gray-300 mb-1">Year</label>
+            <input
+              type="number"
+              min={2020}
+              max={now.getFullYear()}
+              value={year}
+              onChange={(e) => setYear(Number.parseInt(e.target.value, 10) || now.getFullYear())}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">Filing Period</label>
-            <select value={period} onChange={(e) => setPeriod(e.target.value as OssReportPeriod)}>
+            <select
+              value={period}
+              onChange={(e) => {
+                const p = e.target.value as OssReportPeriod;
+                setPeriod(p);
+                // Clamp bucket to the new period's range
+                setBucket((b) => Math.min(b, p === "quarter" ? 4 : 6));
+              }}
+            >
               <option value="quarter">Quarterly (Q1-Q4)</option>
               <option value="bimonthly">Bi-monthly (B1-B6)</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              {period === "quarter" ? "Quarter" : "Bi-monthly Period"}
+            </label>
+            <select value={bucket} onChange={(e) => setBucket(Number.parseInt(e.target.value, 10))}>
+              {period === "quarter" ? (
+                <>
+                  <option value={1}>Q1 (Jan-Mar)</option>
+                  <option value={2}>Q2 (Apr-Jun)</option>
+                  <option value={3}>Q3 (Jul-Sep)</option>
+                  <option value={4}>Q4 (Oct-Dec)</option>
+                </>
+              ) : (
+                <>
+                  <option value={1}>B1 (Jan-Feb)</option>
+                  <option value={2}>B2 (Mar-Apr)</option>
+                  <option value={3}>B3 (May-Jun)</option>
+                  <option value={4}>B4 (Jul-Aug)</option>
+                  <option value={5}>B5 (Sep-Oct)</option>
+                  <option value={6}>B6 (Nov-Dec)</option>
+                </>
+              )}
             </select>
           </div>
           <div>

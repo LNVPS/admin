@@ -44,6 +44,14 @@ export enum ApiOsDistribution {
   OPENSUSE = "opensuse",
   ARCHLINUX = "archlinux",
   REDHAT_ENTERPRISE = "redhatenterprise",
+  ALMALINUX = "almalinux",
+  ROCKYLINUX = "rockylinux",
+  ALPINE = "alpine",
+  NIXOS = "nixos",
+  OPENBSD = "openbsd",
+  NETBSD = "netbsd",
+  GENTOO = "gentoo",
+  VOIDLINUX = "voidlinux",
 }
 
 export enum IpRangeAllocationMode {
@@ -99,6 +107,9 @@ export enum AdminPaymentMethod {
   REVOLUT = "revolut",
   PAYPAL = "paypal",
   STRIPE = "stripe",
+  // NOTE: payment method configs and refund requests use "onchain", but VM/subscription
+  // payment records serialize this value as "on_chain" - handle both when displaying.
+  ONCHAIN = "onchain",
 }
 
 export enum PaymentProviderType {
@@ -107,6 +118,7 @@ export enum PaymentProviderType {
   REVOLUT = "revolut",
   STRIPE = "stripe",
   PAYPAL = "paypal",
+  ONCHAIN = "onchain",
 }
 
 export enum SubscriptionPaymentType {
@@ -1183,12 +1195,25 @@ export interface PaypalProviderConfig {
   mode?: string | null;
 }
 
+export type OnChainAddressType = "witness_pubkey_hash" | "nested_pubkey_hash" | "taproot_pubkey";
+
+export interface OnChainProviderConfig {
+  type: "onchain";
+  url: string;
+  cert_path?: string | null;
+  macaroon_path?: string | null;
+  address_type?: OnChainAddressType | null;
+  account?: string | null;
+  min_confirmations?: number | null;
+}
+
 export type ProviderConfig =
   | LndProviderConfig
   | BitvoraProviderConfig
   | RevolutProviderConfig
   | StripeProviderConfig
-  | PaypalProviderConfig;
+  | PaypalProviderConfig
+  | OnChainProviderConfig;
 
 // Sanitized Provider Config Types (what API returns - secrets replaced with boolean indicators)
 export interface SanitizedLndProviderConfig {
@@ -1227,12 +1252,24 @@ export interface SanitizedPaypalProviderConfig {
   mode: string | null;
 }
 
+export interface SanitizedOnChainProviderConfig {
+  type: "on_chain";
+  url: string;
+  cert_path: string;
+  macaroon_path: string;
+  // Debug-formatted variant name, e.g. "WitnessPubkeyHash", "NestedPubkeyHash", "TaprootPubkey"
+  address_type: string;
+  account?: string | null;
+  min_confirmations: number;
+}
+
 export type SanitizedProviderConfig =
   | SanitizedLndProviderConfig
   | SanitizedBitvoraProviderConfig
   | SanitizedRevolutProviderConfig
   | SanitizedStripeProviderConfig
-  | SanitizedPaypalProviderConfig;
+  | SanitizedPaypalProviderConfig
+  | SanitizedOnChainProviderConfig;
 
 export interface AdminPaymentMethodConfigInfo {
   id: number;
@@ -1454,9 +1491,7 @@ export class AdminApi {
    * Rejected if the user still has live (non-deleted) VMs.
    */
   async deleteUser(id: number) {
-    return await this.handleResponse<ApiResponse<null>>(
-      await this.req(`/api/admin/v1/users/${id}`, "DELETE"),
-    );
+    return await this.handleResponse<ApiResponse<null>>(await this.req(`/api/admin/v1/users/${id}`, "DELETE"));
   }
 
   // Note: This endpoint may need to be implemented based on actual API

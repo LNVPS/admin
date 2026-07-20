@@ -297,6 +297,14 @@ function OsImageModal({
               <option value={ApiOsDistribution.OPENSUSE}>openSUSE</option>
               <option value={ApiOsDistribution.ARCHLINUX}>Arch Linux</option>
               <option value={ApiOsDistribution.REDHAT_ENTERPRISE}>Red Hat Enterprise</option>
+              <option value={ApiOsDistribution.ALMALINUX}>AlmaLinux</option>
+              <option value={ApiOsDistribution.ROCKYLINUX}>Rocky Linux</option>
+              <option value={ApiOsDistribution.ALPINE}>Alpine</option>
+              <option value={ApiOsDistribution.NIXOS}>NixOS</option>
+              <option value={ApiOsDistribution.OPENBSD}>OpenBSD</option>
+              <option value={ApiOsDistribution.NETBSD}>NetBSD</option>
+              <option value={ApiOsDistribution.GENTOO}>Gentoo</option>
+              <option value={ApiOsDistribution.VOIDLINUX}>Void Linux</option>
             </select>
           </div>
           <div>

@@ -403,6 +403,8 @@ function SubscriptionPaymentsTable({ subscriptionId, refreshKey }: { subscriptio
   const getPaymentMethodColor = (method: AdminPaymentMethod): "running" | "stopped" | "unknown" => {
     switch (method) {
       case AdminPaymentMethod.LIGHTNING:
+      case AdminPaymentMethod.ONCHAIN:
+      case "on_chain" as AdminPaymentMethod: // payment records serialize onchain as "on_chain"
         return "running";
       case AdminPaymentMethod.PAYPAL:
         return "unknown";
@@ -421,6 +423,9 @@ function SubscriptionPaymentsTable({ subscriptionId, refreshKey }: { subscriptio
         return "PayPal";
       case AdminPaymentMethod.REVOLUT:
         return "Revolut";
+      case AdminPaymentMethod.ONCHAIN:
+      case "on_chain" as AdminPaymentMethod:
+        return "On-chain";
       default:
         return method;
     }

@@ -18,6 +18,8 @@ import type {
   AdminPaymentMethodConfigInfo,
   BitvoraProviderConfig,
   LndProviderConfig,
+  OnChainAddressType,
+  OnChainProviderConfig,
   PaypalProviderConfig,
   ProviderConfig,
   RevolutProviderConfig,
@@ -35,6 +37,7 @@ function getPaymentMethodName(method: AdminPaymentMethod): string {
     [AdminPaymentMethod.REVOLUT]: "Revolut",
     [AdminPaymentMethod.PAYPAL]: "PayPal",
     [AdminPaymentMethod.STRIPE]: "Stripe",
+    [AdminPaymentMethod.ONCHAIN]: "On-chain (Bitcoin)",
   };
   return names[method] || method;
 }
@@ -47,6 +50,7 @@ function getProviderTypeName(type: PaymentProviderType): string {
     [PaymentProviderType.REVOLUT]: "Revolut",
     [PaymentProviderType.STRIPE]: "Stripe",
     [PaymentProviderType.PAYPAL]: "PayPal",
+    [PaymentProviderType.ONCHAIN]: "On-chain (LND)",
   };
   return names[type] || type;
 }
@@ -62,6 +66,8 @@ function getProviderTypesForMethod(method: AdminPaymentMethod): PaymentProviderT
       return [PaymentProviderType.STRIPE];
     case AdminPaymentMethod.PAYPAL:
       return [PaymentProviderType.PAYPAL];
+    case AdminPaymentMethod.ONCHAIN:
+      return [PaymentProviderType.ONCHAIN];
     default:
       return [];
   }
@@ -78,6 +84,8 @@ function getPaymentMethodColor(method: AdminPaymentMethod): string {
       return "text-purple-400";
     case AdminPaymentMethod.PAYPAL:
       return "text-blue-500";
+    case AdminPaymentMethod.ONCHAIN:
+      return "text-orange-400";
     default:
       return "text-gray-400";
   }
@@ -248,8 +256,12 @@ export function PaymentMethodsPage() {
     const stats = {
       total: totalItems,
       enabled: configs.filter((c) => c.enabled).length,
-      lightning: configs.filter((c) => c.payment_method === AdminPaymentMethod.LIGHTNING).length,
-      fiat: configs.filter((c) => c.payment_method !== AdminPaymentMethod.LIGHTNING).length,
+      bitcoin: configs.filter(
+        (c) => c.payment_method === AdminPaymentMethod.LIGHTNING || c.payment_method === AdminPaymentMethod.ONCHAIN,
+      ).length,
+      fiat: configs.filter(
+        (c) => c.payment_method !== AdminPaymentMethod.LIGHTNING && c.payment_method !== AdminPaymentMethod.ONCHAIN,
+      ).length,
     };
 
     return (
@@ -258,7 +270,7 @@ export function PaymentMethodsPage() {
         stats={[
           { label: "Total", value: stats.total },
           { label: "Enabled", value: stats.enabled, tone: "success" },
-          { label: "Lightning", value: stats.lightning, tone: "warning" },
+          { label: "Bitcoin", value: stats.bitcoin, tone: "warning" },
           { label: "Fiat", value: stats.fiat, tone: "accent" },
         ]}
         actions={
@@ -316,6 +328,7 @@ const SECRET_FIELDS: Record<PaymentProviderType, string[]> = {
   [PaymentProviderType.REVOLUT]: ["token", "webhook_secret"],
   [PaymentProviderType.STRIPE]: ["secret_key", "webhook_secret"],
   [PaymentProviderType.PAYPAL]: ["client_secret"],
+  [PaymentProviderType.ONCHAIN]: [],
 };
 
 // Maps secret field names to their "has_*" boolean indicator in sanitized config
@@ -357,6 +370,16 @@ function ProviderConfigForm({
         return { type: "stripe", publishable_key: null };
       case PaymentProviderType.PAYPAL:
         return { type: "paypal", client_id: "", mode: "sandbox" };
+      case PaymentProviderType.ONCHAIN:
+        return {
+          type: "onchain",
+          url: "",
+          cert_path: null,
+          macaroon_path: null,
+          address_type: "witness_pubkey_hash",
+          account: null,
+          min_confirmations: 1,
+        };
     }
   };
 
@@ -615,6 +638,90 @@ function ProviderConfigForm({
               <option value="sandbox">Sandbox</option>
               <option value="live">Live</option>
             </select>
+          </div>
+        </div>
+      );
+    }
+
+    case PaymentProviderType.ONCHAIN: {
+      const onchainConfig = currentConfig as OnChainProviderConfig;
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-white mb-2">LND URL *</label>
+            <input
+              type="text"
+              value={onchainConfig.url || ""}
+              onChange={(e) => updateField("url", e.target.value)}
+              className=""
+              placeholder="https://localhost:10009"
+              required
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-white mb-2">Certificate Path *</label>
+              <input
+                type="text"
+                value={onchainConfig.cert_path || ""}
+                onChange={(e) => updateField("cert_path", e.target.value)}
+                className=""
+                placeholder="/path/to/tls.cert"
+                required={!isEditing}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-white mb-2">Macaroon Path *</label>
+              <input
+                type="text"
+                value={onchainConfig.macaroon_path || ""}
+                onChange={(e) => updateField("macaroon_path", e.target.value)}
+                className=""
+                placeholder="/path/to/admin.macaroon"
+                required={!isEditing}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-white mb-2">Address Type</label>
+              <select
+                value={onchainConfig.address_type || "witness_pubkey_hash"}
+                onChange={(e) => onChange({ ...onchainConfig, address_type: e.target.value as OnChainAddressType })}
+                className=""
+              >
+                <option value="witness_pubkey_hash">Segwit (p2wkh)</option>
+                <option value="nested_pubkey_hash">Nested Segwit (np2wkh)</option>
+                <option value="taproot_pubkey">Taproot (p2tr)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-white mb-2">Wallet Account</label>
+              <input
+                type="text"
+                value={onchainConfig.account || ""}
+                onChange={(e) => updateField("account", e.target.value)}
+                className=""
+                placeholder="Default account"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-white mb-2">Min Confirmations</label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={onchainConfig.min_confirmations ?? 1}
+                onChange={(e) =>
+                  onChange({
+                    ...onchainConfig,
+                    min_confirmations: e.target.value === "" ? null : parseInt(e.target.value),
+                  })
+                }
+                className=""
+              />
+              <p className="text-xs text-gray-500 mt-1">Confirmations before a deposit is settled</p>
+            </div>
           </div>
         </div>
       );
@@ -988,6 +1095,23 @@ function EditPaymentMethodModal({
         return { type: "stripe", publishable_key: sanitized.publishable_key };
       case "paypal":
         return { type: "paypal", client_id: sanitized.client_id, mode: sanitized.mode };
+      case "on_chain": {
+        // Sanitized address_type is Debug-formatted (e.g. "TaprootPubkey"); map back to wire format
+        const addressTypeMap: Record<string, OnChainAddressType> = {
+          WitnessPubkeyHash: "witness_pubkey_hash",
+          NestedPubkeyHash: "nested_pubkey_hash",
+          TaprootPubkey: "taproot_pubkey",
+        };
+        return {
+          type: "onchain",
+          url: sanitized.url,
+          cert_path: sanitized.cert_path,
+          macaroon_path: sanitized.macaroon_path,
+          address_type: addressTypeMap[sanitized.address_type] || "witness_pubkey_hash",
+          account: sanitized.account ?? null,
+          min_confirmations: sanitized.min_confirmations,
+        };
+      }
       default:
         return null;
     }

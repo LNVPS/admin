@@ -2,16 +2,12 @@ import { useState, useEffect } from "react";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { Button } from "./Button";
 import { Modal } from "./Modal";
-import {
-  type AdminVmInfo,
-  AdminPaymentMethod,
-  type AdminRefundAmountInfo,
-} from "../lib/api";
+import { type AdminVmInfo, AdminPaymentMethod, type AdminRefundAmountInfo } from "../lib/api";
 import { formatCurrency } from "../utils/currency";
-import {
-  ExclamationTriangleIcon,
-  CreditCardIcon,
-} from "@heroicons/react/24/outline";
+import { ExclamationTriangleIcon, CreditCardIcon } from "@heroicons/react/24/outline";
+
+// The refund endpoint only accepts these methods
+const REFUNDABLE_PAYMENT_METHODS = [AdminPaymentMethod.LIGHTNING, AdminPaymentMethod.REVOLUT, AdminPaymentMethod.PAYPAL];
 
 interface VmRefundModalProps {
   isOpen: boolean;
@@ -20,18 +16,12 @@ interface VmRefundModalProps {
   onSuccess: () => void;
 }
 
-export function VmRefundModal({
-  isOpen,
-  onClose,
-  vm,
-  onSuccess,
-}: VmRefundModalProps) {
+export function VmRefundModal({ isOpen, onClose, vm, onSuccess }: VmRefundModalProps) {
   const adminApi = useAdminApi();
   const [loading, setLoading] = useState(false);
   const [calculating, setCalculating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [refundAmount, setRefundAmount] =
-    useState<AdminRefundAmountInfo | null>(null);
+  const [refundAmount, setRefundAmount] = useState<AdminRefundAmountInfo | null>(null);
   const [formData, setFormData] = useState({
     payment_method: AdminPaymentMethod.LIGHTNING,
     refund_from_date: "",
@@ -56,10 +46,7 @@ export function VmRefundModal({
     // Only depend on isOpen to prevent resets on VM data updates
   }, [isOpen]);
 
-  const calculateRefund = async (
-    method: AdminPaymentMethod,
-    fromDateString?: string,
-  ) => {
+  const calculateRefund = async (method: AdminPaymentMethod, fromDateString?: string) => {
     if (!vm) return;
 
     try {
@@ -72,17 +59,11 @@ export function VmRefundModal({
         fromTimestamp = Math.floor(new Date(fromDateString).getTime() / 1000);
       }
 
-      const amount = await adminApi.calculateVMRefund(
-        vm.id,
-        method,
-        fromTimestamp,
-      );
+      const amount = await adminApi.calculateVMRefund(vm.id, method, fromTimestamp);
       setRefundAmount(amount);
     } catch (err) {
       console.error("Failed to calculate refund:", err);
-      setError(
-        err instanceof Error ? err.message : "Failed to calculate refund",
-      );
+      setError(err instanceof Error ? err.message : "Failed to calculate refund");
       setRefundAmount(null);
     } finally {
       setCalculating(false);
@@ -105,10 +86,7 @@ export function VmRefundModal({
     if (!vm) return;
 
     // Validate lightning invoice if payment method is lightning
-    if (
-      formData.payment_method === AdminPaymentMethod.LIGHTNING &&
-      !formData.lightning_invoice.trim()
-    ) {
+    if (formData.payment_method === AdminPaymentMethod.LIGHTNING && !formData.lightning_invoice.trim()) {
       setError("Lightning invoice is required for lightning refunds");
       return;
     }
@@ -120,9 +98,7 @@ export function VmRefundModal({
       const refundData = {
         payment_method: formData.payment_method,
         ...(formData.refund_from_date && {
-          refund_from_date: Math.floor(
-            new Date(formData.refund_from_date).getTime() / 1000,
-          ),
+          refund_from_date: Math.floor(new Date(formData.refund_from_date).getTime() / 1000),
         }),
         ...(formData.reason.trim() && { reason: formData.reason.trim() }),
         ...(formData.payment_method === AdminPaymentMethod.LIGHTNING &&
@@ -173,12 +149,7 @@ export function VmRefundModal({
           <Button variant="secondary" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
-          <Button
-            variant="danger"
-            onClick={handleSubmit}
-            isLoading={loading}
-            disabled={calculating || !refundAmount}
-          >
+          <Button variant="danger" onClick={handleSubmit} isLoading={loading} disabled={calculating || !refundAmount}>
             Process Refund
           </Button>
         </>
@@ -192,9 +163,8 @@ export function VmRefundModal({
             <div>
               <h4 className="text-yellow-400 font-medium">Refund Warning</h4>
               <p className="text-yellow-300/80 text-sm mt-1">
-                This action will initiate an automated refund process. The
-                refund will be processed asynchronously and you will receive
-                notifications about its status.
+                This action will initiate an automated refund process. The refund will be processed asynchronously and
+                you will receive notifications about its status.
               </p>
             </div>
           </div>
@@ -203,11 +173,9 @@ export function VmRefundModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Payment Method Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Payment Method
-            </label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Payment Method</label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {Object.values(AdminPaymentMethod).map((method) => (
+              {REFUNDABLE_PAYMENT_METHODS.map((method) => (
                 <button
                   key={method}
                   type="button"
@@ -229,9 +197,7 @@ export function VmRefundModal({
           {/* Refund Amount Display */}
           {calculating ? (
             <div className="bg-gray-800 rounded-lg p-4">
-              <div className="text-center text-gray-400">
-                Calculating refund amount...
-              </div>
+              <div className="text-center text-gray-400">Calculating refund amount...</div>
             </div>
           ) : refundAmount ? (
             <div className="bg-green-900/20 border border-green-500/20 rounded-lg p-4">
@@ -240,16 +206,13 @@ export function VmRefundModal({
                 <span className="text-green-400 font-bold text-lg">
                   {formatCurrency(refundAmount.amount, refundAmount.currency)}
                   {refundAmount.rate !== 1 && (
-                    <span className="text-sm text-gray-400 ml-2">
-                      (Rate: {refundAmount.rate})
-                    </span>
+                    <span className="text-sm text-gray-400 ml-2">(Rate: {refundAmount.rate})</span>
                   )}
                 </span>
               </div>
               {formData.refund_from_date && (
                 <div className="text-sm text-gray-400 mt-2">
-                  Calculated from:{" "}
-                  {new Date(formData.refund_from_date).toLocaleString()}
+                  Calculated from: {new Date(formData.refund_from_date).toLocaleString()}
                 </div>
               )}
             </div>
@@ -258,9 +221,7 @@ export function VmRefundModal({
           {/* Lightning Invoice (only for Lightning) */}
           {formData.payment_method === AdminPaymentMethod.LIGHTNING && (
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Lightning Invoice *
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Lightning Invoice *</label>
               <textarea
                 value={formData.lightning_invoice}
                 onChange={(e) =>
@@ -274,17 +235,13 @@ export function VmRefundModal({
                 className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white font-mono text-sm focus:outline-none focus:border-blue-500"
                 required
               />
-              <p className="text-xs text-gray-400 mt-1">
-                Lightning invoice where the refund will be paid
-              </p>
+              <p className="text-xs text-gray-400 mt-1">Lightning invoice where the refund will be paid</p>
             </div>
           )}
 
           {/* Refund From Date (Optional) */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Refund From Date (Optional)
-            </label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Refund From Date (Optional)</label>
             <input
               type="datetime-local"
               value={formData.refund_from_date}
@@ -292,22 +249,17 @@ export function VmRefundModal({
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
             />
             <p className="text-xs text-gray-400 mt-1">
-              Calculate refund from this date. Leave empty to calculate from
-              current time.
+              Calculate refund from this date. Leave empty to calculate from current time.
             </p>
           </div>
 
           {/* Reason (Optional) */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Reason (Optional)
-            </label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Reason (Optional)</label>
             <input
               type="text"
               value={formData.reason}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, reason: e.target.value }))
-              }
+              onChange={(e) => setFormData((prev) => ({ ...prev, reason: e.target.value }))}
               placeholder="e.g., Customer requested cancellation"
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
             />

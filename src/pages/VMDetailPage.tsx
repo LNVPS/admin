@@ -226,7 +226,14 @@ export function VMDetailPage() {
     const currentlyDisabled = (vm as { disabled?: boolean }).disabled ?? false;
     const action = currentlyDisabled ? "enable" : "disable";
 
-    if (!(await confirmDialog({ title: `${action[0].toUpperCase()}${action.slice(1)} VM`, message: `Are you sure you want to ${action} this VM?`, variant: "primary" }))) return;
+    if (
+      !(await confirmDialog({
+        title: `${action[0].toUpperCase()}${action.slice(1)} VM`,
+        message: `Are you sure you want to ${action} this VM?`,
+        variant: "primary",
+      }))
+    )
+      return;
 
     try {
       setActionLoading("toggle-disabled");
@@ -370,9 +377,7 @@ export function VMDetailPage() {
               </div>
             )}
             {payment.tax > 0 && <div>Tax: {formatCurrency(payment.tax, payment.currency)}</div>}
-            {payment.processing_fee > 0 && (
-              <div>Fee: {formatCurrency(payment.processing_fee, payment.currency)}</div>
-            )}
+            {payment.processing_fee > 0 && <div>Fee: {formatCurrency(payment.processing_fee, payment.currency)}</div>}
           </div>
         </div>
       </td>
@@ -489,6 +494,8 @@ export function VMDetailPage() {
   const getPaymentMethodColor = (method: AdminPaymentMethod): "running" | "stopped" | "unknown" => {
     switch (method) {
       case AdminPaymentMethod.LIGHTNING:
+      case AdminPaymentMethod.ONCHAIN:
+      case "on_chain" as AdminPaymentMethod: // payment records serialize onchain as "on_chain"
         return "running";
       case AdminPaymentMethod.PAYPAL:
         return "unknown";
@@ -507,6 +514,9 @@ export function VMDetailPage() {
         return "PayPal";
       case AdminPaymentMethod.REVOLUT:
         return "Revolut";
+      case AdminPaymentMethod.ONCHAIN:
+      case "on_chain" as AdminPaymentMethod:
+        return "On-chain";
       default:
         return method;
     }

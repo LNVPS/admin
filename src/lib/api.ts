@@ -91,6 +91,7 @@ export enum AdminVmHistoryActionType {
   STATE_CHANGED = "state_changed",
   PAYMENT_RECEIVED = "payment_received",
   CONFIGURATION_CHANGED = "configuration_changed",
+  TRANSFERRED = "transferred",
 }
 
 export enum AdminPaymentMethod {
@@ -1543,12 +1544,17 @@ export class AdminApi {
     return result.data;
   }
 
-  async deleteVM(id: number, reason?: string) {
-    const body = { reason };
+  async deleteVM(id: number, reason?: string, purge?: boolean) {
+    const body = { reason, ...(purge && { purge: true }) };
     const result = await this.handleResponse<ApiResponse<{ job_id: string }>>(
       await this.req(`/api/admin/v1/vms/${id}`, "DELETE", body),
     );
     return result.data;
+  }
+
+  async transferVM(id: number, userId: number, reason?: string) {
+    const body = { user_id: userId, ...(reason && { reason }) };
+    await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/vms/${id}/transfer`, "POST", body));
   }
 
   async extendVM(id: number, days: number, reason?: string) {

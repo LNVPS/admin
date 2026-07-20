@@ -1,5 +1,6 @@
 import {
   ArrowPathIcon,
+  ArrowsRightLeftIcon,
   BanknotesIcon,
   CheckCircleIcon,
   CheckIcon,
@@ -24,8 +25,10 @@ import { Profile } from "../components/Profile";
 import { StatusBadge } from "../components/StatusBadge";
 import { VmIpAssignmentModal } from "../components/VmIpAssignmentModal";
 import { VmRefundModal } from "../components/VmRefundModal";
+import { VmTransferModal } from "../components/VmTransferModal";
 import { getVmStatus, VmStatusBadge } from "../components/VmStatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
+import { useUserRoles } from "../hooks/useUserRoles";
 import {
   AdminPaymentMethod,
   AdminVmHistoryActionType,
@@ -50,6 +53,8 @@ export function VMDetailPage() {
   const [paymentsRefreshKey, setPaymentsRefreshKey] = useState(0);
   const [showIpAssignModal, setShowIpAssignModal] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const { isSuperAdmin } = useUserRoles();
   const [copiedPaymentId, setCopiedPaymentId] = useState<string | null>(null);
   const [copiedExternalId, setCopiedExternalId] = useState<string | null>(null);
 
@@ -137,6 +142,26 @@ export function VMDetailPage() {
         navigate("/vms");
       } catch (error) {
         console.error("Failed to delete VM:", error);
+        setActionLoading(null);
+      }
+    }
+  };
+
+  const handlePurgeVM = async () => {
+    if (!vm) return;
+    if (
+      confirm(
+        `PERMANENTLY delete (purge) VM ${vm.id}, including all payment history and related records? This cannot be undone.`,
+      )
+    ) {
+      const reason = prompt("Optional: Enter a reason for purging this VM (e.g., 'Test VM'):");
+      try {
+        setActionLoading("purge");
+        const result = await adminApi.deleteVM(vm.id, reason || undefined, true);
+        console.log("Purge VM job dispatched:", result.job_id);
+        navigate("/vms");
+      } catch (error) {
+        console.error("Failed to purge VM:", error);
         setActionLoading(null);
       }
     }
@@ -412,6 +437,8 @@ export function VMDetailPage() {
         return "bg-indigo-900 text-indigo-300"; // Indigo for reinstalled
       case AdminVmHistoryActionType.CONFIGURATION_CHANGED:
         return "bg-yellow-900 text-yellow-300"; // Yellow for config changes
+      case AdminVmHistoryActionType.TRANSFERRED:
+        return "bg-teal-900 text-teal-300"; // Teal for transfers
       case AdminVmHistoryActionType.STATE_CHANGED:
         return "bg-amber-900 text-amber-300"; // Amber for state changes
       default:
@@ -633,14 +660,37 @@ export function VMDetailPage() {
           >
             <NoSymbolIcon className="h-4 w-4" />
           </Button>
+          <PermissionGuard requiredPermissions={["virtual_machines::update"]} fallback={null}>
+            <Button
+              variant="secondary"
+              onClick={() => setShowTransferModal(true)}
+              disabled={!!actionLoading}
+              className="text-slate-400 hover:text-white p-2"
+              title="Transfer VM to another user"
+            >
+              <ArrowsRightLeftIcon className="h-4 w-4" />
+            </Button>
+          </PermissionGuard>
           <Button
             variant="secondary"
             onClick={handleDeleteVM}
             disabled={actionLoading === "delete"}
             className="text-red-400 hover:text-red-300 p-2"
+            title="Delete VM"
           >
             <TrashIcon className="h-4 w-4" />
           </Button>
+          {isSuperAdmin && (
+            <Button
+              variant="secondary"
+              onClick={handlePurgeVM}
+              disabled={actionLoading === "purge"}
+              className="text-red-500 hover:text-red-400 p-2"
+              title="Permanently delete (purge) VM — super admin only"
+            >
+              <TrashIcon className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -863,6 +913,17 @@ export function VMDetailPage() {
         onClose={() => setShowIpAssignModal(false)}
         vm={vm}
         onSuccess={() => {
+          loadVM(true);
+          setHistoryRefreshKey((prev) => prev + 1);
+        }}
+      />
+
+      {/* Transfer Modal */}
+      <VmTransferModal
+        isOpen={showTransferModal}
+        onClose={() => setShowTransferModal(false)}
+        vmId={vm.id}
+        onTransferred={() => {
           loadVM(true);
           setHistoryRefreshKey((prev) => prev + 1);
         }}

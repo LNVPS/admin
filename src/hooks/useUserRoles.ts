@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { UserRoleInfo } from "../lib/api";
+import { AdminUserRole, type UserRoleInfo } from "../lib/api";
 import { LoginState } from "../lib/login";
 
 export function useUserRoles() {
@@ -30,11 +30,17 @@ export function useUserRoles() {
     );
   };
 
+  const isSuperAdmin = useMemo(
+    () => roles.some((roleInfo) => roleInfo.role.name === AdminUserRole.SUPER_ADMIN),
+    [roles],
+  );
+
   return {
     roles,
     permissions,
     hasPermission,
     hasAnyPermission,
     hasAllPermissions,
+    isSuperAdmin,
   };
 }

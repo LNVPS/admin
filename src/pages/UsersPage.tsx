@@ -10,6 +10,7 @@ import { bech32ToHex } from "@snort/shared";
 import { tryParseNostrLink } from "@snort/system";
 import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
+import { AccountTypeBadge } from "../components/AccountTypeBadge";
 import { Button } from "../components/Button";
 import { CreateVmModal } from "../components/CreateVmModal";
 import { EditUserModal } from "../components/EditUserModal";
@@ -265,7 +266,7 @@ export function UsersPage() {
           >
             {user.vm_count} VMs
           </span>
-          <div className="mt-1">
+          <div className="mt-1 flex flex-wrap items-center gap-1">
             <span
               className={`inline-flex px-1.5 py-0.5 font-medium rounded text-xs ${
                 user.is_admin ? "bg-orange-900 text-orange-300" : "bg-gray-600 text-gray-300"
@@ -273,6 +274,7 @@ export function UsersPage() {
             >
               {user.is_admin ? "Admin" : "User"}
             </span>
+            <AccountTypeBadge accountType={user.account_type} />
           </div>
         </td>
         {/* Created date */}

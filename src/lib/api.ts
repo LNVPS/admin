@@ -274,6 +274,25 @@ export interface AdminUserInfo {
   last_login: string | null;
   is_admin: boolean;
   has_nwc: boolean;
+  /** How the user authenticates. Only 'nostr' has a usable Nostr key. */
+  account_type: AccountType;
+  /** Number of registered WebAuthn passkeys */
+  passkey_count: number;
+}
+
+export type AccountType = "nostr" | "oauth" | "webauthn";
+
+export interface AdminPasskeyInfo {
+  /** passkey database id (used to revoke it) */
+  id: number;
+  /** optional user-facing device label */
+  name: string | null;
+  /** hex-encoded raw credential id */
+  cred_id: string;
+  /** registration time */
+  created: string;
+  /** last authentication time (null if never used) */
+  last_used: string | null;
 }
 
 export interface VmRunningState {
@@ -1435,6 +1454,21 @@ export class AdminApi {
       await this.req(`/api/admin/v1/users/${userId}/ssh_keys`, "GET"),
     );
     return result.data;
+  }
+
+  /** List the WebAuthn passkeys registered to a user. */
+  async getUserPasskeys(userId: number) {
+    const result = await this.handleResponse<ApiResponse<AdminPasskeyInfo[]>>(
+      await this.req(`/api/admin/v1/users/${userId}/passkeys`, "GET"),
+    );
+    return result.data;
+  }
+
+  /** Revoke a single passkey from a user's account. */
+  async revokeUserPasskey(userId: number, passkeyId: number) {
+    return await this.handleResponse<ApiResponse<null>>(
+      await this.req(`/api/admin/v1/users/${userId}/passkeys/${passkeyId}`, "DELETE"),
+    );
   }
 
   // VM Management

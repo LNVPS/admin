@@ -12,6 +12,7 @@ import {
 import * as React from "react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { AccountTypeBadge } from "../components/AccountTypeBadge";
 import { Button } from "../components/Button";
 import { EditUserModal } from "../components/EditUserModal";
 import { Modal } from "../components/Modal";
@@ -19,6 +20,7 @@ import { PaginatedTable } from "../components/PaginatedTable";
 import { PermissionGuard } from "../components/PermissionGuard";
 import { Profile } from "../components/Profile";
 import { StatusBadge } from "../components/StatusBadge";
+import { UserPasskeysSection } from "../components/UserPasskeysSection";
 import { UserPaymentMethodsSection } from "../components/UserPaymentMethodsSection";
 import { getVmStatus, VmStatusBadge } from "../components/VmStatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
@@ -364,6 +366,12 @@ export function UserDetailsPage() {
               <Profile pubkey={user.pubkey} avatarSize="md" />
             </div>
             <div>
+              <div className="text-gray-400 text-sm">Account Type</div>
+              <div className="mt-1">
+                <AccountTypeBadge accountType={user.account_type} />
+              </div>
+            </div>
+            <div>
               <div className="text-gray-400 text-sm">Public Key</div>
               <div className="font-mono text-white text-sm break-all">{user.pubkey}</div>
             </div>
@@ -598,6 +606,11 @@ export function UserDetailsPage() {
       {/* User's Saved Payment Methods */}
       <PermissionGuard requiredPermissions={["user_payment_method::view"]} fallback={<></>}>
         <UserPaymentMethodsSection userId={user.id} />
+      </PermissionGuard>
+
+      {/* User's Passkeys */}
+      <PermissionGuard requiredPermissions={["users::view"]} fallback={<></>}>
+        <UserPasskeysSection userId={user.id} />
       </PermissionGuard>
 
       {/* User's Roles */}

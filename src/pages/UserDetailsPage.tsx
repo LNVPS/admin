@@ -1,6 +1,7 @@
 import {
   DocumentTextIcon,
   EnvelopeIcon,
+  ExclamationTriangleIcon,
   MapPinIcon,
   PencilIcon,
   PlusIcon,
@@ -23,6 +24,7 @@ import { StatusBadge } from "../components/StatusBadge";
 import { UserPasskeysSection } from "../components/UserPasskeysSection";
 import { UserPaymentMethodsSection } from "../components/UserPaymentMethodsSection";
 import { getVmStatus, VmStatusBadge } from "../components/VmStatusBadge";
+import { useToast } from "../hooks/useToast";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { useUserRoles } from "../hooks/useUserRoles";
 import {
@@ -43,6 +45,7 @@ export function UserDetailsPage() {
   const navigate = useNavigate();
   const adminApi = useAdminApi();
   const { hasPermission } = useUserRoles();
+  const { success, error: showError } = useToast();
 
   // Get user data from navigation state
   const userFromState = location.state?.user as AdminUserInfo | undefined;
@@ -54,6 +57,7 @@ export function UserDetailsPage() {
   const [showInactiveSubs, setShowInactiveSubs] = useState(false);
   const [showAddRoleModal, setShowAddRoleModal] = useState(false);
   const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [showDeleteUserModal, setShowDeleteUserModal] = useState(false);
 
   // Parse userId from params
   const userId = id ? parseInt(id, 10) : null;
@@ -343,6 +347,16 @@ export function UserDetailsPage() {
             <Button onClick={() => setShowEditUserModal(true)} className="flex items-center space-x-2">
               <PencilIcon className="h-4 w-4" />
               <span>Edit User</span>
+            </Button>
+          </PermissionGuard>
+          <PermissionGuard requiredPermissions={["users::delete"]}>
+            <Button
+              variant="danger"
+              onClick={() => setShowDeleteUserModal(true)}
+              className="flex items-center space-x-2"
+            >
+              <TrashIcon className="h-4 w-4" />
+              <span>Delete User</span>
             </Button>
           </PermissionGuard>
           <Link to="/users">
@@ -677,6 +691,18 @@ export function UserDetailsPage() {
         user={user}
         onSuccess={refreshUserData}
       />
+
+      {/* Delete User Modal */}
+      <DeleteUserModal
+        isOpen={showDeleteUserModal}
+        onClose={() => setShowDeleteUserModal(false)}
+        user={user}
+        onDeleted={() => {
+          success("User permanently deleted");
+          navigate("/users");
+        }}
+        onError={(message) => showError("Failed to delete user", message)}
+      />
     </div>
   );
 }
@@ -837,6 +863,90 @@ function AddRoleModal({
           </div>
         </form>
       )}
+    </Modal>
+  );
+}
+
+// Delete User Modal Component — hard-deletes a user and ALL of their data.
+function DeleteUserModal({
+  isOpen,
+  onClose,
+  user,
+  onDeleted,
+  onError,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  user: AdminUserInfo;
+  onDeleted: () => void;
+  onError: (message: string | undefined) => void;
+}) {
+  const adminApi = useAdminApi();
+  const [loading, setLoading] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+
+  // Require typing the user id to arm the irreversible action.
+  const confirmationValue = String(user.id);
+  const canDelete = confirmText.trim() === confirmationValue && !loading;
+
+  // Reset the confirmation field whenever the modal opens.
+  React.useEffect(() => {
+    if (isOpen) setConfirmText("");
+  }, [isOpen]);
+
+  const handleDelete = async () => {
+    setLoading(true);
+    try {
+      await adminApi.deleteUser(user.id);
+      onClose();
+      onDeleted();
+    } catch (error) {
+      console.error("Failed to delete user:", error);
+      onError(error instanceof Error ? error.message : undefined);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Delete User" size="md">
+      <div className="space-y-4">
+        <div className="flex items-start gap-3 rounded-lg border border-red-500/40 bg-red-500/10 p-4">
+          <ExclamationTriangleIcon className="h-6 w-6 shrink-0 text-red-400" />
+          <div className="space-y-2 text-sm text-red-200">
+            <p className="font-semibold text-red-300">This action is permanent and cannot be undone.</p>
+            <p>
+              All data belonging to user <span className="font-mono">#{user.id}</span> will be{" "}
+              <span className="font-semibold">hard deleted</span>, including VMs and their history, IP and firewall
+              records, custom templates, SSH keys, passkeys, subscriptions, payments, saved payment methods, referral
+              records and Nostr domains.
+            </p>
+            <p>Users with live (non-deleted) VMs cannot be purged — delete those VMs first.</p>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-white mb-2">
+            Type the user ID <span className="font-mono text-red-300">{confirmationValue}</span> to confirm
+          </label>
+          <input
+            type="text"
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder={confirmationValue}
+            autoComplete="off"
+          />
+        </div>
+
+        <div className="flex justify-end space-x-3 pt-2">
+          <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>
+            Cancel
+          </Button>
+          <Button type="button" variant="danger" onClick={handleDelete} disabled={!canDelete}>
+            {loading ? "Deleting..." : "Permanently Delete User"}
+          </Button>
+        </div>
+      </div>
     </Modal>
   );
 }

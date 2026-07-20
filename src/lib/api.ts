@@ -1448,6 +1448,16 @@ export class AdminApi {
     return result.data;
   }
 
+  /**
+   * Permanently purge a user and all of their associated data (irreversible).
+   * Rejected if the user still has live (non-deleted) VMs.
+   */
+  async deleteUser(id: number) {
+    return await this.handleResponse<ApiResponse<null>>(
+      await this.req(`/api/admin/v1/users/${id}`, "DELETE"),
+    );
+  }
+
   // Note: This endpoint may need to be implemented based on actual API
   async getUserSshKeys(userId: number) {
     const result = await this.handleResponse<ApiResponse<AdminSshKeyInfo[]>>(

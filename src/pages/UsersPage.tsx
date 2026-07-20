@@ -121,6 +121,15 @@ export function UsersPage() {
     [searchTerm, regionFilter, roleFilter, hasVmsFilter],
   );
 
+  const handleSearchChange = (value: string) => {
+    // Broaden the VM-ownership filter to "any" when searching so a matching user
+    // isn't hidden just because they don't own a VM.
+    if (value.trim() && hasVmsFilter === "true") {
+      setHasVmsFilter("");
+    }
+    setSearchTerm(value);
+  };
+
   const clearSearch = () => {
     setSearchTerm("");
   };
@@ -338,7 +347,7 @@ export function UsersPage() {
               <input
                 type="text"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 placeholder="Search by email, ID, npub, or nprofile..."
                 className={`pl-10 pr-10 py-2 w-80 bg-gray-700 border rounded-md text-white placeholder-gray-400 focus:outline-none ${
                   error ? "border-red-500" : "border-gray-600 focus:border-blue-500"

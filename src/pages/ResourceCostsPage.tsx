@@ -14,6 +14,7 @@ import type {
   ResourceCostResourceType,
   ResourceCostType,
 } from "../lib/api";
+import { confirmDialog } from "../services/confirmService";
 import { CURRENCIES, formatCurrency, fromSmallestUnits, toSmallestUnits } from "../utils/currency";
 
 const RESOURCE_TYPE_LABELS: Record<ResourceCostResourceType, string> = {
@@ -69,9 +70,10 @@ export function ResourceCostsPage() {
 
   const handleDelete = async (cost: AdminResourceCostDetail) => {
     if (
-      !confirm(
-        `Delete this ${RESOURCE_TYPE_LABELS[cost.resource_type]} cost of ${formatCurrency(cost.amount, cost.currency)}?`,
-      )
+      !(await confirmDialog({
+        title: "Delete Resource Cost",
+        message: `Delete this ${RESOURCE_TYPE_LABELS[cost.resource_type]} cost of ${formatCurrency(cost.amount, cost.currency)}?`,
+      }))
     ) {
       return;
     }

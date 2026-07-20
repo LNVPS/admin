@@ -9,6 +9,7 @@ import { StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import type { AdminIpRangeInfo, AdminVmIpAssignmentInfo } from "../lib/api";
+import { confirmDialog } from "../services/confirmService";
 
 export function VmIpAssignmentsPage() {
   const adminApi = useAdminApi();
@@ -129,7 +130,12 @@ export function VmIpAssignmentsPage() {
   };
 
   const handleDelete = async (assignment: AdminVmIpAssignmentInfo) => {
-    if (confirm(`Are you sure you want to delete IP assignment "${assignment.ip}"?`)) {
+    if (
+      await confirmDialog({
+        title: "Delete IP Assignment",
+        message: `Are you sure you want to delete IP assignment "${assignment.ip}"?`,
+      })
+    ) {
       try {
         await adminApi.deleteVmIpAssignment(assignment.id);
         refreshData();

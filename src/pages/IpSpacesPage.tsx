@@ -14,6 +14,7 @@ import { StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import type { AdminAvailableIpSpaceInfo, AdminIpSpacePricingInfo } from "../lib/api";
+import { confirmDialog } from "../services/confirmService";
 
 export function IpSpacesPage() {
   const adminApi = useAdminApi();
@@ -35,7 +36,12 @@ export function IpSpacesPage() {
   };
 
   const handleDelete = async (ipSpace: AdminAvailableIpSpaceInfo) => {
-    if (!confirm(`Are you sure you want to delete IP space "${ipSpace.cidr}"? This action cannot be undone.`)) {
+    if (
+      !(await confirmDialog({
+        title: "Delete IP Space",
+        message: `Are you sure you want to delete IP space "${ipSpace.cidr}"? This action cannot be undone.`,
+      }))
+    ) {
       return;
     }
 
@@ -625,7 +631,8 @@ function PricingModal({
   const [editingPricing, setEditingPricing] = useState<AdminIpSpacePricingInfo | null>(null);
 
   const handleDeletePricing = async (pricing: AdminIpSpacePricingInfo) => {
-    if (!confirm(`Delete pricing for /${pricing.prefix_size}?`)) return;
+    if (!(await confirmDialog({ title: "Delete Pricing", message: `Delete pricing for /${pricing.prefix_size}?` })))
+      return;
 
     try {
       await adminApi.deleteIpSpacePricing(ipSpace.id, pricing.id);

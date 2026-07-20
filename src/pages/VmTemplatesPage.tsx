@@ -17,6 +17,8 @@ import {
   DiskInterface,
   DiskType,
 } from "../lib/api";
+import { confirmDialog } from "../services/confirmService";
+import { toastService } from "../services/toastService";
 import { formatCurrency, fromSmallestUnits, toSmallestUnits } from "../utils/currency";
 import { formatBytes } from "../utils/formatBytes";
 
@@ -65,10 +67,13 @@ export function VmTemplatesPage() {
 
   const handleDelete = async (template: AdminVmTemplateInfo) => {
     if (template.active_vm_count > 0) {
-      alert(`Cannot delete template "${template.name}" because it has ${template.active_vm_count} active VMs.`);
+      toastService.error(
+        "Cannot delete template",
+        `"${template.name}" has ${template.active_vm_count} active VMs.`,
+      );
       return;
     }
-    if (confirm(`Are you sure you want to delete the template "${template.name}"?`)) {
+    if (await confirmDialog({ title: "Delete Template", message: `Are you sure you want to delete the template "${template.name}"?` })) {
       try {
         await adminApi.deleteVmTemplate(template.id);
         refreshData();

@@ -36,6 +36,7 @@ import {
   type AdminSubscriptionLineItemResource,
   type AdminSubscriptionPaymentInfo,
 } from "../lib/api";
+import { confirmDialog } from "../services/confirmService";
 import { formatCurrency } from "../utils/currency";
 import { EditSubscriptionModal } from "./SubscriptionsPage";
 
@@ -60,7 +61,7 @@ export function SubscriptionDetailPage() {
   };
 
   const handleDeleteLineItem = async (lineItem: AdminSubscriptionLineItemInfo) => {
-    if (!confirm(`Delete line item "${lineItem.name}"?`)) return;
+    if (!(await confirmDialog({ title: "Delete Line Item", message: `Delete line item "${lineItem.name}"?` }))) return;
 
     try {
       await adminApi.deleteSubscriptionLineItem(lineItem.id);
@@ -72,7 +73,13 @@ export function SubscriptionDetailPage() {
 
   const handleDeleteSubscription = async () => {
     if (!subscription) return;
-    if (!confirm(`Delete subscription "${subscription.name}"? This action cannot be undone.`)) return;
+    if (
+      !(await confirmDialog({
+        title: "Delete Subscription",
+        message: `Delete subscription "${subscription.name}"? This action cannot be undone.`,
+      }))
+    )
+      return;
 
     try {
       await adminApi.deleteSubscription(subscription.id);
@@ -352,9 +359,11 @@ function SubscriptionPaymentsTable({ subscriptionId, refreshKey }: { subscriptio
 
   const handleCompletePayment = async (payment: AdminSubscriptionPaymentInfo) => {
     if (
-      !confirm(
-        `Mark payment ${payment.id.slice(0, 8)}... (${formatCurrency(payment.amount, payment.currency)}) as paid? This extends the subscription by 30 days and activates it.`,
-      )
+      !(await confirmDialog({
+        title: "Complete Payment",
+        message: `Mark payment ${payment.id.slice(0, 8)}... (${formatCurrency(payment.amount, payment.currency)}) as paid? This extends the subscription by 30 days and activates it.`,
+        variant: "primary",
+      }))
     ) {
       return;
     }

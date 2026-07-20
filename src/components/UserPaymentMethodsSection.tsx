@@ -4,6 +4,7 @@ import { useAdminApi } from "../hooks/useAdminApi";
 import { useToast } from "../hooks/useToast";
 import { useUserRoles } from "../hooks/useUserRoles";
 import type { AdminUserPaymentMethodInfo } from "../lib/api";
+import { confirmDialog } from "../services/confirmService";
 import { Button } from "./Button";
 import { Modal } from "./Modal";
 import { PaginatedTable } from "./PaginatedTable";
@@ -30,7 +31,10 @@ export function UserPaymentMethodsSection({ userId }: { userId: number }) {
 
   const handleDelete = async (method: AdminUserPaymentMethodInfo) => {
     if (
-      !confirm(`Delete saved payment method "${methodLabel(method)}"? The user will lose auto-renewal via this method.`)
+      !(await confirmDialog({
+        title: "Delete Payment Method",
+        message: `Delete saved payment method "${methodLabel(method)}"? The user will lose auto-renewal via this method.`,
+      }))
     ) {
       return;
     }

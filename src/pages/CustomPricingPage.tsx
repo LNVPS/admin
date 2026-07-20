@@ -14,6 +14,7 @@ import { StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import type { AdminCustomPricingInfo } from "../lib/api";
+import { confirmDialog, promptDialog } from "../services/confirmService";
 import { formatCurrency } from "../utils/currency";
 import { formatBytes } from "../utils/formatBytes";
 
@@ -28,7 +29,12 @@ export function CustomPricingPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this pricing model?")) {
+    if (
+      !(await confirmDialog({
+        title: "Delete Pricing Model",
+        message: "Are you sure you want to delete this pricing model?",
+      }))
+    ) {
       return;
     }
 
@@ -41,7 +47,13 @@ export function CustomPricingPage() {
   };
 
   const handleCopy = async (id: number, name: string) => {
-    const newName = prompt("Enter name for the copied pricing model:", `${name} (Copy)`);
+    const newName = await promptDialog({
+      title: "Copy Pricing Model",
+      label: "Name for the copied pricing model",
+      defaultValue: `${name} (Copy)`,
+      required: true,
+      confirmText: "Copy",
+    });
     if (!newName) return;
 
     try {

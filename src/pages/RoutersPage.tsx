@@ -18,6 +18,8 @@ import { StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { type AdminRouterDetail, RouterKind } from "../lib/api";
+import { confirmDialog } from "../services/confirmService";
+import { toastService } from "../services/toastService";
 
 export function RoutersPage() {
   const adminApi = useAdminApi();
@@ -37,13 +39,14 @@ export function RoutersPage() {
 
   const handleDelete = async (router: AdminRouterDetail) => {
     if (router.access_policy_count > 0) {
-      alert(
-        `Cannot delete router "${router.name}" because it is used by ${router.access_policy_count} access polic${router.access_policy_count === 1 ? "y" : "ies"}. Please remove it from all access policies before deleting.`,
+      toastService.error(
+        "Cannot delete router",
+        `"${router.name}" is used by ${router.access_policy_count} access polic${router.access_policy_count === 1 ? "y" : "ies"}. Please remove it from all access policies before deleting.`,
       );
       return;
     }
 
-    if (confirm(`Are you sure you want to delete router "${router.name}"?`)) {
+    if (await confirmDialog({ title: "Delete Router", message: `Are you sure you want to delete router "${router.name}"?` })) {
       try {
         await adminApi.deleteRouter(router.id);
         refreshData();

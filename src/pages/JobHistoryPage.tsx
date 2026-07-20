@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useJobHistory } from "../hooks/useJobHistory";
+import { confirmDialog } from "../services/confirmService";
 import type { JobHistoryEntry } from "../services/jobHistoryService";
 import { Button } from "../components/Button";
 import { StatusBadge } from "../components/StatusBadge";
@@ -95,11 +96,12 @@ export function JobHistoryPage() {
     }
   });
 
-  const handleClearHistory = () => {
+  const handleClearHistory = async () => {
     if (
-      confirm(
-        "Are you sure you want to clear all job history? This cannot be undone.",
-      )
+      await confirmDialog({
+        title: "Clear Job History",
+        message: "Are you sure you want to clear all job history? This cannot be undone.",
+      })
     ) {
       clearHistory();
     }

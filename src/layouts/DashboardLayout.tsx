@@ -28,6 +28,7 @@ import React, { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { ServerSelector } from "../components/ServerSelector";
 import { TasksWidget } from "../components/TasksWidget";
+import { ConfirmDialogContainer } from "../components/ConfirmDialogContainer";
 import { ToastContainer } from "../components/Toast";
 import { useTheme } from "../hooks/useTheme";
 import { useToast } from "../hooks/useToast";
@@ -314,6 +315,9 @@ export function DashboardLayout() {
 
       {/* Toast notifications */}
       <ToastContainer toasts={toasts} onDismiss={dismiss} />
+
+      {/* Confirm / prompt dialogs */}
+      <ConfirmDialogContainer />
 
       {/* Mobile backdrop */}
       {sidebarOpen && (

@@ -14,6 +14,7 @@ import { StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { type AdminVmOsImageInfo, ApiOsDistribution } from "../lib/api";
+import { confirmDialog } from "../services/confirmService";
 
 export function OsImagesPage() {
   const adminApi = useAdminApi();
@@ -38,7 +39,12 @@ export function OsImagesPage() {
   };
 
   const handleDelete = async (image: AdminVmOsImageInfo) => {
-    if (confirm(`Are you sure you want to delete OS image "${image.distribution} ${image.version}"?`)) {
+    if (
+      await confirmDialog({
+        title: "Delete OS Image",
+        message: `Are you sure you want to delete OS image "${image.distribution} ${image.version}"?`,
+      })
+    ) {
       try {
         await adminApi.deleteVmOsImage(image.id);
         refreshData();

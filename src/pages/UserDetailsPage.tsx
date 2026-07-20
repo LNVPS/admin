@@ -36,6 +36,8 @@ import {
   type UserRoleInfo,
   VmRunningStates,
 } from "../lib/api";
+import { confirmDialog } from "../services/confirmService";
+import { toastService } from "../services/toastService";
 import { formatCurrency } from "../utils/currency";
 import { formatBytes } from "../utils/formatBytes";
 
@@ -106,13 +108,13 @@ export function UserDetailsPage() {
   };
 
   const handleRemoveRole = async (roleId: number, roleName: string) => {
-    if (confirm(`Are you sure you want to remove the "${roleName}" role from this user?`)) {
+    if (await confirmDialog({ title: "Remove Role", message: `Are you sure you want to remove the "${roleName}" role from this user?` })) {
       try {
         await adminApi.revokeUserRole(user.id, roleId);
         refreshRoles();
       } catch (error) {
         console.error("Failed to remove role:", error);
-        alert("Failed to remove role. Please try again.");
+        toastService.error("Failed to remove role", "Please try again.");
       }
     }
   };
@@ -763,7 +765,7 @@ function AddRoleModal({
       onClose();
     } catch (error) {
       console.error("Failed to assign role:", error);
-      alert("Failed to assign role. Please try again.");
+      toastService.error("Failed to assign role", "Please try again.");
     } finally {
       setLoading(false);
     }

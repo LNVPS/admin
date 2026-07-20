@@ -8,6 +8,8 @@ import { StatsHeader } from "../components/StatsHeader";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { useApiCall } from "../hooks/useApiCall";
 import type { AdminRoleInfo, PaginatedApiResponse } from "../lib/api";
+import { confirmDialog } from "../services/confirmService";
+import { toastService } from "../services/toastService";
 
 export function RolesPage() {
   const adminApi = useAdminApi();
@@ -130,11 +132,11 @@ export function RolesPage() {
 
   const handleDelete = async (role: AdminRoleInfo) => {
     if (role.is_system_role) {
-      alert("Cannot delete system roles.");
+      toastService.error("Cannot delete role", "System roles cannot be deleted.");
       return;
     }
 
-    if (confirm(`Are you sure you want to delete role "${role.name}"?`)) {
+    if (await confirmDialog({ title: "Delete Role", message: `Are you sure you want to delete role "${role.name}"?` })) {
       try {
         await adminApi.deleteRole(role.id);
         refreshData();

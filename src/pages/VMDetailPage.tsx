@@ -7,6 +7,7 @@ import {
   ClipboardIcon,
   ClockIcon,
   CreditCardIcon,
+  FireIcon,
   GlobeAltIcon,
   NoSymbolIcon,
   PlayIcon,
@@ -29,6 +30,8 @@ import { VmTransferModal } from "../components/VmTransferModal";
 import { getVmStatus, VmStatusBadge } from "../components/VmStatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { useUserRoles } from "../hooks/useUserRoles";
+import { confirmDialog, promptDialog } from "../services/confirmService";
+import { toastService } from "../services/toastService";
 import {
   AdminPaymentMethod,
   AdminVmHistoryActionType,
@@ -133,52 +136,78 @@ export function VMDetailPage() {
 
   const handleDeleteVM = async () => {
     if (!vm) return;
-    if (confirm(`Are you sure you want to delete VM ${vm.id}?`)) {
-      const reason = prompt("Optional: Enter a reason for deletion (e.g., 'Policy violation', 'User requested'):");
-      try {
-        setActionLoading("delete");
-        const result = await adminApi.deleteVM(vm.id, reason || undefined);
-        console.log("Delete VM job dispatched:", result.job_id);
-        navigate("/vms");
-      } catch (error) {
-        console.error("Failed to delete VM:", error);
-        setActionLoading(null);
-      }
+    const reason = await promptDialog({
+      title: "Delete VM",
+      message: `Soft-delete VM ${vm.id}? Never-paid VMs are removed permanently; paid VMs are retained for records and can be purged separately.`,
+      label: "Reason (optional)",
+      placeholder: "e.g. Policy violation, User requested",
+      confirmText: "Delete VM",
+    });
+    if (reason === null) return;
+    try {
+      setActionLoading("delete");
+      const result = await adminApi.deleteVM(vm.id, reason || undefined);
+      console.log("Delete VM job dispatched:", result.job_id);
+      navigate("/vms");
+    } catch (error) {
+      console.error("Failed to delete VM:", error);
+      setActionLoading(null);
     }
   };
 
   const handlePurgeVM = async () => {
     if (!vm) return;
-    if (
-      confirm(
-        `PERMANENTLY delete (purge) VM ${vm.id}, including all payment history and related records? This cannot be undone.`,
-      )
-    ) {
-      const reason = prompt("Optional: Enter a reason for purging this VM (e.g., 'Test VM'):");
-      try {
-        setActionLoading("purge");
-        const result = await adminApi.deleteVM(vm.id, reason || undefined, true);
-        console.log("Purge VM job dispatched:", result.job_id);
-        navigate("/vms");
-      } catch (error) {
-        console.error("Failed to purge VM:", error);
-        setActionLoading(null);
-      }
+    const confirmed = await confirmDialog({
+      title: "Permanently Purge VM",
+      message: `PERMANENTLY delete (purge) VM ${vm.id}, including all payment history and related records?\n\nThis cannot be undone and is intended for removing test VMs.`,
+      confirmText: "Purge VM",
+      variant: "danger",
+    });
+    if (!confirmed) return;
+    const reason = await promptDialog({
+      title: "Purge VM",
+      message: `Purging VM ${vm.id}.`,
+      label: "Reason (optional)",
+      placeholder: "e.g. Test VM",
+      confirmText: "Purge VM",
+    });
+    if (reason === null) return;
+    try {
+      setActionLoading("purge");
+      const result = await adminApi.deleteVM(vm.id, reason || undefined, true);
+      console.log("Purge VM job dispatched:", result.job_id);
+      navigate("/vms");
+    } catch (error) {
+      console.error("Failed to purge VM:", error);
+      setActionLoading(null);
     }
   };
 
   const handleExtendVM = async () => {
     if (!vm) return;
-    const daysInput = prompt("Enter the number of days to extend the VM (1-365):", "30");
-    if (!daysInput) return;
+    const daysInput = await promptDialog({
+      title: "Extend VM",
+      label: "Number of days to extend the VM (1-365)",
+      defaultValue: "30",
+      inputType: "number",
+      required: true,
+      confirmText: "Continue",
+    });
+    if (daysInput === null) return;
 
     const days = parseInt(daysInput, 10);
     if (isNaN(days) || days < 1 || days > 365) {
-      alert("Please enter a valid number of days between 1 and 365.");
+      toastService.error("Invalid input", "Please enter a valid number of days between 1 and 365.");
       return;
     }
 
-    const reason = prompt("Optional: Enter a reason for extending the VM:");
+    const reason = await promptDialog({
+      title: "Extend VM",
+      message: `Extending VM ${vm.id} by ${days} day(s).`,
+      label: "Reason (optional)",
+      confirmText: "Extend VM",
+    });
+    if (reason === null) return;
 
     try {
       setActionLoading("extend");
@@ -197,7 +226,7 @@ export function VMDetailPage() {
     const currentlyDisabled = (vm as { disabled?: boolean }).disabled ?? false;
     const action = currentlyDisabled ? "enable" : "disable";
 
-    if (!confirm(`Are you sure you want to ${action} this VM?`)) return;
+    if (!(await confirmDialog({ title: `${action[0].toUpperCase()}${action.slice(1)} VM`, message: `Are you sure you want to ${action} this VM?`, variant: "primary" }))) return;
 
     try {
       setActionLoading("toggle-disabled");
@@ -236,12 +265,19 @@ export function VMDetailPage() {
 
   const handleCompletePayment = async (payment: AdminVmPaymentInfo) => {
     if (!vm) return;
-    if (!confirm(`Manually complete payment ${payment.id.slice(0, 8)}...?`)) return;
+    if (
+      !(await confirmDialog({
+        title: "Complete Payment",
+        message: `Manually complete payment ${payment.id.slice(0, 8)}...?`,
+        variant: "primary",
+      }))
+    )
+      return;
     try {
       await adminApi.completeVMPayment(vm.id, payment.id);
       setPaymentsRefreshKey((k) => k + 1);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to complete payment");
+      toastService.error("Failed to complete payment", err instanceof Error ? err.message : undefined);
     }
   };
 
@@ -688,7 +724,7 @@ export function VMDetailPage() {
               className="text-red-500 hover:text-red-400 p-2"
               title="Permanently delete (purge) VM — super admin only"
             >
-              <TrashIcon className="h-4 w-4" />
+              <FireIcon className="h-4 w-4" />
             </Button>
           )}
         </div>

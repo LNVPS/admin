@@ -9,6 +9,8 @@ import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { useToast } from "../hooks/useToast";
 import { type AdminDnsServerDetail, DnsServerKind } from "../lib/api";
+import { confirmDialog } from "../services/confirmService";
+import { toastService } from "../services/toastService";
 
 function getKindLabel(kind: DnsServerKind): string {
   switch (kind) {
@@ -49,12 +51,14 @@ export function DnsServersPage() {
 
   const handleDelete = async (dns: AdminDnsServerDetail) => {
     if (dns.ip_range_count > 0) {
-      alert(
-        `Cannot delete DNS server "${dns.name}" because it is referenced by ${dns.ip_range_count} IP range(s). Remove the reference from all IP ranges first.`,
+      toastService.error(
+        "Cannot delete DNS server",
+        `"${dns.name}" is referenced by ${dns.ip_range_count} IP range(s). Remove the reference from all IP ranges first.`,
       );
       return;
     }
-    if (!confirm(`Are you sure you want to delete DNS server "${dns.name}"?`)) return;
+    if (!(await confirmDialog({ title: "Delete DNS Server", message: `Are you sure you want to delete DNS server "${dns.name}"?` })))
+      return;
     try {
       await adminApi.deleteDnsServer(dns.id);
       success("DNS server deleted");

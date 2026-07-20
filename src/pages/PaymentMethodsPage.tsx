@@ -25,6 +25,7 @@ import type {
   StripeProviderConfig,
 } from "../lib/api";
 import { AdminPaymentMethod, PaymentProviderType } from "../lib/api";
+import { confirmDialog } from "../services/confirmService";
 import { CURRENCIES, formatCurrency, fromSmallestUnits, parseRate, toSmallestUnits } from "../utils/currency";
 
 // Helper to get display name for payment method
@@ -116,7 +117,12 @@ export function PaymentMethodsPage() {
   };
 
   const handleDelete = async (config: AdminPaymentMethodConfigInfo) => {
-    if (confirm(`Are you sure you want to delete payment method "${config.name}"?`)) {
+    if (
+      await confirmDialog({
+        title: "Delete Payment Method",
+        message: `Are you sure you want to delete payment method "${config.name}"?`,
+      })
+    ) {
       try {
         await adminApi.deletePaymentMethodConfig(config.id);
         refreshData();

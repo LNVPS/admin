@@ -10,6 +10,7 @@ import { StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import type { AdminSubscriptionInfo } from "../lib/api";
+import { confirmDialog } from "../services/confirmService";
 import { formatCurrency } from "../utils/currency";
 
 export function SubscriptionsPage() {
@@ -141,7 +142,12 @@ export function SubscriptionsPage() {
   };
 
   const handleDelete = async (sub: AdminSubscriptionInfo) => {
-    if (!confirm(`Are you sure you want to delete subscription "${sub.name}"? This action cannot be undone.`)) {
+    if (
+      !(await confirmDialog({
+        title: "Delete Subscription",
+        message: `Are you sure you want to delete subscription "${sub.name}"? This action cannot be undone.`,
+      }))
+    ) {
       return;
     }
 

@@ -4,6 +4,7 @@ import { useAdminApi } from "../hooks/useAdminApi";
 import { useToast } from "../hooks/useToast";
 import { useUserRoles } from "../hooks/useUserRoles";
 import type { AdminPasskeyInfo } from "../lib/api";
+import { confirmDialog } from "../services/confirmService";
 import { Button } from "./Button";
 import { PaginatedTable } from "./PaginatedTable";
 
@@ -23,10 +24,12 @@ export function UserPasskeysSection({ userId }: { userId: number }) {
 
   const handleRevoke = async (passkey: AdminPasskeyInfo) => {
     if (
-      !confirm(
-        `Revoke passkey "${passkeyLabel(passkey)}"? The user will no longer be able to log in with this device. ` +
+      !(await confirmDialog({
+        title: "Revoke Passkey",
+        message:
+          `Revoke passkey "${passkeyLabel(passkey)}"? The user will no longer be able to log in with this device. ` +
           "Passwordless accounts must keep at least one passkey.",
-      )
+      }))
     ) {
       return;
     }

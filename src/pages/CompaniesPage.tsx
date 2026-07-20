@@ -6,6 +6,8 @@ import { PaginatedTable } from "../components/PaginatedTable";
 import { StatsHeader } from "../components/StatsHeader";
 import { useAdminApi } from "../hooks/useAdminApi";
 import type { AdminCompanyInfo } from "../lib/api";
+import { confirmDialog } from "../services/confirmService";
+import { toastService } from "../services/toastService";
 
 export function CompaniesPage() {
   const adminApi = useAdminApi();
@@ -25,13 +27,19 @@ export function CompaniesPage() {
 
   const handleDelete = async (company: AdminCompanyInfo) => {
     if (company.region_count > 0) {
-      alert(
-        `Cannot delete company "${company.name}" because it has ${company.region_count} region(s) assigned to it. Please reassign or remove all regions before deleting.`,
+      toastService.error(
+        "Cannot delete company",
+        `"${company.name}" has ${company.region_count} region(s) assigned to it. Please reassign or remove all regions before deleting.`,
       );
       return;
     }
 
-    if (confirm(`Are you sure you want to delete company "${company.name}"?`)) {
+    if (
+      await confirmDialog({
+        title: "Delete Company",
+        message: `Are you sure you want to delete company "${company.name}"?`,
+      })
+    ) {
       try {
         await adminApi.deleteCompany(company.id);
         refreshData();

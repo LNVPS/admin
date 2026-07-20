@@ -7,6 +7,7 @@ import { StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import type { AdminCompanyInfo, AdminRegionInfo } from "../lib/api";
+import { confirmDialog } from "../services/confirmService";
 
 export function RegionsPage() {
   const adminApi = useAdminApi();
@@ -44,7 +45,12 @@ export function RegionsPage() {
   };
 
   const handleDelete = async (region: AdminRegionInfo) => {
-    if (confirm(`Are you sure you want to delete region "${region.name}"?`)) {
+    if (
+      await confirmDialog({
+        title: "Delete Region",
+        message: `Are you sure you want to delete region "${region.name}"?`,
+      })
+    ) {
       try {
         await adminApi.deleteRegion(region.id);
         refreshData(); // Refresh the list

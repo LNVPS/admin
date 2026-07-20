@@ -24,6 +24,7 @@ import {
   type AdminRegionInfo,
   IpRangeAllocationMode,
 } from "../lib/api";
+import { confirmDialog } from "../services/confirmService";
 
 export function IpRangesPage() {
   const adminApi = useAdminApi();
@@ -41,9 +42,11 @@ export function IpRangesPage() {
 
   const handlePatchDns = async (ipRange: AdminIpRangeInfo) => {
     if (
-      !confirm(
-        `Re-apply forward + reverse DNS for all ${ipRange.assignment_count} assignment(s) in "${ipRange.cidr}"? This queues a background job.`,
-      )
+      !(await confirmDialog({
+        title: "Re-apply DNS",
+        message: `Re-apply forward + reverse DNS for all ${ipRange.assignment_count} assignment(s) in "${ipRange.cidr}"? This queues a background job.`,
+        variant: "primary",
+      }))
     ) {
       return;
     }
@@ -71,13 +74,13 @@ export function IpRangesPage() {
 
   const handleDelete = async (ipRange: AdminIpRangeInfo) => {
     if (ipRange.assignment_count > 0) {
-      alert(
-        `Cannot delete IP range "${ipRange.cidr}" because it has ${ipRange.assignment_count} active IP assignment(s). Please remove all assignments before deleting.`,
+      toastError(
+        `Cannot delete IP range "${ipRange.cidr}": it has ${ipRange.assignment_count} active IP assignment(s). Please remove all assignments before deleting.`,
       );
       return;
     }
 
-    if (confirm(`Are you sure you want to delete IP range "${ipRange.cidr}"?`)) {
+    if (await confirmDialog({ title: "Delete IP Range", message: `Are you sure you want to delete IP range "${ipRange.cidr}"?` })) {
       try {
         await adminApi.deleteIpRange(ipRange.id);
         refreshData();

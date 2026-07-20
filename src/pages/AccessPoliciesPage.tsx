@@ -6,6 +6,8 @@ import { PaginatedTable } from "../components/PaginatedTable";
 import { StatsHeader } from "../components/StatsHeader";
 import { useAdminApi } from "../hooks/useAdminApi";
 import type { AdminAccessPolicyDetail, AdminRouterDetail, NetworkAccessPolicyKind } from "../lib/api";
+import { confirmDialog } from "../services/confirmService";
+import { toastService } from "../services/toastService";
 
 export function AccessPoliciesPage() {
   const adminApi = useAdminApi();
@@ -25,13 +27,14 @@ export function AccessPoliciesPage() {
 
   const handleDelete = async (policy: AdminAccessPolicyDetail) => {
     if (policy.ip_range_count > 0) {
-      alert(
-        `Cannot delete access policy "${policy.name}" because it is used by ${policy.ip_range_count} IP range(s). Please remove it from all IP ranges before deleting.`,
+      toastService.error(
+        "Cannot delete access policy",
+        `"${policy.name}" is used by ${policy.ip_range_count} IP range(s). Please remove it from all IP ranges before deleting.`,
       );
       return;
     }
 
-    if (confirm(`Are you sure you want to delete access policy "${policy.name}"?`)) {
+    if (await confirmDialog({ title: "Delete Access Policy", message: `Are you sure you want to delete access policy "${policy.name}"?` })) {
       try {
         await adminApi.deleteAccessPolicy(policy.id);
         refreshData();

@@ -88,6 +88,14 @@ export function HostsPage() {
             >
               {host.region.enabled ? "Active" : "Inactive"}
             </span>
+            {host.sunset_date && (
+              <span
+                className="inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-amber-900 text-amber-300"
+                title={`Sunsetting on ${new Date(host.sunset_date).toLocaleDateString()}`}
+              >
+                Sunset {new Date(host.sunset_date).toLocaleDateString()}
+              </span>
+            )}
           </div>
           <div className="mt-0.5 truncate text-xs text-slate-400" title={host.region.name}>
             {host.region.name}
@@ -316,6 +324,7 @@ function CreateHostModal({
     kind: "proxmox",
     vlan_id: "",
     mtu: "",
+    sunset_date: "",
     cpu: 0,
     cpu_mfg: "",
     cpu_arch: "",
@@ -354,6 +363,9 @@ function CreateHostModal({
       if (formData.mtu) {
         hostData.mtu = parseInt(formData.mtu);
       }
+      if (formData.sunset_date) {
+        hostData.sunset_date = new Date(formData.sunset_date).toISOString();
+      }
       if (formData.cpu_mfg) {
         hostData.cpu_mfg = formData.cpu_mfg;
       }
@@ -382,6 +394,7 @@ function CreateHostModal({
         kind: "proxmox",
         vlan_id: "",
         mtu: "",
+        sunset_date: "",
         cpu: 0,
         cpu_mfg: "",
         cpu_arch: "",
@@ -651,6 +664,20 @@ function CreateHostModal({
           </div>
         </div>
 
+        <div>
+          <label className="block text-xs font-medium text-white mb-2">Sunset Date</label>
+          <input
+            type="date"
+            value={formData.sunset_date}
+            onChange={(e) => setFormData({ ...formData, sunset_date: e.target.value })}
+            className=""
+          />
+          <p className="mt-1 text-xs text-slate-400">
+            Decommission date. Setting it disables the host for new VMs; existing VMs keep running and can renew only up
+            to this date.
+          </p>
+        </div>
+
         <div className="flex items-center">
           <input
             type="checkbox"
@@ -701,6 +728,7 @@ function EditHostModal({
     kind: host.kind || "proxmox",
     vlan_id: host.vlan_id?.toString() || "",
     mtu: host.mtu?.toString() || "",
+    sunset_date: host.sunset_date ? host.sunset_date.slice(0, 10) : "",
     cpu_mfg: host.cpu_mfg || "",
     cpu_arch: host.cpu_arch || "",
     cpu_features: host.cpu_features || [],
@@ -724,6 +752,7 @@ function EditHostModal({
         kind: formData.kind || undefined,
         vlan_id: formData.vlan_id ? parseInt(formData.vlan_id) : null,
         mtu: formData.mtu ? parseInt(formData.mtu) : null,
+        sunset_date: formData.sunset_date ? new Date(formData.sunset_date).toISOString() : null,
         enabled: formData.enabled,
         load_cpu: formData.load_cpu,
         load_memory: formData.load_memory,
@@ -980,6 +1009,20 @@ function EditHostModal({
               />
             </div>
           </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-white mb-2">Sunset Date</label>
+          <input
+            type="date"
+            value={formData.sunset_date}
+            onChange={(e) => setFormData({ ...formData, sunset_date: e.target.value })}
+            className=""
+          />
+          <p className="mt-1 text-xs text-slate-400">
+            Decommission date. Setting it disables the host for new VMs; existing VMs keep running and can renew only up
+            to this date. Clear to un-sunset (re-enable the host explicitly).
+          </p>
         </div>
 
         <div className="flex items-center">

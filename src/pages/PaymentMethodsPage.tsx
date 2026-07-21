@@ -210,6 +210,14 @@ export function PaymentMethodsPage() {
           ) : (
             <span className="text-gray-500">None</span>
           )}
+          {config.min_amount !== null && config.min_amount !== undefined && (
+            <div className="mt-1 text-xs text-slate-400">
+              Min:{" "}
+              {config.min_amount_currency
+                ? formatCurrency(config.min_amount, config.min_amount_currency)
+                : config.min_amount}
+            </div>
+          )}
         </td>
         {/* Status + created */}
         <td className="align-top">
@@ -757,6 +765,8 @@ function CreatePaymentMethodModal({
     processing_fee_base: "",
     processing_fee_currency: "",
     supported_currencies: [] as string[],
+    min_amount: "",
+    min_amount_currency: "",
   });
   const [providerConfig, setProviderConfig] = useState<ProviderConfig | null>(null);
 
@@ -804,6 +814,13 @@ function CreatePaymentMethodModal({
           ? toSmallestUnits(baseFee, formData.processing_fee_currency)
           : null;
 
+      // Convert minimum amount from human-readable to smallest units if currency is set
+      const minAmount = parseRate(formData.min_amount);
+      const minAmountInSmallestUnits =
+        minAmount !== null && formData.min_amount_currency
+          ? toSmallestUnits(minAmount, formData.min_amount_currency)
+          : null;
+
       const data = {
         name: formData.name,
         company_id: formData.company_id,
@@ -815,6 +832,8 @@ function CreatePaymentMethodModal({
         processing_fee_base: baseFeeInSmallestUnits,
         processing_fee_currency: formData.processing_fee_currency || null,
         supported_currencies: formData.supported_currencies.length > 0 ? formData.supported_currencies : null,
+        min_amount: minAmountInSmallestUnits,
+        min_amount_currency: minAmountInSmallestUnits !== null ? formData.min_amount_currency : null,
       };
 
       await adminApi.createPaymentMethodConfig(data);
@@ -831,6 +850,8 @@ function CreatePaymentMethodModal({
         processing_fee_base: "",
         processing_fee_currency: "",
         supported_currencies: [],
+        min_amount: "",
+        min_amount_currency: "",
       });
       setProviderConfig(null);
     } catch (err) {
@@ -1025,6 +1046,47 @@ function CreatePaymentMethodModal({
           </div>
         </div>
 
+        {/* Minimum Amount */}
+        <div className="border-t border-slate-700 pt-4">
+          <h3 className="text-sm font-medium text-white mb-4">Minimum Amount (Optional)</h3>
+          <p className="text-xs text-gray-400 mb-3">
+            Reject payments whose gross total is below this amount for this method. Not applicable to Lightning.
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-white mb-2">
+                Amount
+                {formData.min_amount_currency &&
+                  ` (${formData.min_amount_currency === "BTC" ? "sats" : formData.min_amount_currency})`}
+              </label>
+              <input
+                type="number"
+                step={formData.min_amount_currency === "BTC" ? "1" : "0.01"}
+                min="0"
+                value={formData.min_amount}
+                onChange={(e) => setFormData({ ...formData, min_amount: e.target.value })}
+                className=""
+                placeholder={formData.min_amount_currency === "BTC" ? "1000" : "1.00"}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-white mb-2">Currency</label>
+              <select
+                value={formData.min_amount_currency}
+                onChange={(e) => setFormData({ ...formData, min_amount_currency: e.target.value })}
+                className=""
+              >
+                <option value="">Select currency</option>
+                {CURRENCIES.map((currency) => (
+                  <option key={currency} value={currency}>
+                    {currency}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
         <div className="flex justify-end space-x-3 pt-4">
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
@@ -1061,6 +1123,12 @@ function EditPaymentMethodModal({
     if (!config.processing_fee_currency) return config.processing_fee_base.toString();
     return fromSmallestUnits(config.processing_fee_base, config.processing_fee_currency).toString();
   };
+  // Convert min_amount from smallest units to human-readable for display
+  const getInitialMinAmount = (): string => {
+    if (config.min_amount === null || config.min_amount === undefined) return "";
+    if (!config.min_amount_currency) return config.min_amount.toString();
+    return fromSmallestUnits(config.min_amount, config.min_amount_currency).toString();
+  };
 
   const [formData, setFormData] = useState({
     name: config.name,
@@ -1072,6 +1140,8 @@ function EditPaymentMethodModal({
     processing_fee_base: getInitialBaseFee(),
     processing_fee_currency: config.processing_fee_currency || "",
     supported_currencies: config.supported_currencies || [],
+    min_amount: getInitialMinAmount(),
+    min_amount_currency: config.min_amount_currency || "",
   });
 
   // Initialize provider config with non-secret fields from sanitized config
@@ -1184,6 +1254,13 @@ function EditPaymentMethodModal({
           ? toSmallestUnits(baseFee, formData.processing_fee_currency)
           : null;
 
+      // Convert minimum amount from human-readable to smallest units if currency is set
+      const minAmount = parseRate(formData.min_amount);
+      const minAmountInSmallestUnits =
+        minAmount !== null && formData.min_amount_currency
+          ? toSmallestUnits(minAmount, formData.min_amount_currency)
+          : null;
+
       const updates = {
         name: formData.name,
         company_id: formData.company_id,
@@ -1195,6 +1272,8 @@ function EditPaymentMethodModal({
         processing_fee_base: baseFeeInSmallestUnits,
         processing_fee_currency: formData.processing_fee_currency || null,
         supported_currencies: formData.supported_currencies.length > 0 ? formData.supported_currencies : null,
+        min_amount: minAmountInSmallestUnits,
+        min_amount_currency: minAmountInSmallestUnits !== null ? formData.min_amount_currency : null,
       };
 
       await adminApi.updatePaymentMethodConfig(config.id, updates);
@@ -1392,6 +1471,47 @@ function EditPaymentMethodModal({
                 <span className="text-sm text-white">{currency}</span>
               </label>
             ))}
+          </div>
+        </div>
+
+        {/* Minimum Amount */}
+        <div className="border-t border-slate-700 pt-4">
+          <h3 className="text-sm font-medium text-white mb-4">Minimum Amount (Optional)</h3>
+          <p className="text-xs text-gray-400 mb-3">
+            Reject payments whose gross total is below this amount for this method. Not applicable to Lightning.
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-white mb-2">
+                Amount
+                {formData.min_amount_currency &&
+                  ` (${formData.min_amount_currency === "BTC" ? "sats" : formData.min_amount_currency})`}
+              </label>
+              <input
+                type="number"
+                step={formData.min_amount_currency === "BTC" ? "1" : "0.01"}
+                min="0"
+                value={formData.min_amount}
+                onChange={(e) => setFormData({ ...formData, min_amount: e.target.value })}
+                className=""
+                placeholder={formData.min_amount_currency === "BTC" ? "1000" : "1.00"}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-white mb-2">Currency</label>
+              <select
+                value={formData.min_amount_currency}
+                onChange={(e) => setFormData({ ...formData, min_amount_currency: e.target.value })}
+                className=""
+              >
+                <option value="">Select currency</option>
+                {CURRENCIES.map((currency) => (
+                  <option key={currency} value={currency}>
+                    {currency}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 

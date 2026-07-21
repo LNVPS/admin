@@ -442,6 +442,11 @@ export interface AdminHostInfo {
   load_disk: number; // Disk load factor: 0-1 (e.g., 0.75 = 75% load)
   vlan_id: number | null;
   mtu: number | null;
+  /**
+   * Decommission date (ISO 8601). When set, the host is forced disabled (takes no new VMs)
+   * while existing VMs keep running and can be renewed only up to this date. Omitted when not sunsetting.
+   */
+  sunset_date?: string | null;
   disks: {
     id: number;
     name: string;
@@ -667,6 +672,8 @@ export interface AdminCompanyInfo {
   email: string | null;
   /** Default referral commission (whole %) applied to a referred VM's first payment. */
   referral_rate: number;
+  /** Max prepay window in days bounding renewals. 0 = inherit the global default. */
+  max_prepay_days: number;
   region_count: number;
 }
 
@@ -1284,6 +1291,10 @@ export interface AdminPaymentMethodConfigInfo {
   processing_fee_base: number | null;
   processing_fee_currency: string | null;
   supported_currencies: string[];
+  /** Minimum gross payment amount (smallest currency units). null = no minimum. */
+  min_amount: number | null;
+  /** Currency for min_amount. */
+  min_amount_currency: string | null;
   created: string;
   modified: string;
 }
@@ -1748,6 +1759,8 @@ export class AdminApi {
       kind?: string;
       vlan_id?: number | null;
       mtu?: number | null;
+      /** Set a decommission date (ISO 8601) to sunset the host; send null to un-sunset (enabled is left untouched). */
+      sunset_date?: string | null;
       enabled?: boolean;
       cpu_mfg?: string;
       cpu_arch?: string;
@@ -1853,6 +1866,8 @@ export class AdminApi {
     kind: string;
     vlan_id?: number | null;
     mtu?: number;
+    /** Optional decommission date (ISO 8601) to sunset the host on creation. */
+    sunset_date?: string | null;
     cpu: number;
     cpu_mfg?: string;
     cpu_arch?: string;
@@ -2305,6 +2320,8 @@ export class AdminApi {
     email?: string | null;
     /** Default referral commission (whole %); must be >= 0. */
     referral_rate?: number;
+    /** Max prepay window in days; 0 inherits the global default. */
+    max_prepay_days?: number;
   }) {
     const result = await this.handleResponse<ApiResponse<AdminCompanyInfo>>(
       await this.req("/api/admin/v1/companies", "POST", data),
@@ -2328,6 +2345,8 @@ export class AdminApi {
       email: string | null;
       /** Default referral commission (whole %); must be >= 0. */
       referral_rate: number;
+      /** Max prepay window in days; 0 inherits the global default. */
+      max_prepay_days: number;
     }>,
   ) {
     const result = await this.handleResponse<ApiResponse<AdminCompanyInfo>>(
@@ -3161,6 +3180,8 @@ export class AdminApi {
     processing_fee_base?: number | null;
     processing_fee_currency?: string | null;
     supported_currencies?: string[] | null;
+    min_amount?: number | null;
+    min_amount_currency?: string | null;
   }) {
     const result = await this.handleResponse<ApiResponse<AdminPaymentMethodConfigInfo>>(
       await this.req("/api/admin/v1/payment_methods", "POST", data),
@@ -3181,6 +3202,8 @@ export class AdminApi {
       processing_fee_base: number | null;
       processing_fee_currency: string | null;
       supported_currencies: string[] | null;
+      min_amount: number | null;
+      min_amount_currency: string | null;
     }>,
   ) {
     const result = await this.handleResponse<ApiResponse<AdminPaymentMethodConfigInfo>>(

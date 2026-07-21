@@ -77,6 +77,9 @@ export function CompaniesPage() {
             </div>
             <div className="mt-0.5 truncate font-mono text-xs text-blue-400">{company.base_currency}</div>
             <div className="truncate text-xs text-slate-400">Referral rate: {company.referral_rate}%</div>
+            {company.max_prepay_days > 0 && (
+              <div className="truncate text-xs text-slate-400">Max prepay: {company.max_prepay_days} days</div>
+            )}
             {company.tax_id && (
               <div className="truncate text-xs text-slate-400" title={company.tax_id}>
                 Tax ID: {company.tax_id}
@@ -235,6 +238,8 @@ function CreateCompanyModal({
     postcode: "",
     phone: "",
     email: "",
+    referral_rate: "0",
+    max_prepay_days: "0",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -254,6 +259,8 @@ function CreateCompanyModal({
         postcode: formData.postcode || null,
         phone: formData.phone || null,
         email: formData.email || null,
+        referral_rate: parseFloat(formData.referral_rate) || 0,
+        max_prepay_days: parseInt(formData.max_prepay_days, 10) || 0,
       };
 
       await adminApi.createCompany(data);
@@ -271,6 +278,8 @@ function CreateCompanyModal({
         postcode: "",
         phone: "",
         email: "",
+        referral_rate: "0",
+        max_prepay_days: "0",
       });
     } catch (error) {
       console.error("Failed to create company:", error);
@@ -421,6 +430,21 @@ function CreateCompanyModal({
           </p>
         </div>
 
+        <div>
+          <label className="block text-xs font-medium text-white mb-2">Max Prepay Days</label>
+          <input
+            type="number"
+            step="1"
+            min="0"
+            value={formData.max_prepay_days}
+            onChange={(e) => setFormData({ ...formData, max_prepay_days: e.target.value })}
+            className=""
+          />
+          <p className="mt-1 text-xs text-slate-400">
+            Maximum window renewals may prepay into the future. 0 inherits the global default.
+          </p>
+        </div>
+
         <div className="flex justify-end space-x-3 pt-4">
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
@@ -461,6 +485,7 @@ function EditCompanyModal({
     phone: company.phone || "",
     email: company.email || "",
     referral_rate: String(company.referral_rate ?? 0),
+    max_prepay_days: String(company.max_prepay_days ?? 0),
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -481,6 +506,7 @@ function EditCompanyModal({
         phone: formData.phone || null,
         email: formData.email || null,
         referral_rate: parseFloat(formData.referral_rate) || 0,
+        max_prepay_days: parseInt(formData.max_prepay_days, 10) || 0,
       };
 
       await adminApi.updateCompany(company.id, updates);
@@ -632,6 +658,21 @@ function EditCompanyModal({
           />
           <p className="mt-1 text-xs text-slate-400">
             Default commission applied to a referred VM's first payment when the referrer has no override.
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-white mb-2">Max Prepay Days</label>
+          <input
+            type="number"
+            step="1"
+            min="0"
+            value={formData.max_prepay_days}
+            onChange={(e) => setFormData({ ...formData, max_prepay_days: e.target.value })}
+            className=""
+          />
+          <p className="mt-1 text-xs text-slate-400">
+            Maximum window renewals may prepay into the future. 0 inherits the global default.
           </p>
         </div>
 

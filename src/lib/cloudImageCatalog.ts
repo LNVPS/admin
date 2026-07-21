@@ -163,9 +163,9 @@ export const STANDARD_CLOUD_IMAGES: StandardCloudImage[] = [
     distribution: ApiOsDistribution.ALPINE,
     flavour: "server",
     version: "3.24",
-    url: "https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/cloud/generic_alpine-3.24.1-x86_64-bios-cloudinit-r0.qcow2",
+    url: "https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/cloud/generic_alpine-3.24.1-x86_64-uefi-cloudinit-r0.qcow2",
     sha2_url:
-      "https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/cloud/generic_alpine-3.24.1-x86_64-bios-cloudinit-r0.qcow2.sha512",
+      "https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/cloud/generic_alpine-3.24.1-x86_64-uefi-cloudinit-r0.qcow2.sha512",
     default_username: "alpine",
     release_date: "2026-06-13",
   },

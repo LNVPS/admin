@@ -189,15 +189,26 @@ export const STANDARD_CLOUD_IMAGES: StandardCloudImage[] = [
     default_username: "arch",
     note: "Rolling release",
   },
-  // FreeBSD (unofficial cloud-init build from bsd-cloud-image.org)
+  // FreeBSD (official cloud-init images, hybrid BIOS+UEFI, xz-compressed qcow2)
   {
     distribution: ApiOsDistribution.FREEBSD,
     flavour: "ufs",
-    version: "14.2",
-    url: "https://object-storage.public.mtl1.vexxhost.net/swift/v1/1dbafeefbd4f4c80864414a441e72dd2/bsd-cloud-image.org/images/freebsd/14.2/2024-12-08/ufs/freebsd-14.2-ufs-2024-12-08.qcow2",
+    version: "15.0",
+    url: "https://download.freebsd.org/releases/VM-IMAGES/15.0-RELEASE/amd64/Latest/FreeBSD-15.0-RELEASE-amd64-BASIC-CLOUDINIT-ufs.qcow2.xz",
+    sha2_url: "https://download.freebsd.org/releases/VM-IMAGES/15.0-RELEASE/amd64/Latest/CHECKSUM.SHA256",
     default_username: "freebsd",
-    release_date: "2024-12-03",
-    note: "Unofficial build (bsd-cloud-image.org)",
+    release_date: "2025-12-02",
+    note: "Official image (xz-compressed)",
+  },
+  {
+    distribution: ApiOsDistribution.FREEBSD,
+    flavour: "ufs",
+    version: "14.3",
+    url: "https://download.freebsd.org/releases/VM-IMAGES/14.3-RELEASE/amd64/Latest/FreeBSD-14.3-RELEASE-amd64-BASIC-CLOUDINIT-ufs.qcow2.xz",
+    sha2_url: "https://download.freebsd.org/releases/VM-IMAGES/14.3-RELEASE/amd64/Latest/CHECKSUM.SHA256",
+    default_username: "freebsd",
+    release_date: "2025-06-10",
+    note: "Official image (xz-compressed)",
   },
   // OpenBSD (unofficial cloud-init build)
   {

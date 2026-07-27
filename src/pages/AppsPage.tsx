@@ -1,7 +1,8 @@
 import { CubeIcon, PencilIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import type React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "../components/Button";
+import { countActiveFilters, FilterBar, FilterButton, type FilterField } from "../components/FilterBar";
 import { IntervalInput } from "../components/IntervalInput";
 import { Modal } from "../components/Modal";
 import { MoneyAmountInput, MoneyInput } from "../components/MoneyInput";
@@ -36,9 +37,53 @@ export function AppsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selected, setSelected] = useState<AdminAppInfo | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [searchFilter, setSearchFilter] = useState("");
+  const [enabledFilter, setEnabledFilter] = useState("");
   const { success, error: toastError } = useToast();
 
   const refreshData = () => setRefreshTrigger((prev) => prev + 1);
+
+  const filterFields: FilterField[] = [
+    {
+      kind: "text",
+      key: "app-search",
+      label: "Search",
+      value: searchFilter,
+      placeholder: "Name, display name or description",
+      onChange: setSearchFilter,
+      colSpan: 2,
+    },
+    {
+      kind: "select",
+      key: "app-enabled",
+      label: "Catalog state",
+      value: enabledFilter,
+      onChange: setEnabledFilter,
+      options: [
+        { value: "", label: "Enabled and disabled" },
+        { value: "true", label: "Enabled only" },
+        { value: "false", label: "Disabled only" },
+      ],
+    },
+  ];
+
+  const clearFilters = () => {
+    setSearchFilter("");
+    setEnabledFilter("");
+  };
+
+  // Blanks are omitted rather than sent: the API rejects an empty value for a
+  // typed filter, and an empty `search` would be a no-op round trip anyway.
+  const fetchApps = useCallback(
+    (params: { limit: number; offset: number }) =>
+      adminApi.getApps({
+        ...params,
+        search: searchFilter.trim() || undefined,
+        enabled: enabledFilter === "" ? undefined : enabledFilter === "true",
+      }),
+    [adminApi, searchFilter, enabledFilter],
+  );
 
   const handleEdit = (app: AdminAppInfo) => {
     setSelected(app);
@@ -157,7 +202,8 @@ export function AppsPage() {
   const renderEmptyState = () => (
     <div className="text-center py-8 text-slate-400">
       <CubeIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-      <p>No apps configured</p>
+      {/* An empty filtered page is not an empty catalog — say which one it is. */}
+      <p>{countActiveFilters(filterFields) > 0 ? "No apps match these filters" : "No apps configured"}</p>
     </div>
   );
 
@@ -169,10 +215,17 @@ export function AppsPage() {
         { label: "Enabled", value: apps.filter((a) => a.enabled).length, tone: "success" },
       ]}
       actions={
-        <Button onClick={() => setShowCreateModal(true)}>
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Add App
-        </Button>
+        <div className="flex items-center gap-2">
+          <FilterButton
+            open={showFilters}
+            activeCount={countActiveFilters(filterFields)}
+            onClick={() => setShowFilters((prev) => !prev)}
+          />
+          <Button onClick={() => setShowCreateModal(true)}>
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Add App
+          </Button>
+        </div>
       }
     />
   );
@@ -180,7 +233,15 @@ export function AppsPage() {
   return (
     <div className="space-y-6">
       <PaginatedTable
-        apiCall={(params) => adminApi.getApps(params)}
+        apiCall={fetchApps}
+        toolbar={
+          <FilterBar
+            open={showFilters}
+            fields={filterFields}
+            onClear={clearFilters}
+            onClose={() => setShowFilters(false)}
+          />
+        }
         renderHeader={renderHeader}
         renderRow={renderRow}
         renderEmptyState={renderEmptyState}
@@ -188,7 +249,7 @@ export function AppsPage() {
         itemsPerPage={20}
         errorAction="view apps"
         loadingMessage="Loading apps..."
-        dependencies={[refreshTrigger]}
+        dependencies={[refreshTrigger, searchFilter, enabledFilter]}
         minWidth="1000px"
       />
 

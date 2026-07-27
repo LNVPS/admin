@@ -763,6 +763,11 @@ export interface AdminAppDeploymentInfo {
   user_id: number;
   app_id: number;
   cluster_id: number;
+  /**
+   * Size as a multiple of the catalog app's base footprint and price (`1` = base).
+   * Customers raise this via the app upgrade endpoint; it is read-only to admins.
+   */
+  resource_multiplier: number;
   subscription_line_item_id: number;
   name: string;
   /** Kubernetes namespace the deployment runs in */
@@ -783,7 +788,20 @@ export interface AdminAppDeploymentInfo {
    */
   config?: Record<string, string> | null;
   created: string;
+  /**
+   * Soft-deleted: the workload is torn down and the row is retained only for
+   * accounting. Only ever `true` in listings requested with `include_deleted`.
+   */
+  deleted: boolean;
 }
+
+/** Observed deployment status, as accepted by the list endpoint's `status` filter. */
+export const APP_DEPLOYMENT_STATUSES = ["pending", "running", "stopped", "error", "deleting"] as const;
+export type AppDeploymentStatus = (typeof APP_DEPLOYMENT_STATUSES)[number];
+
+/** Desired run state, as accepted by the list endpoint's `desired_state` filter. */
+export const APP_DEPLOYMENT_DESIRED_STATES = ["running", "stopped"] as const;
+export type AppDeploymentDesiredState = (typeof APP_DEPLOYMENT_DESIRED_STATES)[number];
 
 /**
  * A cluster that managed apps run on. References a region (which provides the
@@ -2570,7 +2588,20 @@ export class AdminApi {
   }
 
   // Managed App Catalog
-  async getApps(params?: { limit?: number; offset?: number }) {
+
+  /**
+   * List catalog apps. Filters are applied server-side and combine with AND;
+   * omit one rather than passing a blank, which the API rejects.
+   * `app` has no soft-delete, so `enabled` is the only visibility filter.
+   */
+  async getApps(params?: {
+    limit?: number;
+    offset?: number;
+    /** Catalog-enabled flag; omit for both. */
+    enabled?: boolean;
+    /** Case-insensitive substring match against name, display_name, description. */
+    search?: string;
+  }) {
     return await this.handleResponse<PaginatedApiResponse<AdminAppInfo>>(
       await this.req("/api/admin/v1/apps", "GET", undefined, params),
     );
@@ -2643,8 +2674,28 @@ export class AdminApi {
 
   // Managed App Deployments (`app_deployment` RBAC resource)
 
-  /** List every non-deleted deployment across all users/clusters. Excludes `config`. */
-  async getAppDeployments(params?: { limit?: number; offset?: number }) {
+  /**
+   * List deployments across all users/clusters. Excludes `config`.
+   *
+   * Filters are applied server-side and combine with AND; omit one rather than
+   * passing a blank, which the API rejects for the enum-valued ones. Defaults to
+   * non-deleted rows only — `include_deleted` is the only way to see a
+   * torn-down deployment, and therefore the only way to reach one with purge.
+   */
+  async getAppDeployments(params?: {
+    limit?: number;
+    offset?: number;
+    user_id?: number;
+    app_id?: number;
+    cluster_id?: number;
+    /** Matches deployments on any cluster in this region. */
+    region_id?: number;
+    status?: AppDeploymentStatus;
+    desired_state?: AppDeploymentDesiredState;
+    /** Case-insensitive substring match against name, hostname, custom_domain. */
+    search?: string;
+    include_deleted?: boolean;
+  }) {
     return await this.handleResponse<PaginatedApiResponse<AdminAppDeploymentInfo>>(
       await this.req("/api/admin/v1/app-deployments", "GET", undefined, params),
     );

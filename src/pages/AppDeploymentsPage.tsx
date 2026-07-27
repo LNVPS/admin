@@ -1,16 +1,26 @@
 import { FireIcon, PencilIcon, PlusIcon, RocketLaunchIcon, TrashIcon } from "@heroicons/react/24/outline";
 import type React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/Button";
+import { countActiveFilters, FilterBar, FilterButton, type FilterField } from "../components/FilterBar";
 import { Modal } from "../components/Modal";
 import { PaginatedTable } from "../components/PaginatedTable";
-import { StatsHeader } from "../components/StatsHeader";
+import { type StatItem, StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
+import { useCachedRegions } from "../hooks/useCachedRegions";
 import { useToast } from "../hooks/useToast";
 import { useUserRoles } from "../hooks/useUserRoles";
-import type { AdminAppClusterInfo, AdminAppDeploymentInfo, AdminAppInfo } from "../lib/api";
+import {
+  type AdminAppClusterInfo,
+  type AdminAppDeploymentInfo,
+  type AdminAppInfo,
+  APP_DEPLOYMENT_DESIRED_STATES,
+  APP_DEPLOYMENT_STATUSES,
+  type AppDeploymentDesiredState,
+  type AppDeploymentStatus,
+} from "../lib/api";
 import { parseComposeSchema } from "../lib/composeSchema";
 import { confirmDialog } from "../services/confirmService";
 
@@ -34,6 +44,16 @@ export function AppDeploymentsPage() {
   const [clusters, setClusters] = useState<AdminAppClusterInfo[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [editing, setEditing] = useState<AdminAppDeploymentInfo | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [searchFilter, setSearchFilter] = useState("");
+  const [userIdFilter, setUserIdFilter] = useState("");
+  const [appFilter, setAppFilter] = useState("");
+  const [clusterFilter, setClusterFilter] = useState("");
+  const [regionFilter, setRegionFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [desiredStateFilter, setDesiredStateFilter] = useState("");
+  const [includeDeleted, setIncludeDeleted] = useState(false);
+  const { data: regions } = useCachedRegions();
 
   const canUpdate = hasPermission("app_deployment::update");
   const canDelete = hasPermission("app_deployment::delete");
@@ -93,6 +113,122 @@ export function AppDeploymentsPage() {
   const appName = (id: number) => apps.find((a) => a.id === id)?.display_name ?? `App #${id}`;
   const clusterName = (id: number) => clusters.find((c) => c.id === id)?.name ?? `Cluster #${id}`;
 
+  const filterFields: FilterField[] = [
+    {
+      kind: "text",
+      key: "deployment-search",
+      label: "Search",
+      value: searchFilter,
+      placeholder: "Name, hostname or custom domain",
+      onChange: setSearchFilter,
+      colSpan: 2,
+    },
+    {
+      kind: "number",
+      key: "deployment-user",
+      label: "User ID",
+      value: userIdFilter,
+      placeholder: "e.g. 42",
+      onChange: setUserIdFilter,
+    },
+    {
+      kind: "select",
+      key: "deployment-app",
+      label: "App",
+      value: appFilter,
+      onChange: setAppFilter,
+      options: [{ value: "", label: "All apps" }, ...apps.map((a) => ({ value: String(a.id), label: a.display_name }))],
+    },
+    {
+      kind: "select",
+      key: "deployment-cluster",
+      label: "Cluster",
+      value: clusterFilter,
+      onChange: setClusterFilter,
+      options: [{ value: "", label: "All clusters" }, ...clusters.map((c) => ({ value: String(c.id), label: c.name }))],
+    },
+    {
+      kind: "select",
+      key: "deployment-region",
+      label: "Region",
+      value: regionFilter,
+      onChange: setRegionFilter,
+      hint: "Matches deployments on any cluster in the region.",
+      options: [
+        { value: "", label: "All regions" },
+        ...(regions?.map((r) => ({ value: String(r.id), label: r.name })) ?? []),
+      ],
+    },
+    {
+      kind: "select",
+      key: "deployment-status",
+      label: "Status",
+      value: statusFilter,
+      onChange: setStatusFilter,
+      options: [{ value: "", label: "Any status" }, ...APP_DEPLOYMENT_STATUSES.map((s) => ({ value: s, label: s }))],
+    },
+    {
+      kind: "select",
+      key: "deployment-desired-state",
+      label: "Desired state",
+      value: desiredStateFilter,
+      onChange: setDesiredStateFilter,
+      options: [
+        { value: "", label: "Any desired state" },
+        ...APP_DEPLOYMENT_DESIRED_STATES.map((s) => ({ value: s, label: s })),
+      ],
+    },
+    {
+      kind: "checkbox",
+      key: "deployment-include-deleted",
+      label: "Include deleted",
+      value: includeDeleted,
+      onChange: setIncludeDeleted,
+      hint: "Deletion is a soft delete; this is the only way to see a torn-down deployment.",
+    },
+  ];
+
+  const clearFilters = () => {
+    setSearchFilter("");
+    setUserIdFilter("");
+    setAppFilter("");
+    setClusterFilter("");
+    setRegionFilter("");
+    setStatusFilter("");
+    setDesiredStateFilter("");
+    setIncludeDeleted(false);
+  };
+
+  // Blanks are omitted rather than sent: the API rejects an empty value for the
+  // enum-valued filters, and a partially-typed user ID would otherwise 400.
+  const fetchDeployments = useCallback(
+    (params: { limit: number; offset: number }) => {
+      const userId = Number.parseInt(userIdFilter, 10);
+      return adminApi.getAppDeployments({
+        ...params,
+        search: searchFilter.trim() || undefined,
+        user_id: Number.isNaN(userId) ? undefined : userId,
+        app_id: appFilter ? Number(appFilter) : undefined,
+        cluster_id: clusterFilter ? Number(clusterFilter) : undefined,
+        region_id: regionFilter ? Number(regionFilter) : undefined,
+        status: (statusFilter as AppDeploymentStatus) || undefined,
+        desired_state: (desiredStateFilter as AppDeploymentDesiredState) || undefined,
+        include_deleted: includeDeleted || undefined,
+      });
+    },
+    [
+      adminApi,
+      searchFilter,
+      userIdFilter,
+      appFilter,
+      clusterFilter,
+      regionFilter,
+      statusFilter,
+      desiredStateFilter,
+      includeDeleted,
+    ],
+  );
+
   const renderHeader = () => (
     <>
       <th className="w-16">ID</th>
@@ -108,7 +244,9 @@ export function AppDeploymentsPage() {
   );
 
   const renderRow = (d: AdminAppDeploymentInfo, index: number) => (
-    <tr key={d.id || index}>
+    // Soft-deleted rows only appear under "Include deleted"; dim them the same
+    // way VMsPage does so a torn-down deployment never reads as a live one.
+    <tr key={d.id || index} className={d.deleted ? "bg-gray-800/50 opacity-75" : ""}>
       <td className="whitespace-nowrap align-top text-white">{d.id}</td>
       <td className="align-top">
         <div className="truncate font-medium text-white" title={d.name}>
@@ -144,7 +282,17 @@ export function AppDeploymentsPage() {
           </a>
         )}
       </td>
-      <td className="align-top text-gray-300">{appName(d.app_id)}</td>
+      <td className="align-top text-gray-300">
+        {appName(d.app_id)}{" "}
+        {/* Multiplies the app's base footprint *and* price, so a ×2 row is not
+            the same product as its ×1 neighbour — always show which it is. */}
+        <span
+          className={d.resource_multiplier > 1 ? "font-medium text-blue-400" : "text-gray-500"}
+          title={`${d.resource_multiplier}× the app's base footprint and price`}
+        >
+          ×{d.resource_multiplier}
+        </span>
+      </td>
       <td className="align-top">
         <Link to={`/users/${d.user_id}`} className="text-blue-400 hover:underline">
           #{d.user_id}
@@ -153,6 +301,10 @@ export function AppDeploymentsPage() {
       <td className="align-top text-gray-300">{clusterName(d.cluster_id)}</td>
       <td className="align-top">
         <div className="flex flex-col gap-1">
+          {/* `status` is whatever the operator last wrote and can still say
+              "running" on a row that has since been torn down — lead with the
+              soft-delete so it is never read as live. */}
+          {d.deleted && <StatusBadge status="stopped">deleted</StatusBadge>}
           <StatusBadge status={badgeStatus(d.status)}>{d.status}</StatusBadge>
           {d.desired_state.toLowerCase() !== d.status.toLowerCase() && (
             <span className="text-xs text-slate-400">→ {d.desired_state}</span>
@@ -168,7 +320,10 @@ export function AppDeploymentsPage() {
       {(canUpdate || canDelete) && (
         <td className="text-right align-top">
           <div className="flex justify-end space-x-2">
-            {canUpdate && (
+            {/* Nothing to edit and nothing left to delete once the row is
+                soft-deleted — a second delete is a 409 from the API. Purge stays,
+                because purging an already-deleted deployment is the point. */}
+            {canUpdate && !d.deleted && (
               <Button
                 size="sm"
                 variant="secondary"
@@ -179,7 +334,7 @@ export function AppDeploymentsPage() {
                 <PencilIcon className="h-4 w-4" />
               </Button>
             )}
-            {canDelete && (
+            {canDelete && !d.deleted && (
               <Button
                 size="sm"
                 variant="secondary"
@@ -210,28 +365,51 @@ export function AppDeploymentsPage() {
   const renderEmptyState = () => (
     <div className="text-center py-8 text-slate-400">
       <RocketLaunchIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-      <p>No app deployments</p>
+      {/* An empty filtered page is not an empty cluster — say which one it is. */}
+      <p>{countActiveFilters(filterFields) > 0 ? "No deployments match these filters" : "No app deployments"}</p>
     </div>
   );
 
-  const calculateStats = (deployments: AdminAppDeploymentInfo[], totalItems: number) => (
-    <StatsHeader
-      title="App Deployments"
-      stats={[
-        { label: "Total", value: totalItems },
-        {
-          label: "Running",
-          value: deployments.filter((d) => d.status.toLowerCase() === "running").length,
-          tone: "success",
-        },
-      ]}
-    />
-  );
+  const calculateStats = (deployments: AdminAppDeploymentInfo[], totalItems: number) => {
+    const stats: StatItem[] = [
+      { label: "Total", value: totalItems },
+      {
+        label: "Running",
+        value: deployments.filter((d) => d.status.toLowerCase() === "running").length,
+        tone: "success",
+      },
+    ];
+    // Only meaningful once deleted rows are in the page at all (VMsPage does the same).
+    if (includeDeleted) {
+      stats.push({ label: "Deleted", value: deployments.filter((d) => d.deleted).length, tone: "muted" });
+    }
+    return (
+      <StatsHeader
+        title="App Deployments"
+        stats={stats}
+        actions={
+          <FilterButton
+            open={showFilters}
+            activeCount={countActiveFilters(filterFields)}
+            onClick={() => setShowFilters((prev) => !prev)}
+          />
+        }
+      />
+    );
+  };
 
   return (
     <div className="space-y-6">
       <PaginatedTable
-        apiCall={(params) => adminApi.getAppDeployments(params)}
+        apiCall={fetchDeployments}
+        toolbar={
+          <FilterBar
+            open={showFilters}
+            fields={filterFields}
+            onClear={clearFilters}
+            onClose={() => setShowFilters(false)}
+          />
+        }
         renderHeader={renderHeader}
         renderRow={renderRow}
         renderEmptyState={renderEmptyState}
@@ -239,7 +417,19 @@ export function AppDeploymentsPage() {
         itemsPerPage={20}
         errorAction="view app deployments"
         loadingMessage="Loading app deployments..."
-        dependencies={[apps.length, clusters.length, refreshTrigger]}
+        dependencies={[
+          apps.length,
+          clusters.length,
+          refreshTrigger,
+          searchFilter,
+          userIdFilter,
+          appFilter,
+          clusterFilter,
+          regionFilter,
+          statusFilter,
+          desiredStateFilter,
+          includeDeleted,
+        ]}
         minWidth="1100px"
       />
 

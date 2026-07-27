@@ -727,6 +727,16 @@ export interface AdminAppInfo {
   icon: string | null;
   /** Canonical source repository URL */
   repo_url: string | null;
+  /**
+   * Short class of software (e.g. "Nostr relay"); free text, always set.
+   * The public site templates `{display_name} Hosting — Managed {category}`
+   * around it, so whatever is stored here is what search engines show.
+   */
+  category: string;
+  /** Per-app override for the public page `<title>` (English only) */
+  seo_title: string | null;
+  /** Per-app override for the public page meta description (English only) */
+  seo_description: string | null;
   /** docker-compose-style YAML (image/ports/env/volumes) */
   compose: string;
   /** Recurring price in smallest currency units (cents for fiat, milli-sats for BTC) */
@@ -2579,6 +2589,10 @@ export class AdminApi {
     description?: string | null;
     icon?: string | null;
     repo_url?: string | null;
+    /** Required and NOT NULL; the API rejects blank with `400 category is required`. */
+    category: string;
+    seo_title?: string | null;
+    seo_description?: string | null;
     compose: string;
     amount: number;
     currency: string;
@@ -2601,6 +2615,13 @@ export class AdminApi {
       description: string | null;
       icon: string | null;
       repo_url: string | null;
+      /**
+       * Omit to leave unchanged. Unlike the nullable fields around it there is
+       * no clear — the column is NOT NULL, and an explicit null is a 400.
+       */
+      category: string;
+      seo_title: string | null;
+      seo_description: string | null;
       compose: string;
       amount: number;
       currency: string;

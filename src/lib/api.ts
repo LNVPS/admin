@@ -2673,6 +2673,22 @@ export class AdminApi {
     return result.data;
   }
 
+  /**
+   * Delete a deployment: billing is deactivated, the row soft-deleted, and the
+   * operator tears the namespace and its volumes down on its next reconcile.
+   *
+   * A deployment whose first payment never confirmed carries no billing history
+   * and is removed outright, the same rule VMs use. `purge` additionally removes
+   * a *paid* deployment's subscription, line items and payment history — it
+   * requires the `super_admin` role and is `403` for anyone else.
+   */
+  async deleteAppDeployment(id: number, purge?: boolean) {
+    const result = await this.handleResponse<ApiResponse<boolean>>(
+      await this.req(`/api/admin/v1/app-deployments/${id}`, "DELETE", purge ? { purge: true } : undefined),
+    );
+    return result.data;
+  }
+
   // Managed App Clusters
   async getAppClusters(params?: { limit?: number; offset?: number }) {
     return await this.handleResponse<PaginatedApiResponse<AdminAppClusterInfo>>(

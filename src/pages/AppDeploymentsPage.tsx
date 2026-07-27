@@ -1,4 +1,4 @@
-import { PencilIcon, PlusIcon, RocketLaunchIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { FireIcon, PencilIcon, PlusIcon, RocketLaunchIcon, TrashIcon } from "@heroicons/react/24/outline";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -12,6 +12,7 @@ import { useToast } from "../hooks/useToast";
 import { useUserRoles } from "../hooks/useUserRoles";
 import type { AdminAppClusterInfo, AdminAppDeploymentInfo, AdminAppInfo } from "../lib/api";
 import { parseComposeSchema } from "../lib/composeSchema";
+import { confirmDialog } from "../services/confirmService";
 
 type BadgeStatus = "running" | "stopped" | "warning" | "unknown";
 
@@ -27,14 +28,56 @@ function badgeStatus(state: string): BadgeStatus {
 
 export function AppDeploymentsPage() {
   const adminApi = useAdminApi();
-  const { hasPermission } = useUserRoles();
+  const { hasPermission, isSuperAdmin } = useUserRoles();
+  const { success, error: toastError } = useToast();
   const [apps, setApps] = useState<AdminAppInfo[]>([]);
   const [clusters, setClusters] = useState<AdminAppClusterInfo[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [editing, setEditing] = useState<AdminAppDeploymentInfo | null>(null);
 
   const canUpdate = hasPermission("app_deployment::update");
+  const canDelete = hasPermission("app_deployment::delete");
   const refreshData = () => setRefreshTrigger((prev) => prev + 1);
+
+  const handleDelete = async (d: AdminAppDeploymentInfo) => {
+    if (
+      !(await confirmDialog({
+        title: "Delete Deployment",
+        message: `Delete "${d.name}" (#${d.id})? Billing stops and the operator tears down the namespace and its volumes on its next reconcile. A deployment that was never paid for is removed outright; a paid one is retained for records and can be purged separately.`,
+        confirmText: "Delete",
+        variant: "danger",
+      }))
+    )
+      return;
+    try {
+      await adminApi.deleteAppDeployment(d.id);
+      success("Deployment deleted");
+      refreshData();
+    } catch (err) {
+      console.error("Failed to delete deployment:", err);
+      toastError(err instanceof Error ? err.message : "Failed to delete deployment");
+    }
+  };
+
+  const handlePurge = async (d: AdminAppDeploymentInfo) => {
+    if (
+      !(await confirmDialog({
+        title: "Permanently Purge Deployment",
+        message: `PERMANENTLY delete (purge) "${d.name}" (#${d.id}), including its subscription, line items and payment history?\n\nThis cannot be undone and is intended for removing test deployments.`,
+        confirmText: "Purge",
+        variant: "danger",
+      }))
+    )
+      return;
+    try {
+      await adminApi.deleteAppDeployment(d.id, true);
+      success("Deployment purged");
+      refreshData();
+    } catch (err) {
+      console.error("Failed to purge deployment:", err);
+      toastError(err instanceof Error ? err.message : "Failed to purge deployment");
+    }
+  };
 
   useEffect(() => {
     adminApi
@@ -60,7 +103,7 @@ export function AppDeploymentsPage() {
       <th>Cluster</th>
       <th>State</th>
       <th>Created</th>
-      {canUpdate && <th className="text-right">Actions</th>}
+      {(canUpdate || canDelete) && <th className="text-right">Actions</th>}
     </>
   );
 
@@ -122,11 +165,43 @@ export function AppDeploymentsPage() {
         </div>
       </td>
       <td className="align-top text-xs text-gray-400 whitespace-nowrap">{new Date(d.created).toLocaleString()}</td>
-      {canUpdate && (
+      {(canUpdate || canDelete) && (
         <td className="text-right align-top">
-          <Button size="sm" variant="secondary" onClick={() => setEditing(d)} className="p-1" title="Edit deployment">
-            <PencilIcon className="h-4 w-4" />
-          </Button>
+          <div className="flex justify-end space-x-2">
+            {canUpdate && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setEditing(d)}
+                className="p-1"
+                title="Edit deployment"
+              >
+                <PencilIcon className="h-4 w-4" />
+              </Button>
+            )}
+            {canDelete && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => handleDelete(d)}
+                className="text-red-400 hover:text-red-300 p-1"
+                title="Delete deployment — stops billing and tears down the namespace"
+              >
+                <TrashIcon className="h-4 w-4" />
+              </Button>
+            )}
+            {canDelete && isSuperAdmin && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => handlePurge(d)}
+                className="text-red-500 hover:text-red-400 p-1"
+                title="Permanently purge deployment, including payment history — super admin only"
+              >
+                <FireIcon className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </td>
       )}
     </tr>

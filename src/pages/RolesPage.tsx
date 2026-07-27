@@ -423,6 +423,7 @@ const AVAILABLE_PERMISSIONS = [
   "app::delete",
   "app_deployment::view",
   "app_deployment::update",
+  "app_deployment::delete",
 ];
 
 // Create Role Modal Component

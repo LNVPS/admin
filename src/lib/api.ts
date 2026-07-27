@@ -711,6 +711,89 @@ export interface AdminDnsServerDetail {
   ip_range_count: number;
 }
 
+/** Billing interval type used across the managed app catalog and subscriptions */
+export type AppIntervalType = "day" | "month" | "year";
+
+/**
+ * A predefined managed app in the catalog. Apps are deployed on shared
+ * Kubernetes infra and defined by a docker-compose-style `compose` YAML.
+ */
+export interface AdminAppInfo {
+  id: number;
+  /** DNS-safe slug (lowercase letters, digits, hyphens), unique */
+  name: string;
+  display_name: string;
+  description: string | null;
+  icon: string | null;
+  /** Canonical source repository URL */
+  repo_url: string | null;
+  /** docker-compose-style YAML (image/ports/env/volumes) */
+  compose: string;
+  /** Recurring price in smallest currency units (cents for fiat, milli-sats for BTC) */
+  amount: number;
+  currency: string;
+  interval_amount: number;
+  interval_type: AppIntervalType;
+  /** One-off setup fee in smallest currency units */
+  setup_amount: number;
+  enabled: boolean;
+  created: string;
+  /** Computed resource footprint (Σ service resources + volume sizes) */
+  cpu_milli?: number;
+  memory_bytes?: number;
+  storage_bytes?: number;
+}
+
+/**
+ * A single deployed app instance (across all users/clusters), for admin oversight.
+ * Excludes the encrypted per-deployment config blob.
+ */
+export interface AdminAppDeploymentInfo {
+  id: number;
+  user_id: number;
+  app_id: number;
+  cluster_id: number;
+  subscription_line_item_id: number;
+  name: string;
+  /** Kubernetes namespace the deployment runs in */
+  namespace: string;
+  /** Public hostname ("{name}.{cluster ingress_domain}"); null until provisioned */
+  hostname: string | null;
+  /** Customer-owned domain CNAME'd to `hostname`, served alongside it */
+  custom_domain: string | null;
+  /** Operator-requested state (e.g. "running", "stopped") */
+  desired_state: string;
+  /** Observed state (e.g. "pending", "running", "stopped", "error", "deleting") */
+  status: string;
+  /** Human-readable detail on the current status (e.g. an error) */
+  status_message: string | null;
+  /**
+   * Decrypted customer-supplied config (may hold secret values — admin only).
+   * Only populated by the single-deployment GET; omitted on the list endpoint.
+   */
+  config?: Record<string, string> | null;
+  created: string;
+}
+
+/**
+ * A cluster that managed apps run on. References a region (which provides the
+ * billing company) and a wildcard ingress domain.
+ */
+export interface AdminAppClusterInfo {
+  id: number;
+  name: string;
+  /** References an existing region (drives billing company) */
+  region_id: number;
+  /** Wildcard base for deployment hostnames ("{name}.{ingress_domain}") */
+  ingress_domain: string;
+  enabled: boolean;
+  /** Static total capacity available for deployments (millicores / bytes / bytes) */
+  capacity_cpu_milli: number;
+  capacity_memory_bytes: number;
+  capacity_storage_bytes: number;
+  created: string;
+}
+
 /** A DNS zone available on a DNS server (provider specific, e.g. a Cloudflare zone) */
 export interface AdminDnsZone {
   /** Provider specific zone id (e.g. Cloudflare zone id) */
@@ -894,7 +977,7 @@ export interface ReferralUsageTimeSeriesReportData {
 // Referral Program Management
 
 /** Payout method for a referral enrollment. */
-export type ReferralMode = "lightning_address" | "nwc" | "account_credit";
+export type ReferralMode = "lightning_address" | "nwc" | "account_credit" | "on_chain";
 
 /**
  * A referral enrollment as seen by admins. Never exposes NWC secrets
@@ -906,10 +989,13 @@ export interface AdminReferralInfo {
   /** Owner's Nostr pubkey (hex), for cross-referencing with users. */
   user_pubkey: string;
   code: string;
-  lightning_address: string | null;
+  /** Payout destination for the mode (Lightning address, on-chain address, etc.). */
+  address: string | null;
   mode: ReferralMode;
   /** Per-referrer commission override (whole %); null = use company default. */
   referral_rate: number | null;
+  /** User-chosen payout threshold (satoshis); null = use the system minimum. */
+  payout_threshold: number | null;
   created: string;
 }
 
@@ -927,7 +1013,12 @@ export interface AdminReferralPayoutInfo {
   currency: string;
   created: string;
   is_paid: boolean;
-  invoice: string | null;
+  /** Network/routing fee charged to the referrer, debited from their balance. */
+  fee: number;
+  /** Payout mode used for this payout. */
+  mode: ReferralMode;
+  /** BOLT11 invoice for Lightning payouts, or on-chain outpoint "{txid}:{vout}". */
+  output: string | null;
   /** Payment preimage (hex), when the payout has been settled. */
   pre_image: string | null;
 }
@@ -2278,20 +2369,6 @@ export class AdminApi {
     return result.data;
   }
 
-  async getRegionCustomPricing(regionId: number, params?: { limit?: number; offset?: number; enabled?: boolean }) {
-    // Convert boolean to string for URL params
-    const queryParams = params
-      ? {
-          ...params,
-          enabled: params.enabled !== undefined ? params.enabled.toString() : undefined,
-        }
-      : undefined;
-
-    return await this.handleResponse<PaginatedApiResponse<AdminCustomPricingInfo>>(
-      await this.req(`/api/admin/v1/regions/${regionId}/custom_pricing`, "GET", undefined, queryParams),
-    );
-  }
-
   // Company Management
   async getCompanies(params?: { limit?: number; offset?: number }) {
     return await this.handleResponse<PaginatedApiResponse<AdminCompanyInfo>>(
@@ -2480,6 +2557,150 @@ export class AdminApi {
       await this.req(`/api/admin/v1/dns_servers/${id}/zones`, "GET"),
     );
     return result.data;
+  }
+
+  // Managed App Catalog
+  async getApps(params?: { limit?: number; offset?: number }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminAppInfo>>(
+      await this.req("/api/admin/v1/apps", "GET", undefined, params),
+    );
+  }
+
+  async getApp(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminAppInfo>>(
+      await this.req(`/api/admin/v1/apps/${id}`, "GET"),
+    );
+    return result.data;
+  }
+
+  async createApp(data: {
+    name: string;
+    display_name: string;
+    description?: string | null;
+    icon?: string | null;
+    repo_url?: string | null;
+    compose: string;
+    amount: number;
+    currency: string;
+    interval_amount: number;
+    interval_type: AppIntervalType;
+    setup_amount?: number;
+    enabled?: boolean;
+  }) {
+    const result = await this.handleResponse<ApiResponse<AdminAppInfo>>(
+      await this.req("/api/admin/v1/apps", "POST", data),
+    );
+    return result.data;
+  }
+
+  async updateApp(
+    id: number,
+    updates: Partial<{
+      name: string;
+      display_name: string;
+      description: string | null;
+      icon: string | null;
+      repo_url: string | null;
+      compose: string;
+      amount: number;
+      currency: string;
+      interval_amount: number;
+      interval_type: AppIntervalType;
+      setup_amount: number;
+      enabled: boolean;
+    }>,
+  ) {
+    const result = await this.handleResponse<ApiResponse<AdminAppInfo>>(
+      await this.req(`/api/admin/v1/apps/${id}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
+  async deleteApp(id: number) {
+    await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/apps/${id}`, "DELETE"));
+  }
+
+  // Managed App Deployments (`app_deployment` RBAC resource)
+
+  /** List every non-deleted deployment across all users/clusters. Excludes `config`. */
+  async getAppDeployments(params?: { limit?: number; offset?: number }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminAppDeploymentInfo>>(
+      await this.req("/api/admin/v1/app-deployments", "GET", undefined, params),
+    );
+  }
+
+  /** Get a single deployment, including its decrypted `config` map. */
+  async getAppDeployment(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminAppDeploymentInfo>>(
+      await this.req(`/api/admin/v1/app-deployments/${id}`, "GET"),
+    );
+    return result.data;
+  }
+
+  /**
+   * Partial update of a deployment (support/ops fixes).
+   * `name`: DNS-safe, unique per cluster. `custom_domain`: `""`/`null` clears it.
+   * `config`: validated against the app's compose schema, replaces the stored config wholesale.
+   */
+  async updateAppDeployment(
+    id: number,
+    updates: { name?: string; custom_domain?: string | null; config?: Record<string, string> },
+  ) {
+    const result = await this.handleResponse<ApiResponse<AdminAppDeploymentInfo>>(
+      await this.req(`/api/admin/v1/app-deployments/${id}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
+  // Managed App Clusters
+  async getAppClusters(params?: { limit?: number; offset?: number }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminAppClusterInfo>>(
+      await this.req("/api/admin/v1/app_clusters", "GET", undefined, params),
+    );
+  }
+
+  async getAppCluster(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminAppClusterInfo>>(
+      await this.req(`/api/admin/v1/app_clusters/${id}`, "GET"),
+    );
+    return result.data;
+  }
+
+  async createAppCluster(data: {
+    name: string;
+    region_id: number;
+    ingress_domain: string;
+    enabled?: boolean;
+    capacity_cpu_milli: number;
+    capacity_memory_bytes: number;
+    capacity_storage_bytes: number;
+  }) {
+    const result = await this.handleResponse<ApiResponse<AdminAppClusterInfo>>(
+      await this.req("/api/admin/v1/app_clusters", "POST", data),
+    );
+    return result.data;
+  }
+
+  async updateAppCluster(
+    id: number,
+    updates: Partial<{
+      name: string;
+      region_id: number;
+      ingress_domain: string;
+      enabled: boolean;
+      capacity_cpu_milli: number;
+      capacity_memory_bytes: number;
+      capacity_storage_bytes: number;
+    }>,
+  ) {
+    const result = await this.handleResponse<ApiResponse<AdminAppClusterInfo>>(
+      await this.req(`/api/admin/v1/app_clusters/${id}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
+  async deleteAppCluster(id: number) {
+    await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/app_clusters/${id}`, "DELETE"));
   }
 
   // Access Policy Management
@@ -2840,7 +3061,10 @@ export class AdminApi {
    * `referral_rate`: pass a number to set, `null` to clear to the company default, omit to leave unchanged.
    * `code`: rename the referral code (non-empty, unique). Renaming cascades to existing VM `ref_code`s.
    */
-  async updateReferral(id: number, updates: { referral_rate?: number | null; code?: string }) {
+  async updateReferral(
+    id: number,
+    updates: { referral_rate?: number | null; code?: string; payout_threshold?: number | null },
+  ) {
     const result = await this.handleResponse<ApiResponse<AdminReferralDetail>>(
       await this.req(`/api/admin/v1/referrals/${id}`, "PATCH", updates),
     );
@@ -2856,7 +3080,7 @@ export class AdminApi {
 
   async createReferralPayout(
     id: number,
-    data: { amount: number; currency: string; invoice?: string; is_paid?: boolean },
+    data: { amount: number; currency: string; output?: string; mode?: ReferralMode; is_paid?: boolean },
   ) {
     const result = await this.handleResponse<ApiResponse<AdminReferralPayoutInfo>>(
       await this.req(`/api/admin/v1/referrals/${id}/payouts`, "POST", data),
@@ -2867,7 +3091,7 @@ export class AdminApi {
   async updateReferralPayout(
     id: number,
     payoutId: number,
-    updates: { is_paid?: boolean; invoice?: string | null; pre_image?: string | null },
+    updates: { is_paid?: boolean; output?: string | null; mode?: ReferralMode; pre_image?: string | null },
   ) {
     const result = await this.handleResponse<ApiResponse<AdminReferralPayoutInfo>>(
       await this.req(`/api/admin/v1/referrals/${id}/payouts/${payoutId}`, "PATCH", updates),

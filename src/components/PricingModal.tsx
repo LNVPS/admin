@@ -4,9 +4,9 @@ import { useAdminApi } from "../hooks/useAdminApi";
 import { useCachedRegions } from "../hooks/useCachedRegions";
 import type { AdminCustomPricingInfo } from "../lib/api";
 import { CpuArch, CpuFeature, CpuMfg } from "../lib/api";
-import { fromSmallestUnits, toSmallestUnits } from "../utils/currency";
 import { Button } from "./Button";
 import { Modal } from "./Modal";
+import { CurrencySelect, MoneyAmountInput } from "./MoneyInput";
 import { MultiSelect } from "./MultiSelect";
 
 interface PricingModalProps {
@@ -19,7 +19,7 @@ interface PricingModalProps {
 interface DiskPricingFormData {
   kind: string;
   interface: string;
-  cost: string;
+  cost: number;
   min_disk_size: string;
   max_disk_size: string;
 }
@@ -32,10 +32,10 @@ interface FormData {
   cpu_mfg: string;
   cpu_arch: string;
   cpu_features: string[];
-  cpu_cost: string;
-  memory_cost: string;
-  ip4_cost: string;
-  ip6_cost: string;
+  cpu_cost: number;
+  memory_cost: number;
+  ip4_cost: number;
+  ip6_cost: number;
   min_cpu: string;
   max_cpu: string;
   min_memory: string;
@@ -50,8 +50,8 @@ interface FormData {
 }
 
 const DEFAULT_DISK_PRICING: DiskPricingFormData[] = [
-  { kind: "hdd", interface: "sata", cost: "", min_disk_size: "10", max_disk_size: "10000" },
-  { kind: "ssd", interface: "sata", cost: "", min_disk_size: "10", max_disk_size: "4000" },
+  { kind: "hdd", interface: "sata", cost: 0, min_disk_size: "10", max_disk_size: "10000" },
+  { kind: "ssd", interface: "sata", cost: 0, min_disk_size: "10", max_disk_size: "4000" },
 ];
 
 const getDefaultFormData = (): FormData => ({
@@ -62,10 +62,10 @@ const getDefaultFormData = (): FormData => ({
   cpu_mfg: "",
   cpu_arch: "",
   cpu_features: [],
-  cpu_cost: "",
-  memory_cost: "",
-  ip4_cost: "",
-  ip6_cost: "",
+  cpu_cost: 0,
+  memory_cost: 0,
+  ip4_cost: 0,
+  ip6_cost: 0,
   min_cpu: "1",
   max_cpu: "64",
   min_memory: "1",
@@ -87,10 +87,10 @@ const getFormDataFromPricing = (pricing: AdminCustomPricingInfo): FormData => ({
   cpu_mfg: pricing.cpu_mfg || "",
   cpu_arch: pricing.cpu_arch || "",
   cpu_features: pricing.cpu_features || [],
-  cpu_cost: fromSmallestUnits(pricing.cpu_cost, pricing.currency).toString(),
-  memory_cost: fromSmallestUnits(pricing.memory_cost, pricing.currency).toString(),
-  ip4_cost: fromSmallestUnits(pricing.ip4_cost, pricing.currency).toString(),
-  ip6_cost: fromSmallestUnits(pricing.ip6_cost, pricing.currency).toString(),
+  cpu_cost: pricing.cpu_cost,
+  memory_cost: pricing.memory_cost,
+  ip4_cost: pricing.ip4_cost,
+  ip6_cost: pricing.ip6_cost,
   min_cpu: pricing.min_cpu.toString(),
   max_cpu: pricing.max_cpu.toString(),
   min_memory: Math.round(pricing.min_memory / (1024 * 1024 * 1024)).toString(),
@@ -98,7 +98,7 @@ const getFormDataFromPricing = (pricing: AdminCustomPricingInfo): FormData => ({
   disk_pricing: pricing.disk_pricing.map((disk) => ({
     kind: disk.kind as string,
     interface: disk.interface as string,
-    cost: fromSmallestUnits(disk.cost, pricing.currency).toString(),
+    cost: disk.cost,
     min_disk_size: Math.round(disk.min_disk_size / (1024 * 1024 * 1024)).toString(),
     max_disk_size: Math.round(disk.max_disk_size / (1024 * 1024 * 1024)).toString(),
   })),
@@ -136,10 +136,10 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
         enabled: formData.enabled,
         region_id: parseInt(formData.region_id),
         currency: formData.currency,
-        cpu_cost: toSmallestUnits(parseFloat(formData.cpu_cost) || 0, formData.currency),
-        memory_cost: toSmallestUnits(parseFloat(formData.memory_cost) || 0, formData.currency),
-        ip4_cost: toSmallestUnits(parseFloat(formData.ip4_cost) || 0, formData.currency),
-        ip6_cost: toSmallestUnits(parseFloat(formData.ip6_cost) || 0, formData.currency),
+        cpu_cost: formData.cpu_cost,
+        memory_cost: formData.memory_cost,
+        ip4_cost: formData.ip4_cost,
+        ip6_cost: formData.ip6_cost,
         min_cpu: parseInt(formData.min_cpu) || 0,
         max_cpu: parseInt(formData.max_cpu) || 0,
         min_memory: (parseInt(formData.min_memory) || 0) * 1024 * 1024 * 1024,
@@ -147,7 +147,7 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
         disk_pricing: formData.disk_pricing.map((disk) => ({
           kind: disk.kind,
           interface: disk.interface,
-          cost: toSmallestUnits(parseFloat(disk.cost) || 0, formData.currency),
+          cost: disk.cost,
           min_disk_size: (parseInt(disk.min_disk_size) || 0) * 1024 * 1024 * 1024,
           max_disk_size: (parseInt(disk.max_disk_size) || 0) * 1024 * 1024 * 1024,
         })),
@@ -191,12 +191,18 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
     setFormData({ ...formData, disk_pricing: newDiskPricing });
   };
 
+  const updateDiskCost = (index: number, cost: number) => {
+    const newDiskPricing = [...formData.disk_pricing];
+    newDiskPricing[index] = { ...newDiskPricing[index], cost };
+    setFormData({ ...formData, disk_pricing: newDiskPricing });
+  };
+
   const addDiskPricing = () => {
     setFormData({
       ...formData,
       disk_pricing: [
         ...formData.disk_pricing,
-        { kind: "hdd", interface: "sata", cost: "", min_disk_size: "10", max_disk_size: "10000" },
+        { kind: "hdd", interface: "sata", cost: 0, min_disk_size: "10", max_disk_size: "10000" },
       ],
     });
   };
@@ -261,11 +267,11 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">Currency</label>
-            <select value={formData.currency} onChange={(e) => setFormData({ ...formData, currency: e.target.value })}>
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="BTC">BTC</option>
-            </select>
+            <CurrencySelect
+              value={formData.currency}
+              onChange={(currency) => setFormData({ ...formData, currency })}
+              currencies={["USD", "EUR", "BTC"]}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">CPU Manufacturer</label>
@@ -308,44 +314,40 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
               <label className="block text-sm font-medium text-gray-300 mb-1">
                 CPU ({formData.currency === "BTC" ? "sats" : formData.currency}/core)
               </label>
-              <input
-                type="number"
-                step={formData.currency === "BTC" ? "1" : "0.01"}
+              <MoneyAmountInput
                 value={formData.cpu_cost}
-                onChange={(e) => setFormData({ ...formData, cpu_cost: e.target.value })}
+                currency={formData.currency}
+                onChange={(cpu_cost) => setFormData({ ...formData, cpu_cost })}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
                 Memory ({formData.currency === "BTC" ? "sats" : formData.currency}/GB)
               </label>
-              <input
-                type="number"
-                step={formData.currency === "BTC" ? "1" : "0.01"}
+              <MoneyAmountInput
                 value={formData.memory_cost}
-                onChange={(e) => setFormData({ ...formData, memory_cost: e.target.value })}
+                currency={formData.currency}
+                onChange={(memory_cost) => setFormData({ ...formData, memory_cost })}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
                 IPv4 ({formData.currency === "BTC" ? "sats" : formData.currency}/IP)
               </label>
-              <input
-                type="number"
-                step={formData.currency === "BTC" ? "1" : "0.01"}
+              <MoneyAmountInput
                 value={formData.ip4_cost}
-                onChange={(e) => setFormData({ ...formData, ip4_cost: e.target.value })}
+                currency={formData.currency}
+                onChange={(ip4_cost) => setFormData({ ...formData, ip4_cost })}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
                 IPv6 ({formData.currency === "BTC" ? "sats" : formData.currency}/IP)
               </label>
-              <input
-                type="number"
-                step={formData.currency === "BTC" ? "1" : "0.01"}
+              <MoneyAmountInput
                 value={formData.ip6_cost}
-                onChange={(e) => setFormData({ ...formData, ip6_cost: e.target.value })}
+                currency={formData.currency}
+                onChange={(ip6_cost) => setFormData({ ...formData, ip6_cost })}
               />
             </div>
           </div>
@@ -510,11 +512,10 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
                   <label className="block text-sm font-medium text-gray-300 mb-1">
                     {formData.currency === "BTC" ? "sats" : formData.currency}/GB
                   </label>
-                  <input
-                    type="number"
-                    step={formData.currency === "BTC" ? "1" : "0.001"}
+                  <MoneyAmountInput
                     value={disk.cost}
-                    onChange={(e) => updateDiskPricing(index, "cost", e.target.value)}
+                    currency={formData.currency}
+                    onChange={(cost) => updateDiskCost(index, cost)}
                     className="w-full px-2 py-1 bg-slate-600 border border-slate-500 rounded text-white text-sm"
                   />
                 </div>

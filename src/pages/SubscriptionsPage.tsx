@@ -3,7 +3,9 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "../components/Button";
 import { countActiveFilters, FilterBar, FilterButton, type FilterField } from "../components/FilterBar";
+import { IntervalInput } from "../components/IntervalInput";
 import { Modal } from "../components/Modal";
+import { CurrencySelect, MoneyAmountInput } from "../components/MoneyInput";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { Profile } from "../components/Profile";
 import { StatsHeader } from "../components/StatsHeader";
@@ -433,7 +435,7 @@ function CreateSubscriptionModal({ onClose, onSuccess }: { onClose: () => void; 
         currency: formData.currency,
         interval_amount: formData.interval_amount,
         interval_type: formData.interval_type,
-        setup_fee: Math.round(formData.setup_fee * 100),
+        setup_fee: formData.setup_fee,
         auto_renewal_enabled: formData.auto_renewal_enabled,
         external_id: formData.external_id || undefined,
       });
@@ -487,60 +489,33 @@ function CreateSubscriptionModal({ onClose, onSuccess }: { onClose: () => void; 
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">Currency</label>
-            <select
+            <CurrencySelect
               value={formData.currency}
-              onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+              onChange={(currency) => setFormData({ ...formData, currency })}
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-            >
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="GBP">GBP</option>
-              <option value="CAD">CAD</option>
-              <option value="CHF">CHF</option>
-              <option value="AUD">AUD</option>
-              <option value="JPY">JPY</option>
-              <option value="BTC">BTC</option>
-            </select>
+            />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Setup Fee</label>
-            <input
-              type="number"
-              step="0.01"
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Setup Fee ({formData.currency === "BTC" ? "sats" : formData.currency})
+            </label>
+            <MoneyAmountInput
               value={formData.setup_fee}
-              onChange={(e) => setFormData({ ...formData, setup_fee: parseFloat(e.target.value) || 0 })}
+              currency={formData.currency}
+              onChange={(setup_fee) => setFormData({ ...formData, setup_fee })}
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Interval Amount</label>
-            <input
-              type="number"
-              min="1"
-              value={formData.interval_amount}
-              onChange={(e) => setFormData({ ...formData, interval_amount: parseInt(e.target.value) || 1 })}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Interval Type</label>
-            <select
-              value={formData.interval_type}
-              onChange={(e) => setFormData({ ...formData, interval_type: e.target.value as "day" | "month" | "year" })}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-            >
-              <option value="day">Day</option>
-              <option value="month">Month</option>
-              <option value="year">Year</option>
-            </select>
-          </div>
-        </div>
+        <IntervalInput
+          label="Billing Interval"
+          required
+          amount={formData.interval_amount}
+          type={formData.interval_type}
+          onChange={({ amount, type }) => setFormData({ ...formData, interval_amount: amount, interval_type: type })}
+        />
 
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-1">Expires (Optional)</label>
@@ -622,7 +597,7 @@ export function EditSubscriptionModal({
     currency: subscription.currency,
     interval_amount: subscription.interval_amount,
     interval_type: subscription.interval_type,
-    setup_fee: subscription.setup_fee / 100,
+    setup_fee: subscription.setup_fee,
     auto_renewal_enabled: subscription.auto_renewal_enabled,
     external_id: subscription.external_id || "",
   });
@@ -641,7 +616,7 @@ export function EditSubscriptionModal({
         currency: formData.currency,
         interval_amount: formData.interval_amount,
         interval_type: formData.interval_type,
-        setup_fee: Math.round(formData.setup_fee * 100),
+        setup_fee: formData.setup_fee,
         auto_renewal_enabled: formData.auto_renewal_enabled,
         external_id: formData.external_id || undefined,
       });
@@ -681,60 +656,33 @@ export function EditSubscriptionModal({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">Currency</label>
-            <select
+            <CurrencySelect
               value={formData.currency}
-              onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+              onChange={(currency) => setFormData({ ...formData, currency })}
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-            >
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="GBP">GBP</option>
-              <option value="CAD">CAD</option>
-              <option value="CHF">CHF</option>
-              <option value="AUD">AUD</option>
-              <option value="JPY">JPY</option>
-              <option value="BTC">BTC</option>
-            </select>
+            />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Setup Fee</label>
-            <input
-              type="number"
-              step="0.01"
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Setup Fee ({formData.currency === "BTC" ? "sats" : formData.currency})
+            </label>
+            <MoneyAmountInput
               value={formData.setup_fee}
-              onChange={(e) => setFormData({ ...formData, setup_fee: parseFloat(e.target.value) || 0 })}
+              currency={formData.currency}
+              onChange={(setup_fee) => setFormData({ ...formData, setup_fee })}
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Interval Amount</label>
-            <input
-              type="number"
-              min="1"
-              value={formData.interval_amount}
-              onChange={(e) => setFormData({ ...formData, interval_amount: parseInt(e.target.value) || 1 })}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Interval Type</label>
-            <select
-              value={formData.interval_type}
-              onChange={(e) => setFormData({ ...formData, interval_type: e.target.value as "day" | "month" | "year" })}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-            >
-              <option value="day">Day</option>
-              <option value="month">Month</option>
-              <option value="year">Year</option>
-            </select>
-          </div>
-        </div>
+        <IntervalInput
+          label="Billing Interval"
+          required
+          amount={formData.interval_amount}
+          type={formData.interval_type}
+          onChange={({ amount, type }) => setFormData({ ...formData, interval_amount: amount, interval_type: type })}
+        />
 
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-1">Expires</label>

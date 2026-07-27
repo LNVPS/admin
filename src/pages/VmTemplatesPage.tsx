@@ -1,7 +1,9 @@
 import { PencilIcon, PlusIcon, ServerIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
+import { IntervalInput } from "../components/IntervalInput";
 import { Modal } from "../components/Modal";
+import { MoneyInput } from "../components/MoneyInput";
 import { MultiSelect } from "../components/MultiSelect";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { StatsHeader } from "../components/StatsHeader";
@@ -19,7 +21,7 @@ import {
 } from "../lib/api";
 import { confirmDialog } from "../services/confirmService";
 import { toastService } from "../services/toastService";
-import { formatCurrency, fromSmallestUnits, toSmallestUnits } from "../utils/currency";
+import { formatCurrency } from "../utils/currency";
 import { formatBytes } from "../utils/formatBytes";
 
 export function VmTemplatesPage() {
@@ -67,13 +69,15 @@ export function VmTemplatesPage() {
 
   const handleDelete = async (template: AdminVmTemplateInfo) => {
     if (template.active_vm_count > 0) {
-      toastService.error(
-        "Cannot delete template",
-        `"${template.name}" has ${template.active_vm_count} active VMs.`,
-      );
+      toastService.error("Cannot delete template", `"${template.name}" has ${template.active_vm_count} active VMs.`);
       return;
     }
-    if (await confirmDialog({ title: "Delete Template", message: `Are you sure you want to delete the template "${template.name}"?` })) {
+    if (
+      await confirmDialog({
+        title: "Delete Template",
+        message: `Are you sure you want to delete the template "${template.name}"?`,
+      })
+    ) {
       try {
         await adminApi.deleteVmTemplate(template.id);
         refreshData();
@@ -334,7 +338,7 @@ const emptyForm = {
   create_new_cost_plan: true,
   cost_plan_id: 0,
   cost_plan_name: "",
-  cost_plan_amount: "0",
+  cost_plan_amount: 0,
   cost_plan_currency: "USD",
   cost_plan_interval_amount: 1,
   cost_plan_interval_type: "month" as "day" | "month" | "year",
@@ -384,7 +388,7 @@ function VmTemplateModal({ isOpen, onClose, onSuccess, template, regions, costPl
         disk_mbps_read: template.disk_mbps_read != null ? template.disk_mbps_read.toString() : "",
         disk_mbps_write: template.disk_mbps_write != null ? template.disk_mbps_write.toString() : "",
         // cost_plan amounts loaded async below
-        cost_plan_amount: "0",
+        cost_plan_amount: 0,
         cost_plan_currency: "USD",
         cost_plan_interval_amount: 1,
         cost_plan_interval_type: "month",
@@ -398,7 +402,7 @@ function VmTemplateModal({ isOpen, onClose, onSuccess, template, regions, costPl
           setFormData((prev) => ({
             ...prev,
             cost_plan_name: plan.name,
-            cost_plan_amount: fromSmallestUnits(plan.amount, plan.currency).toString(),
+            cost_plan_amount: plan.amount,
             cost_plan_currency: plan.currency,
             cost_plan_interval_amount: plan.interval_amount,
             cost_plan_interval_type: plan.interval_type,
@@ -445,7 +449,7 @@ function VmTemplateModal({ isOpen, onClose, onSuccess, template, regions, costPl
           disk_interface: formData.disk_interface,
           region_id: formData.region_id,
           cost_plan_name: formData.cost_plan_name,
-          cost_plan_amount: toSmallestUnits(parseFloat(formData.cost_plan_amount) || 0, formData.cost_plan_currency),
+          cost_plan_amount: formData.cost_plan_amount,
           cost_plan_currency: formData.cost_plan_currency,
           cost_plan_interval_amount: formData.cost_plan_interval_amount,
           cost_plan_interval_type: formData.cost_plan_interval_type,
@@ -470,10 +474,7 @@ function VmTemplateModal({ isOpen, onClose, onSuccess, template, regions, costPl
 
         if (formData.create_new_cost_plan) {
           data.cost_plan_name = formData.cost_plan_name || undefined;
-          data.cost_plan_amount = toSmallestUnits(
-            parseFloat(formData.cost_plan_amount) || 0,
-            formData.cost_plan_currency,
-          );
+          data.cost_plan_amount = formData.cost_plan_amount;
           data.cost_plan_currency = formData.cost_plan_currency;
           data.cost_plan_interval_amount = formData.cost_plan_interval_amount;
           data.cost_plan_interval_type = formData.cost_plan_interval_type;
@@ -706,59 +707,29 @@ function VmTemplateModal({ isOpen, onClose, onSuccess, template, regions, costPl
                       placeholder={isEdit ? "" : "Auto-generated from template name"}
                     />
                   </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Amount ({formData.cost_plan_currency === "BTC" ? "sats" : formData.cost_plan_currency}) *
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        step={formData.cost_plan_currency === "BTC" ? "1" : "0.01"}
-                        required
-                        value={formData.cost_plan_amount}
-                        onChange={(e) => setFormData({ ...formData, cost_plan_amount: e.target.value })}
-                        className={inputCls}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Currency *</label>
-                      <select
-                        required
-                        value={formData.cost_plan_currency}
-                        onChange={(e) => setFormData({ ...formData, cost_plan_currency: e.target.value })}
-                        className={inputCls}
-                      >
-                        <option value="USD">USD</option>
-                        <option value="EUR">EUR</option>
-                        <option value="GBP">GBP</option>
-                        <option value="CAD">CAD</option>
-                        <option value="CHF">CHF</option>
-                        <option value="AUD">AUD</option>
-                        <option value="JPY">JPY</option>
-                        <option value="BTC">BTC</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Interval *</label>
-                      <select
-                        required
-                        value={`${formData.cost_plan_interval_amount}-${formData.cost_plan_interval_type}`}
-                        onChange={(e) => {
-                          const [amount, type] = e.target.value.split("-");
-                          setFormData({
-                            ...formData,
-                            cost_plan_interval_amount: parseInt(amount),
-                            cost_plan_interval_type: type as "day" | "month" | "year",
-                          });
-                        }}
-                        className={inputCls}
-                      >
-                        <option value="1-day">Daily</option>
-                        <option value="1-month">Monthly</option>
-                        <option value="1-year">Yearly</option>
-                      </select>
-                    </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <MoneyInput
+                      label="Amount"
+                      required
+                      amount={formData.cost_plan_amount}
+                      currency={formData.cost_plan_currency}
+                      onChange={({ amount, currency }) =>
+                        setFormData({ ...formData, cost_plan_amount: amount, cost_plan_currency: currency })
+                      }
+                    />
+                    <IntervalInput
+                      label="Interval"
+                      required
+                      amount={formData.cost_plan_interval_amount}
+                      type={formData.cost_plan_interval_type}
+                      onChange={({ amount, type }) =>
+                        setFormData({
+                          ...formData,
+                          cost_plan_interval_amount: amount,
+                          cost_plan_interval_type: type,
+                        })
+                      }
+                    />
                   </div>
                 </div>
               )}

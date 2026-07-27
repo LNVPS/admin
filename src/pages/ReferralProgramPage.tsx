@@ -22,6 +22,7 @@ const MODE_LABELS: Record<ReferralMode, string> = {
   lightning_address: "Lightning Address",
   nwc: "Nostr Wallet Connect",
   account_credit: "Account Credit",
+  on_chain: "On-Chain",
 };
 
 type TabId = "referrers" | "vms";
@@ -132,8 +133,9 @@ function ReferrersTab() {
     <>
       <th>Code</th>
       <th>Referrer</th>
-      <th>Payout Mode</th>
+      <th>Payout Target</th>
       <th>Commission Rate</th>
+      <th>Payout Threshold</th>
       <th>Created</th>
     </>
   );
@@ -165,9 +167,21 @@ function ReferrersTab() {
         <StatusBadge status="unknown" colorOverride="border border-blue-500/40 bg-blue-500/10 text-blue-400">
           {MODE_LABELS[referral.mode] ?? referral.mode}
         </StatusBadge>
-        {referral.mode === "lightning_address" && referral.lightning_address && (
-          <div className="mt-1 truncate font-mono text-xs text-slate-400" title={referral.lightning_address}>
-            {referral.lightning_address}
+        {referral.address && (
+          <div className="mt-1 truncate font-mono text-xs text-slate-400" title={referral.address}>
+            {referral.mode === "on_chain" ? (
+              <a
+                href={`https://mempool.space/address/${referral.address}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-blue-400 hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {referral.address} ↗
+              </a>
+            ) : (
+              referral.address
+            )}
           </div>
         )}
       </td>
@@ -176,6 +190,13 @@ function ReferrersTab() {
           <span className="font-mono text-sm text-slate-100">{referral.referral_rate}%</span>
         ) : (
           <span className="text-xs text-slate-500 italic">company default</span>
+        )}
+      </td>
+      <td className="align-top">
+        {referral.payout_threshold != null ? (
+          <span className="font-mono text-sm text-slate-100">{referral.payout_threshold.toLocaleString()} sats</span>
+        ) : (
+          <span className="text-xs text-slate-500 italic">system min</span>
         )}
       </td>
       <td className="align-top text-xs text-slate-400">{new Date(referral.created).toLocaleDateString()}</td>

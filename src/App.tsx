@@ -7,6 +7,9 @@ import { SmartRedirect } from "./components/SmartRedirect";
 import { ProtectedLayout } from "./layouts/ProtectedLayout";
 import { AccessPoliciesPage } from "./pages/AccessPoliciesPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
+import { AppClustersPage } from "./pages/AppClustersPage";
+import { AppDeploymentsPage } from "./pages/AppDeploymentsPage";
+import { AppsPage } from "./pages/AppsPage";
 import { AuditLogPage } from "./pages/AuditLogPage";
 import { BulkMessagePage } from "./pages/BulkMessagePage";
 import { CompaniesPage } from "./pages/CompaniesPage";
@@ -228,6 +231,30 @@ function AppContent() {
               element={
                 <PermissionGuard requiredPermissions={["dns_server::view"]}>
                   <DnsServersPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="apps"
+              element={
+                <PermissionGuard requiredPermissions={["app::view"]}>
+                  <AppsPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="app-clusters"
+              element={
+                <PermissionGuard requiredPermissions={["app::view"]}>
+                  <AppClustersPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="app-deployments"
+              element={
+                <PermissionGuard requiredPermissions={["app_deployment::view"]}>
+                  <AppDeploymentsPage />
                 </PermissionGuard>
               }
             />

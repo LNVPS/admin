@@ -8,6 +8,7 @@ import {
   ComputerDesktopIcon,
   CpuChipIcon,
   CreditCardIcon,
+  CubeIcon,
   CurrencyDollarIcon,
   DocumentDuplicateIcon,
   DocumentTextIcon,
@@ -17,18 +18,20 @@ import {
   KeyIcon,
   ListBulletIcon,
   MoonIcon,
+  RocketLaunchIcon,
   ScaleIcon,
   ServerIcon,
   ServerStackIcon,
+  Squares2X2Icon,
   SunIcon,
   UsersIcon,
   WifiIcon,
 } from "@heroicons/react/24/outline";
 import React, { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { ConfirmDialogContainer } from "../components/ConfirmDialogContainer";
 import { ServerSelector } from "../components/ServerSelector";
 import { TasksWidget } from "../components/TasksWidget";
-import { ConfirmDialogContainer } from "../components/ConfirmDialogContainer";
 import { ToastContainer } from "../components/Toast";
 import { useTheme } from "../hooks/useTheme";
 import { useToast } from "../hooks/useToast";
@@ -104,6 +107,14 @@ const navigation: NavSection[] = [
         to: "/custom-pricing",
         icon: CurrencyDollarIcon,
         requiredPermissions: ["vm_custom_pricing::view"],
+      },
+      { name: "Apps", to: "/apps", icon: CubeIcon, requiredPermissions: ["app::view"] },
+      { name: "App Clusters", to: "/app-clusters", icon: Squares2X2Icon, requiredPermissions: ["app::view"] },
+      {
+        name: "App Deployments",
+        to: "/app-deployments",
+        icon: RocketLaunchIcon,
+        requiredPermissions: ["app_deployment::view"],
       },
     ],
   },

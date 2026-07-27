@@ -1,7 +1,9 @@
 import { BanknotesIcon, PencilIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
+import { IntervalInput } from "../components/IntervalInput";
 import { Modal } from "../components/Modal";
+import { MoneyInput } from "../components/MoneyInput";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { StatsHeader } from "../components/StatsHeader";
 import { useAdminApi } from "../hooks/useAdminApi";
@@ -15,7 +17,7 @@ import type {
   ResourceCostType,
 } from "../lib/api";
 import { confirmDialog } from "../services/confirmService";
-import { CURRENCIES, formatCurrency, fromSmallestUnits, toSmallestUnits } from "../utils/currency";
+import { formatCurrency } from "../utils/currency";
 
 const RESOURCE_TYPE_LABELS: Record<ResourceCostResourceType, string> = {
   vm_host: "Host",
@@ -222,9 +224,9 @@ interface ResourceCostFormState {
   resource_id: string;
   label: string;
   cost_type: ResourceCostType;
-  amount: string;
+  amount: number;
   currency: string;
-  interval_amount: string;
+  interval_amount: number;
   interval_type: ResourceCostIntervalType;
   billing_start: string;
   billing_end: string;
@@ -247,9 +249,9 @@ function ResourceCostModal({
     resource_id: cost ? String(cost.resource_id) : "",
     label: cost?.label ?? "",
     cost_type: cost?.cost_type ?? "recurring",
-    amount: cost ? String(fromSmallestUnits(cost.amount, cost.currency)) : "",
+    amount: cost?.amount ?? 0,
     currency: cost?.currency ?? "EUR",
-    interval_amount: cost?.interval_amount ? String(cost.interval_amount) : "1",
+    interval_amount: cost?.interval_amount ?? 1,
     interval_type: cost?.interval_type ?? "month",
     billing_start: toDateInput(cost?.billing_start ?? null),
     billing_end: toDateInput(cost?.billing_end ?? null),
@@ -279,11 +281,6 @@ function ResourceCostModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const amount = Number.parseFloat(formData.amount);
-    if (Number.isNaN(amount) || amount < 0) {
-      showError("Invalid amount");
-      return;
-    }
     setLoading(true);
     try {
       const payload: CreateResourceCostRequest = {
@@ -291,9 +288,9 @@ function ResourceCostModal({
         resource_id: Number.parseInt(formData.resource_id, 10),
         label: formData.label || null,
         cost_type: formData.cost_type,
-        amount: toSmallestUnits(amount, formData.currency),
+        amount: formData.amount,
         currency: formData.currency,
-        interval_amount: isRecurring ? Number.parseInt(formData.interval_amount, 10) : null,
+        interval_amount: isRecurring ? formData.interval_amount : null,
         interval_type: isRecurring ? formData.interval_type : null,
         billing_start: toApiDate(formData.billing_start),
         billing_end: toApiDate(formData.billing_end),
@@ -406,63 +403,22 @@ function ResourceCostModal({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-medium text-white mb-2">
-              Amount * {formData.currency === "BTC" ? "(sats)" : ""}
-            </label>
-            <input
-              type="number"
-              step="any"
-              min="0"
-              value={formData.amount}
-              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-white mb-2">Currency *</label>
-            <select
-              value={formData.currency}
-              onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-              required
-            >
-              {CURRENCIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+        <MoneyInput
+          label="Amount"
+          required
+          amount={formData.amount}
+          currency={formData.currency}
+          onChange={({ amount, currency }) => setFormData({ ...formData, amount, currency })}
+        />
 
         {isRecurring && (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-white mb-2">Interval Amount *</label>
-              <input
-                type="number"
-                min="1"
-                value={formData.interval_amount}
-                onChange={(e) => setFormData({ ...formData, interval_amount: e.target.value })}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-white mb-2">Interval Type *</label>
-              <select
-                value={formData.interval_type}
-                onChange={(e) =>
-                  setFormData({ ...formData, interval_type: e.target.value as ResourceCostIntervalType })
-                }
-                required
-              >
-                <option value="day">Day</option>
-                <option value="month">Month</option>
-                <option value="year">Year</option>
-              </select>
-            </div>
-          </div>
+          <IntervalInput
+            label="Billing Interval"
+            required
+            amount={formData.interval_amount}
+            type={formData.interval_type}
+            onChange={({ amount, type }) => setFormData({ ...formData, interval_amount: amount, interval_type: type })}
+          />
         )}
 
         <div className="grid grid-cols-2 gap-4">

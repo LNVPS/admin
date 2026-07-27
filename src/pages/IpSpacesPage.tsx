@@ -9,6 +9,7 @@ import {
 import { useState } from "react";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
+import { CurrencySelect, MoneyAmountInput } from "../components/MoneyInput";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
@@ -735,9 +736,9 @@ function AddPricingForm({
     try {
       await adminApi.createIpSpacePricing(ipSpace.id, {
         prefix_size: formData.prefix_size,
-        price_per_month: Math.round(formData.price_per_month * 100), // Convert to cents
+        price_per_month: formData.price_per_month,
         currency: formData.currency,
-        setup_fee: Math.round(formData.setup_fee * 100), // Convert to cents
+        setup_fee: formData.setup_fee,
       });
 
       onSuccess();
@@ -773,49 +774,37 @@ function AddPricingForm({
 
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">Currency</label>
-            <select
+            <CurrencySelect
               value={formData.currency}
-              onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+              onChange={(currency) => setFormData({ ...formData, currency })}
+              currencies={["USD", "EUR", "GBP", "BTC"]}
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-            >
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="GBP">GBP</option>
-              <option value="BTC">BTC</option>
-            </select>
+            />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Price/Month</label>
-            <input
-              type="number"
-              step="0.01"
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Price/Month ({formData.currency === "BTC" ? "sats" : formData.currency})
+            </label>
+            <MoneyAmountInput
               value={formData.price_per_month}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  price_per_month: parseFloat(e.target.value),
-                })
-              }
+              currency={formData.currency}
+              onChange={(price_per_month) => setFormData({ ...formData, price_per_month })}
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Setup Fee</label>
-            <input
-              type="number"
-              step="0.01"
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Setup Fee ({formData.currency === "BTC" ? "sats" : formData.currency})
+            </label>
+            <MoneyAmountInput
               value={formData.setup_fee}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  setup_fee: parseFloat(e.target.value),
-                })
-              }
+              currency={formData.currency}
+              onChange={(setup_fee) => setFormData({ ...formData, setup_fee })}
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
             />
           </div>
@@ -854,9 +843,9 @@ function EditPricingForm({
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     prefix_size: pricing.prefix_size,
-    price_per_month: pricing.price_per_month / 100, // Convert from cents
+    price_per_month: pricing.price_per_month,
     currency: pricing.currency,
-    setup_fee: pricing.setup_fee / 100, // Convert from cents
+    setup_fee: pricing.setup_fee,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -867,9 +856,9 @@ function EditPricingForm({
     try {
       await adminApi.updateIpSpacePricing(ipSpace.id, pricing.id, {
         prefix_size: formData.prefix_size,
-        price_per_month: Math.round(formData.price_per_month * 100),
+        price_per_month: formData.price_per_month,
         currency: formData.currency,
-        setup_fee: Math.round(formData.setup_fee * 100),
+        setup_fee: formData.setup_fee,
       });
 
       onSuccess();
@@ -905,49 +894,37 @@ function EditPricingForm({
 
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">Currency</label>
-            <select
+            <CurrencySelect
               value={formData.currency}
-              onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+              onChange={(currency) => setFormData({ ...formData, currency })}
+              currencies={["USD", "EUR", "GBP", "BTC"]}
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
-            >
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="GBP">GBP</option>
-              <option value="BTC">BTC</option>
-            </select>
+            />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Price/Month</label>
-            <input
-              type="number"
-              step="0.01"
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Price/Month ({formData.currency === "BTC" ? "sats" : formData.currency})
+            </label>
+            <MoneyAmountInput
               value={formData.price_per_month}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  price_per_month: parseFloat(e.target.value),
-                })
-              }
+              currency={formData.currency}
+              onChange={(price_per_month) => setFormData({ ...formData, price_per_month })}
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Setup Fee</label>
-            <input
-              type="number"
-              step="0.01"
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Setup Fee ({formData.currency === "BTC" ? "sats" : formData.currency})
+            </label>
+            <MoneyAmountInput
               value={formData.setup_fee}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  setup_fee: parseFloat(e.target.value),
-                })
-              }
+              currency={formData.currency}
+              onChange={(setup_fee) => setFormData({ ...formData, setup_fee })}
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
             />
           </div>

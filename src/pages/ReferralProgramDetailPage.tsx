@@ -14,6 +14,7 @@ import { Button } from "../components/Button";
 import { Card, DetailList, DetailRow } from "../components/Card";
 import { ErrorState } from "../components/ErrorState";
 import { Modal } from "../components/Modal";
+import { MoneyAmountInput } from "../components/MoneyInput";
 import { Profile } from "../components/Profile";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { useApiCall } from "../hooks/useApiCall";
@@ -26,12 +27,8 @@ const MODE_LABELS: Record<ReferralMode, string> = {
   lightning_address: "Lightning Address",
   nwc: "Nostr Wallet Connect",
   account_credit: "Account Credit",
+  on_chain: "On-Chain",
 };
-
-/** Convert a major-unit amount string into smallest units (millisats for BTC, cents otherwise). */
-function toSmallestUnits(value: number, currency: string): number {
-  return Math.round(value * (currency === "BTC" ? 1000 : 100));
-}
 
 export function ReferralProgramDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -115,18 +112,27 @@ export function ReferralProgramDetailPage() {
               }
             />
             <DetailRow label="Payout Mode" value={MODE_LABELS[referral.mode] ?? referral.mode} />
-            {referral.mode === "lightning_address" && (
-              <DetailRow
-                label="Lightning Address"
-                value={
-                  referral.lightning_address ? (
-                    <span className="font-mono text-sm">{referral.lightning_address}</span>
+            <DetailRow
+              label="Payout Address"
+              value={
+                referral.address ? (
+                  referral.mode === "on_chain" ? (
+                    <a
+                      href={`https://mempool.space/address/${referral.address}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-mono text-sm break-all text-blue-400 hover:underline"
+                    >
+                      {referral.address} ↗
+                    </a>
                   ) : (
-                    <span className="text-slate-500">—</span>
+                    <span className="font-mono text-sm break-all">{referral.address}</span>
                   )
-                }
-              />
-            )}
+                ) : (
+                  <span className="text-slate-500">—</span>
+                )
+              }
+            />
             <DetailRow
               label="Commission Rate"
               value={
@@ -134,6 +140,16 @@ export function ReferralProgramDetailPage() {
                   <span className="font-mono">{referral.referral_rate}%</span>
                 ) : (
                   <span className="text-slate-400 italic">company default</span>
+                )
+              }
+            />
+            <DetailRow
+              label="Payout Threshold"
+              value={
+                referral.payout_threshold != null ? (
+                  <span className="font-mono">{referral.payout_threshold.toLocaleString()} sats</span>
+                ) : (
+                  <span className="text-slate-400 italic">system minimum</span>
                 )
               }
             />
@@ -197,7 +213,7 @@ export function ReferralProgramDetailPage() {
                   <th className="py-2 pr-4">ID</th>
                   <th className="py-2 pr-4">Amount</th>
                   <th className="py-2 pr-4">Status</th>
-                  <th className="py-2 pr-4">Invoice</th>
+                  <th className="py-2 pr-4">Output</th>
                   <th className="py-2 pr-4">Created</th>
                   {canUpdate && <th className="py-2">Actions</th>}
                 </tr>
@@ -275,8 +291,20 @@ function PayoutRow({
         )}
       </td>
       <td className="py-2 pr-4 font-mono text-xs text-slate-400">
-        {payout.invoice ? (
-          <span title={payout.invoice}>{payout.invoice.slice(0, 18)}…</span>
+        {payout.output ? (
+          payout.mode === "on_chain" ? (
+            <a
+              href={`https://mempool.space/tx/${payout.output.split(":")[0]}`}
+              target="_blank"
+              rel="noreferrer"
+              title={payout.output}
+              className="text-blue-400 hover:underline"
+            >
+              {payout.output.slice(0, 18)}… ↗
+            </a>
+          ) : (
+            <span title={payout.output}>{payout.output.slice(0, 18)}…</span>
+          )
         ) : (
           <span className="text-slate-600">—</span>
         )}
@@ -410,9 +438,10 @@ function CreatePayoutModal({
 }) {
   const api = useAdminApi();
   const { success } = useToast();
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState(0);
   const [currency, setCurrency] = useState(defaultCurrency);
-  const [invoice, setInvoice] = useState("");
+  const [output, setOutput] = useState("");
+  const [mode, setMode] = useState<ReferralMode>("lightning_address");
   const [isPaid, setIsPaid] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -420,17 +449,17 @@ function CreatePayoutModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    const parsed = parseFloat(amount);
-    if (Number.isNaN(parsed) || parsed <= 0) {
+    if (amount <= 0) {
       setError("Amount must be greater than 0");
       return;
     }
     setSubmitting(true);
     try {
       await api.createReferralPayout(referralId, {
-        amount: toSmallestUnits(parsed, currency),
+        amount,
         currency,
-        invoice: invoice.trim() || undefined,
+        output: output.trim() || undefined,
+        mode,
         is_paid: isPaid,
       });
       success("Payout recorded");
@@ -451,12 +480,10 @@ function CreatePayoutModal({
             <label className="block text-sm font-medium text-gray-300 mb-1">
               Amount ({currency === "BTC" ? "sats" : currency})
             </label>
-            <input
-              type="number"
-              step="0.00000001"
-              min="0"
+            <MoneyAmountInput
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              currency={currency}
+              onChange={setAmount}
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
               required
             />
@@ -473,12 +500,24 @@ function CreatePayoutModal({
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Invoice (Optional)</label>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Mode</label>
+          <select
+            value={mode}
+            onChange={(e) => setMode(e.target.value as ReferralMode)}
+            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+          >
+            <option value="lightning_address">Lightning Address</option>
+            <option value="nwc">Nostr Wallet Connect</option>
+            <option value="on_chain">On-Chain</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Output (Optional)</label>
           <input
             type="text"
-            value={invoice}
-            onChange={(e) => setInvoice(e.target.value)}
-            placeholder="lnbc..."
+            value={output}
+            onChange={(e) => setOutput(e.target.value)}
+            placeholder={mode === "on_chain" ? "<txid>:<vout>" : "lnbc..."}
             className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white font-mono text-sm"
           />
         </div>

@@ -68,6 +68,7 @@ export function AppsPage() {
       <th className="w-16">ID</th>
       <th>Name</th>
       <th>Slug</th>
+      <th>Category</th>
       <th>Pricing</th>
       <th>Footprint</th>
       <th>Status</th>
@@ -110,6 +111,18 @@ export function AppsPage() {
           >
             repo ↗
           </a>
+        )}
+      </td>
+      <td className="align-top">
+        {app.category === MIGRATION_PLACEHOLDER_CATEGORY ? (
+          <span
+            className="text-xs text-amber-400"
+            title="Placeholder written by the migration, not reviewed copy. It renders verbatim in the public page title until it is set."
+          >
+            {app.category} ⚠
+          </span>
+        ) : (
+          <span className="text-xs text-gray-300">{app.category}</span>
         )}
       </td>
       <td className="align-top text-gray-300">
@@ -199,6 +212,14 @@ export function AppsPage() {
 const DEFAULT_COMPOSE =
   "services:\n  app:\n    image: example/app:latest\n    ports:\n      - { name: web, container: 80, protocol: http, expose: ingress }\n";
 
+/**
+ * The value `20260726110000_app_seo_metadata.sql` writes as a safety net for any
+ * app it could not backfill by slug. Its own comment calls it "a placeholder,
+ * not reviewed copy" — it renders verbatim in the public page title until an
+ * admin sets a real one, so flag it in the listing rather than let it blend in.
+ */
+const MIGRATION_PLACEHOLDER_CATEGORY = "Self-hosted application";
+
 function AppModal({
   isOpen,
   onClose,
@@ -221,6 +242,9 @@ function AppModal({
     description: app?.description ?? "",
     icon: app?.icon ?? "",
     repo_url: app?.repo_url ?? "",
+    category: app?.category ?? "",
+    seo_title: app?.seo_title ?? "",
+    seo_description: app?.seo_description ?? "",
     compose: app?.compose ?? DEFAULT_COMPOSE,
     amount: app?.amount ?? 0,
     currency: app?.currency ?? "USD",
@@ -242,6 +266,11 @@ function AppModal({
           description: formData.description || null,
           icon: formData.icon || null,
           repo_url: formData.repo_url || null,
+          // Trimmed because the API rejects whitespace-only as blank, and a
+          // stored leading space would show up in the public <title>.
+          category: formData.category.trim(),
+          seo_title: formData.seo_title.trim() || null,
+          seo_description: formData.seo_description.trim() || null,
           compose: formData.compose,
           amount: formData.amount,
           currency: formData.currency,
@@ -258,6 +287,9 @@ function AppModal({
           description: formData.description || undefined,
           icon: formData.icon || undefined,
           repo_url: formData.repo_url || undefined,
+          category: formData.category.trim(),
+          seo_title: formData.seo_title.trim() || undefined,
+          seo_description: formData.seo_description.trim() || undefined,
           compose: formData.compose,
           amount: formData.amount,
           currency: formData.currency,
@@ -324,6 +356,58 @@ function AppModal({
             placeholder="A personal Nostr relay"
           />
         </div>
+
+        <div>
+          <label className="block text-xs font-medium text-white mb-2">Category *</label>
+          <input
+            type="text"
+            value={formData.category}
+            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+            className=""
+            placeholder="Nostr relay"
+            required
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Sentence case with proper nouns capitalised. No article, no "hosting", no "managed", no trailing punctuation
+            — the public page wraps it as{" "}
+            <span className="font-mono text-gray-400">
+              {formData.display_name || "App"} Hosting — Managed {formData.category.trim() || "…"}
+            </span>
+            . Good: <span className="font-mono text-gray-400">Nostr relay</span>,{" "}
+            <span className="font-mono text-gray-400">Community Nostr relay</span>. Bad:{" "}
+            <span className="font-mono text-gray-400">A managed Nostr relay hosting.</span>
+          </p>
+        </div>
+
+        <details className="rounded border border-slate-700 px-3 py-2">
+          <summary className="cursor-pointer text-xs font-medium text-white">SEO overrides (optional)</summary>
+          <p className="text-xs text-gray-500 mt-2">
+            Leave blank unless the generated copy is wrong for this app. Both are English only — they bypass the site's
+            translations, so every locale gets what you type here.
+          </p>
+          <div className="mt-3 space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-white mb-2">Title override</label>
+              <input
+                type="text"
+                value={formData.seo_title}
+                onChange={(e) => setFormData({ ...formData, seo_title: e.target.value })}
+                className=""
+                placeholder="Managed Nostr Relay Hosting"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-white mb-2">Description override</label>
+              <input
+                type="text"
+                value={formData.seo_description}
+                onChange={(e) => setFormData({ ...formData, seo_description: e.target.value })}
+                className=""
+                placeholder="Run your own Nostr relay on LNVPS — up in minutes, TLS included."
+              />
+            </div>
+          </div>
+        </details>
 
         <div className="grid grid-cols-2 gap-4">
           <div>

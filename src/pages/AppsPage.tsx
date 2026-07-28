@@ -1,18 +1,28 @@
-import { CubeIcon, PencilIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { CubeIcon, PencilIcon, PlusIcon, TagIcon, TrashIcon } from "@heroicons/react/24/outline";
+import clsx from "clsx";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
+import { AppTagsModal } from "../components/AppTagsModal";
 import { Button } from "../components/Button";
 import { countActiveFilters, FilterBar, FilterButton, type FilterField } from "../components/FilterBar";
 import { IntervalInput } from "../components/IntervalInput";
 import { Modal } from "../components/Modal";
 import { MoneyAmountInput, MoneyInput } from "../components/MoneyInput";
 import { PaginatedTable } from "../components/PaginatedTable";
+import { Pill } from "../components/Pill";
 import { StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { useToast } from "../hooks/useToast";
-import type { AdminAppClusterInfo, AdminAppInfo, AdminCustomPricingInfo, AppIntervalType } from "../lib/api";
+import type {
+  AdminAppClusterInfo,
+  AdminAppInfo,
+  AdminAppTagInfo,
+  AdminCustomPricingInfo,
+  AppIntervalType,
+} from "../lib/api";
 import { parseComposeFootprint } from "../lib/composeSchema";
+import { fetchAllPages } from "../lib/paginate";
 import { confirmDialog } from "../services/confirmService";
 import { suggestAppPriceRange } from "../utils/appPricing";
 import { formatCurrency } from "../utils/currency";
@@ -40,9 +50,51 @@ export function AppsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [searchFilter, setSearchFilter] = useState("");
   const [enabledFilter, setEnabledFilter] = useState("");
+  const [showTagsModal, setShowTagsModal] = useState(false);
+  const [tags, setTags] = useState<AdminAppTagInfo[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const { success, error: toastError } = useToast();
 
-  const refreshData = () => setRefreshTrigger((prev) => prev + 1);
+  const refreshData = () => {
+    setRefreshTrigger((prev) => prev + 1);
+    // A save may have introduced a new category; keep the picker's suggestions
+    // in step with what is actually stored.
+    loadCategories();
+  };
+
+  const loadTags = useCallback(async () => {
+    try {
+      setTags(await adminApi.getAppTags());
+    } catch (err) {
+      console.error("Failed to load app tags:", err);
+    }
+  }, [adminApi]);
+
+  /**
+   * Distinct categories already in the catalog, for the form's combobox.
+   *
+   * Derived from the data rather than hardcoded: a fixed list in the front end
+   * drifts from the database exactly the way free text does, only slower and
+   * with nobody to notice. Paged to exhaustion because the endpoint clamps at
+   * 100 — a single oversized page would silently lose categories past that.
+   */
+  const loadCategories = useCallback(async () => {
+    try {
+      const apps = await fetchAllPages((params) => adminApi.getApps(params));
+      const distinct = [...new Set(apps.map((a) => a.category?.trim()).filter((c): c is string => !!c))];
+      setCategories(distinct.sort((a, b) => a.localeCompare(b)));
+    } catch (err) {
+      console.error("Failed to load app categories:", err);
+    }
+  }, [adminApi]);
+
+  useEffect(() => {
+    loadTags();
+  }, [loadTags]);
+
+  useEffect(() => {
+    loadCategories();
+  }, [loadCategories]);
 
   const filterFields: FilterField[] = [
     {
@@ -114,6 +166,7 @@ export function AppsPage() {
       <th>Name</th>
       <th>Slug</th>
       <th>Category</th>
+      <th>Tags</th>
       <th>Pricing</th>
       <th>Footprint</th>
       <th>Status</th>
@@ -170,6 +223,19 @@ export function AppsPage() {
           <span className="text-xs text-gray-300">{app.category}</span>
         )}
       </td>
+      <td className="align-top">
+        {app.tags.length > 0 ? (
+          <div className="flex flex-wrap gap-1 max-w-[14rem]">
+            {app.tags.map((tag) => (
+              <Pill key={tag.id} variant="primary" title={tag.slug}>
+                {tag.display_name}
+              </Pill>
+            ))}
+          </div>
+        ) : (
+          <span className="text-xs text-slate-500">—</span>
+        )}
+      </td>
       <td className="align-top text-gray-300">
         <div className="text-white">{formatCurrency(app.amount, app.currency)}</div>
         <div className="text-xs text-slate-400">{formatInterval(app.interval_amount, app.interval_type)}</div>
@@ -221,6 +287,10 @@ export function AppsPage() {
             activeCount={countActiveFilters(filterFields)}
             onClick={() => setShowFilters((prev) => !prev)}
           />
+          <Button variant="secondary" onClick={() => setShowTagsModal(true)}>
+            <TagIcon className="h-4 w-4 mr-2" />
+            Manage Tags
+          </Button>
           <Button onClick={() => setShowCreateModal(true)}>
             <PlusIcon className="h-4 w-4 mr-2" />
             Add App
@@ -250,10 +320,16 @@ export function AppsPage() {
         errorAction="view apps"
         loadingMessage="Loading apps..."
         dependencies={[refreshTrigger, searchFilter, enabledFilter]}
-        minWidth="1000px"
+        minWidth="1150px"
       />
 
-      <AppModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} onSuccess={refreshData} />
+      <AppModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={refreshData}
+        vocabulary={tags}
+        categories={categories}
+      />
 
       {selected && (
         <AppModal
@@ -264,8 +340,21 @@ export function AppsPage() {
           }}
           app={selected}
           onSuccess={refreshData}
+          vocabulary={tags}
+          categories={categories}
         />
       )}
+
+      <AppTagsModal
+        isOpen={showTagsModal}
+        onClose={() => setShowTagsModal(false)}
+        tags={tags}
+        onChanged={() => {
+          loadTags();
+          // A rename or delete changes what the listing renders, so refetch it too.
+          refreshData();
+        }}
+      />
     </div>
   );
 }
@@ -286,15 +375,24 @@ function AppModal({
   onClose,
   app,
   onSuccess,
+  vocabulary,
+  categories,
 }: {
   isOpen: boolean;
   onClose: () => void;
   app?: AdminAppInfo;
   onSuccess: () => void;
+  /** The controlled tag vocabulary; tags can only be picked from it. */
+  vocabulary: AdminAppTagInfo[];
+  /** Categories already in use, offered as suggestions (free text still allowed). */
+  categories: string[];
 }) {
   const adminApi = useAdminApi();
   const { success, error: toastError } = useToast();
   const isEdit = !!app;
+  // Two AppModals are mounted at once (create + edit), so the datalist needs an
+  // id that is unique per instance.
+  const categoryListId = useId();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -313,7 +411,16 @@ function AppModal({
     interval_type: (app?.interval_type ?? "month") as AppIntervalType,
     setup_amount: app?.setup_amount ?? 0,
     enabled: app?.enabled ?? true,
+    // Seeded from the app's *entire* current set: `tags` is a replace-set, so
+    // sending only part of it would silently drop the rest.
+    tags: app?.tags.map((t) => t.slug) ?? [],
   });
+
+  const toggleTag = (slug: string) =>
+    setFormData((prev) => ({
+      ...prev,
+      tags: prev.tags.includes(slug) ? prev.tags.filter((s) => s !== slug) : [...prev.tags, slug],
+    }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -332,6 +439,7 @@ function AppModal({
           category: formData.category.trim(),
           seo_title: formData.seo_title.trim() || null,
           seo_description: formData.seo_description.trim() || null,
+          tags: formData.tags,
           compose: formData.compose,
           amount: formData.amount,
           currency: formData.currency,
@@ -351,6 +459,7 @@ function AppModal({
           category: formData.category.trim(),
           seo_title: formData.seo_title.trim() || undefined,
           seo_description: formData.seo_description.trim() || undefined,
+          tags: formData.tags,
           compose: formData.compose,
           amount: formData.amount,
           currency: formData.currency,
@@ -420,14 +529,42 @@ function AppModal({
 
         <div>
           <label className="block text-xs font-medium text-white mb-2">Category *</label>
+          {/* Combobox, not a select: the category is deliberately specific free
+              text ("Community Nostr relay" ≠ "Nostr relay"), so typing a genuinely
+              new class has to stay possible. The existing values are one keystroke
+              away, which is what stops "Nostr Relay" being typed next to "Nostr
+              relay" and becoming a second category. */}
           <input
             type="text"
+            list={categoryListId}
             value={formData.category}
             onChange={(e) => setFormData({ ...formData, category: e.target.value })}
             className=""
             placeholder="Nostr relay"
             required
           />
+          <datalist id={categoryListId}>
+            {categories.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
+          {/* Near-duplicate guard: same text bar case is almost always a typo. */}
+          {(() => {
+            const typed = formData.category.trim();
+            const clash = categories.find((c) => c.toLowerCase() === typed.toLowerCase() && c !== typed);
+            return clash ? (
+              <p className="text-xs text-amber-400 mt-1">
+                “{clash}” already exists and differs only by case — saving this creates a second category.{" "}
+                <button
+                  type="button"
+                  className="underline hover:text-amber-300"
+                  onClick={() => setFormData({ ...formData, category: clash })}
+                >
+                  Use “{clash}”
+                </button>
+              </p>
+            ) : null;
+          })()}
           <p className="text-xs text-gray-500 mt-1">
             Sentence case with proper nouns capitalised. No article, no "hosting", no "managed", no trailing punctuation
             — the public page wraps it as{" "}
@@ -437,6 +574,43 @@ function AppModal({
             . Good: <span className="font-mono text-gray-400">Nostr relay</span>,{" "}
             <span className="font-mono text-gray-400">Community Nostr relay</span>. Bad:{" "}
             <span className="font-mono text-gray-400">A managed Nostr relay hosting.</span>
+          </p>
+        </div>
+
+        <div>
+          <span className="block text-xs font-medium text-white mb-2">Tags</span>
+          {/* A picker over the vocabulary rather than a text field: an unknown
+              slug is a 400 naming it, never an implicit create. */}
+          {vocabulary.length === 0 ? (
+            <p className="text-xs text-gray-500">
+              No tags defined yet — create some from “Manage Tags” on the app list.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {vocabulary.map((tag) => {
+                const on = formData.tags.includes(tag.slug);
+                return (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => toggleTag(tag.slug)}
+                    title={tag.description ?? tag.slug}
+                    className={clsx(
+                      "rounded px-2 py-1 text-xs font-medium border",
+                      on
+                        ? "bg-blue-900 border-blue-500 text-blue-200"
+                        : "bg-slate-800 border-slate-600 text-slate-400 hover:text-white",
+                    )}
+                  >
+                    {tag.display_name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <p className="text-xs text-gray-500 mt-1">
+            The coarse grouping axis (category stays specific). Saving replaces the app's whole tag set with what is
+            selected here.
           </p>
         </div>
 
@@ -584,7 +758,7 @@ function SuggestedPriceHint({ compose, currency }: { compose: string; currency: 
       try {
         const [pricing, clusters] = await Promise.all([
           adminApi.getCustomPricing({ limit: 100, enabled: true }),
-          adminApi.getAppClusters({ limit: 200 }).catch(() => ({ data: [] as AdminAppClusterInfo[] })),
+          fetchAllPages((params) => adminApi.getAppClusters(params)).catch(() => [] as AdminAppClusterInfo[]),
         ]);
         if (cancelled) return;
         setPlans(pricing.data);
@@ -594,7 +768,7 @@ function SuggestedPriceHint({ compose, currency }: { compose: string; currency: 
         }
         // Default to a region that actually hosts app clusters, since that's
         // where this app would be deployed.
-        const clusterRegions = clusters.data.filter((c) => c.enabled).map((c) => c.region_id);
+        const clusterRegions = clusters.filter((c) => c.enabled).map((c) => c.region_id);
         const priced = new Set(pricing.data.map((m) => m.region_id));
         setRegionId(clusterRegions.find((id) => priced.has(id)) ?? pricing.data[0].region_id);
         setStatus(null);

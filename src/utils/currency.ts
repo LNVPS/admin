@@ -31,6 +31,23 @@ export const formatCurrency = (amount: number, currency: string, minDigits?: num
 };
 
 /**
+ * Tailwind text colour for a **signed** money figure.
+ *
+ * Report totals are signed: a period that refunds more than it sells reports a
+ * negative net. Colouring a column unconditionally green then paints a negative
+ * figure with the one signal that says "money in" — on a page an operator files
+ * with a tax authority. Red is reserved for negatives so it means the same
+ * thing in every column.
+ *
+ * @param amount - Signed amount in any unit; only its sign is used
+ * @param positiveClass - Class to use for zero or positive values
+ * @returns The class to apply
+ */
+export function signedAmountClass(amount: number, positiveClass: string): string {
+  return amount < 0 ? "text-red-400 font-semibold" : positiveClass;
+}
+
+/**
  * Parses a string input to an unsigned 64-bit integer.
  * Used for converting form inputs to API values representing smallest currency units
  * (e.g., cents for fiat, millisats for BTC).

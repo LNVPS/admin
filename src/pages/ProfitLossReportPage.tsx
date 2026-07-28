@@ -27,7 +27,7 @@ import { useAdminApi } from "../hooks/useAdminApi";
 import { useCachedCompanies } from "../hooks/useCachedCompanies";
 import { useCachedRegions } from "../hooks/useCachedRegions";
 import type { ProfitLossPeriod, ProfitLossReportData } from "../lib/api";
-import { CURRENCIES, formatCurrency } from "../utils/currency";
+import { CURRENCIES, formatCurrency, signedAmountClass } from "../utils/currency";
 
 export function ProfitLossReportPage() {
   const api = useAdminApi();
@@ -144,15 +144,21 @@ export function ProfitLossReportPage() {
     {
       header: "Revenue (net)",
       key: "revenue_net",
+      // Signed since api#255 — a refund-heavy period is negative revenue, and
+      // green would be the wrong signal for it.
       render: (item: ProfitLossPeriod) => (
-        <span className="text-green-400">{formatCurrency(item.revenue_net, reportCurrency)}</span>
+        <span className={signedAmountClass(item.revenue_net, "text-green-400")}>
+          {formatCurrency(item.revenue_net, reportCurrency)}
+        </span>
       ),
     },
     {
       header: "Tax",
       key: "revenue_tax",
       render: (item: ProfitLossPeriod) => (
-        <span className="text-yellow-400">{formatCurrency(item.revenue_tax, reportCurrency)}</span>
+        <span className={signedAmountClass(item.revenue_tax, "text-yellow-400")}>
+          {formatCurrency(item.revenue_tax, reportCurrency)}
+        </span>
       ),
     },
     {
@@ -312,7 +318,9 @@ export function ProfitLossReportPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-400 text-sm">Total Revenue (net)</p>
-                  <p className="text-white font-semibold">{formatCurrency(totals.revenue, reportCurrency)}</p>
+                  <p className={`font-semibold ${signedAmountClass(totals.revenue, "text-white")}`}>
+                    {formatCurrency(totals.revenue, reportCurrency)}
+                  </p>
                   <p className="text-blue-400 text-sm">{reportData.periods.length} periods</p>
                 </div>
                 <ArrowTrendingUpIcon className="h-8 w-8 text-green-500" />

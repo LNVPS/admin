@@ -15,7 +15,7 @@ import { Card } from "../components/Card";
 import { Table } from "../components/Table";
 import { useAdminApi } from "../hooks/useAdminApi";
 import type { AdminCompanyInfo, TimeSeriesReportData } from "../lib/api";
-import { formatCurrency } from "../utils/currency";
+import { formatCurrency, signedAmountClass } from "../utils/currency";
 
 const INTERVALS = [
   { value: "daily", label: "Daily" },
@@ -364,15 +364,25 @@ export function SalesReportPage() {
     {
       header: `Net (${baseCurrency})`,
       key: "net_total_base",
+      // Totals are signed: a period whose refunds outweigh its sales sums to a
+      // negative, which must not render in the colour that means money in.
       render: (item: any) => {
-        return <span className="text-green-400">{formatCurrency(item.net_total_base, baseCurrency)}</span>;
+        return (
+          <span className={signedAmountClass(item.net_total_base, "text-green-400")}>
+            {formatCurrency(item.net_total_base, baseCurrency)}
+          </span>
+        );
       },
     },
     {
       header: `Tax (${baseCurrency})`,
       key: "tax_total_base",
       render: (item: any) => {
-        return <span className="text-yellow-400">{formatCurrency(item.tax_total_base, baseCurrency)}</span>;
+        return (
+          <span className={signedAmountClass(item.tax_total_base, "text-yellow-400")}>
+            {formatCurrency(item.tax_total_base, baseCurrency)}
+          </span>
+        );
       },
     },
     {
@@ -380,7 +390,9 @@ export function SalesReportPage() {
       key: "gross_total_base",
       render: (item: any) => {
         return (
-          <span className="text-blue-400 font-semibold">{formatCurrency(item.gross_total_base, baseCurrency)}</span>
+          <span className={signedAmountClass(item.gross_total_base, "text-blue-400 font-semibold")}>
+            {formatCurrency(item.gross_total_base, baseCurrency)}
+          </span>
         );
       },
     },

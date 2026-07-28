@@ -1,12 +1,14 @@
-import { EyeIcon, PlayIcon, PlusIcon, StopIcon } from "@heroicons/react/24/outline";
+import { CalendarDaysIcon, DocumentTextIcon, EyeIcon, PlayIcon, PlusIcon, StopIcon } from "@heroicons/react/24/outline";
 import { bech32ToHex } from "@snort/shared";
 import { tryParseNostrLink } from "@snort/system";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { BulkExtendVmsModal } from "../components/BulkExtendVmsModal";
 import { Button } from "../components/Button";
 import { CreateVmModal } from "../components/CreateVmModal";
 import { countActiveFilters, FilterBar, FilterButton, type FilterField } from "../components/FilterBar";
 import { PaginatedTable } from "../components/PaginatedTable";
+import { PermissionGuard } from "../components/PermissionGuard";
 import { Profile } from "../components/Profile";
 import { type StatItem, StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
@@ -22,6 +24,7 @@ export function VMsPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
   const [showCreateVmModal, setShowCreateVmModal] = useState(false);
+  const [showBulkExtendModal, setShowBulkExtendModal] = useState(false);
   const [regions, setRegions] = useState<AdminRegionInfo[]>([]);
   const [hosts, setHosts] = useState<AdminHostInfo[]>([]);
   const [filters, setFilters] = useState({
@@ -226,6 +229,16 @@ export function VMsPage() {
         <div className="flex flex-wrap items-center gap-1.5">
           <VmStatusBadge vm={vmInfo} />
           {(vmInfo as { disabled?: boolean }).disabled && <StatusBadge status="disabled" />}
+          {vmInfo.admin_notes && (
+            <span
+              title={`Admin notes: ${vmInfo.admin_notes}`}
+              className="text-slate-400"
+              role="img"
+              aria-label="Has admin notes"
+            >
+              <DocumentTextIcon className="h-4 w-4" />
+            </span>
+          )}
         </div>
         {vmInfo.cpu !== undefined && vmInfo.memory !== undefined && vmInfo.disk_size !== undefined ? (
           <div className="mt-1.5 font-mono text-xs text-slate-300">
@@ -339,6 +352,14 @@ export function VMsPage() {
               <PlusIcon className="h-4 w-4 mr-2" />
               Create VM
             </Button>
+            {/* Fleet-wide, so it needs the same gate the API uses — bulk_update,
+                not the ordinary update every VM editor already has. */}
+            <PermissionGuard requiredPermissions={["virtual_machines::bulk_update"]} fallback={null}>
+              <Button variant="secondary" onClick={() => setShowBulkExtendModal(true)}>
+                <CalendarDaysIcon className="h-4 w-4 mr-2" />
+                Extend All
+              </Button>
+            </PermissionGuard>
             <FilterButton
               open={showFilters}
               activeCount={countActiveFilters(filterFields)}
@@ -376,6 +397,12 @@ export function VMsPage() {
         isOpen={showCreateVmModal}
         onClose={() => setShowCreateVmModal(false)}
         onSuccess={handleVmCreated}
+      />
+
+      <BulkExtendVmsModal
+        isOpen={showBulkExtendModal}
+        onClose={() => setShowBulkExtendModal(false)}
+        onExtended={() => setRefreshTrigger((prev) => prev + 1)}
       />
     </div>
   );

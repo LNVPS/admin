@@ -2,15 +2,11 @@ import type React from "react";
 
 interface PillProps {
   children: React.ReactNode;
-  variant?:
-    | "default"
-    | "primary"
-    | "secondary"
-    | "success"
-    | "warning"
-    | "danger";
+  variant?: "default" | "primary" | "secondary" | "success" | "warning" | "danger";
   size?: "sm" | "md";
   className?: string;
+  /** Native tooltip, e.g. the underlying slug behind a display name. */
+  title?: string;
 }
 
 const variantClasses = {
@@ -27,14 +23,10 @@ const sizeClasses = {
   md: "px-2 py-1 text-sm",
 };
 
-export function Pill({
-  children,
-  variant = "default",
-  size = "sm",
-  className = "",
-}: PillProps) {
+export function Pill({ children, variant = "default", size = "sm", className = "", title }: PillProps) {
   return (
     <span
+      title={title}
       className={`inline-flex items-center rounded font-medium ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
     >
       {children}

@@ -22,6 +22,7 @@ import {
   type AppDeploymentStatus,
 } from "../lib/api";
 import { parseComposeSchema } from "../lib/composeSchema";
+import { fetchAllPages } from "../lib/paginate";
 import { confirmDialog } from "../services/confirmService";
 
 type BadgeStatus = "running" | "stopped" | "warning" | "unknown";
@@ -99,14 +100,16 @@ export function AppDeploymentsPage() {
     }
   };
 
+  // Paged to exhaustion rather than asked for in one oversized page: both
+  // endpoints clamp `limit` to 100 silently, so past the 100th app or cluster a
+  // single request left every later row rendering `App #147` instead of a name,
+  // with nothing in the UI to say why.
   useEffect(() => {
-    adminApi
-      .getApps({ limit: 200 })
-      .then((res) => setApps(res.data))
+    fetchAllPages((params) => adminApi.getApps(params))
+      .then(setApps)
       .catch(console.error);
-    adminApi
-      .getAppClusters({ limit: 200 })
-      .then((res) => setClusters(res.data))
+    fetchAllPages((params) => adminApi.getAppClusters(params))
+      .then(setClusters)
       .catch(console.error);
   }, [adminApi]);
 

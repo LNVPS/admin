@@ -358,6 +358,11 @@ export interface AdminVmInfo {
   deleted: boolean;
   disabled: boolean;
   ref_code: string | null;
+  /**
+   * Free-form admin-only notes, never exposed to the customer API.
+   * Omitted by the API when empty, so treat `undefined` as "no notes".
+   */
+  admin_notes?: string | null;
   subscription: AdminSubscriptionInfo | null;
 }
 
@@ -748,10 +753,38 @@ export interface AdminAppInfo {
   setup_amount: number;
   enabled: boolean;
   created: string;
+  /**
+   * Grouping labels currently assigned, ordered by slug. Returned so an editor
+   * is never a blind edit: `tags` on create/update is a **replace-set** of
+   * slugs, so a form that sends a partial list silently drops the rest.
+   */
+  tags: AdminAppTagRef[];
   /** Computed resource footprint (Σ service resources + volume sizes) */
   cpu_milli?: number;
   memory_bytes?: number;
   storage_bytes?: number;
+}
+
+/** A tag as it appears on an app (the assignment view). */
+export interface AdminAppTagRef {
+  id: number;
+  slug: string;
+  display_name: string;
+}
+
+/** A tag in the controlled vocabulary, with usage count. */
+export interface AdminAppTagInfo {
+  id: number;
+  /** URL-safe slug (lowercase letters, digits, hyphens), unique. */
+  slug: string;
+  display_name: string;
+  description: string | null;
+  /**
+   * Number of **enabled** apps carrying this tag — the same count the public
+   * facet endpoint reports. A disabled app carrying the tag is not counted.
+   */
+  app_count: number;
+  created: string;
 }
 
 /**
@@ -1696,10 +1729,19 @@ export class AdminApi {
     return result.data;
   }
 
+  /**
+   * Patch a VM. Only the fields sent are touched.
+   *
+   * `admin_notes` is tri-state: a string sets the notes, an explicit `null`
+   * clears them, and omitting the key leaves them unchanged. A notes-only
+   * change is persisted without reconfiguring the VM on its host, so the
+   * returned `job_id` is empty in that case.
+   */
   async updateVM(
     id: number,
     updates: {
       disabled?: boolean;
+      admin_notes?: string | null;
     },
   ) {
     const result = await this.handleResponse<ApiResponse<{ job_id: string }>>(
@@ -1724,6 +1766,23 @@ export class AdminApi {
   async extendVM(id: number, days: number, reason?: string) {
     const body = { days, ...(reason && { reason }) };
     await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/vms/${id}/extend`, "PUT", body));
+  }
+
+  /**
+   * Extend **every active VM** by `days` (1–365) in one request — the
+   * compensate-customers-for-downtime action.
+   *
+   * "Active" is set-up and not deleted, which *includes already-expired VMs*,
+   * so this revives lapsed ones; never-paid pending orders and deleted VMs are
+   * excluded at the database level. Gated behind the dedicated
+   * `virtual_machines::bulk_update` permission rather than plain update.
+   */
+  async extendAllVMs(days: number, reason?: string) {
+    const body = { days, ...(reason && { reason }) };
+    const result = await this.handleResponse<ApiResponse<{ extended: number; failed: number }>>(
+      await this.req("/api/admin/v1/vms/extend-all", "POST", body),
+    );
+    return result.data;
   }
 
   async getVMHistory(vmId: number, params?: { limit?: number; offset?: number }) {
@@ -2624,6 +2683,11 @@ export class AdminApi {
     category: string;
     seo_title?: string | null;
     seo_description?: string | null;
+    /**
+     * Tag slugs to assign. Must already exist in the vocabulary — an unknown
+     * slug is a `400` naming it, never an implicit create.
+     */
+    tags?: string[];
     compose: string;
     amount: number;
     currency: string;
@@ -2653,6 +2717,12 @@ export class AdminApi {
       category: string;
       seo_title: string | null;
       seo_description: string | null;
+      /**
+       * **Replace-set** of tag slugs: the list sent becomes the app's entire
+       * tag set, an empty list clears it, and omitting the key leaves the set
+       * alone. Never send a partial list.
+       */
+      tags: string[];
       compose: string;
       amount: number;
       currency: string;
@@ -2670,6 +2740,48 @@ export class AdminApi {
 
   async deleteApp(id: number) {
     await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/apps/${id}`, "DELETE"));
+  }
+
+  // App tags (the controlled vocabulary). All reuse the `app` RBAC resource.
+
+  /** List the whole vocabulary with per-tag app counts. Not paginated. */
+  async getAppTags() {
+    const result = await this.handleResponse<ApiResponse<AdminAppTagInfo[]>>(
+      await this.req("/api/admin/v1/app-tags", "GET"),
+    );
+    return result.data;
+  }
+
+  async createAppTag(data: { slug: string; display_name: string; description?: string | null }) {
+    const result = await this.handleResponse<ApiResponse<AdminAppTagInfo>>(
+      await this.req("/api/admin/v1/app-tags", "POST", data),
+    );
+    return result.data;
+  }
+
+  /**
+   * Patch a tag; omitted fields are unchanged. `slug` and `display_name` are
+   * NOT NULL so they have no clear; `description` accepts an explicit null.
+   * Renaming a slug breaks any `/apps/tag/{slug}` link already indexed.
+   */
+  async updateAppTag(id: number, updates: Partial<{ slug: string; display_name: string; description: string | null }>) {
+    const result = await this.handleResponse<ApiResponse<AdminAppTagInfo>>(
+      await this.req(`/api/admin/v1/app-tags/${id}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
+  /**
+   * Delete a tag, cascading its assignments. Unlike deleting an app this is
+   * never refused for being in use — untagging is the point of retiring a tag —
+   * so the count of apps it untagged is returned, the cascade being otherwise
+   * invisible.
+   */
+  async deleteAppTag(id: number) {
+    const result = await this.handleResponse<ApiResponse<{ assignments_removed: number }>>(
+      await this.req(`/api/admin/v1/app-tags/${id}`, "DELETE"),
+    );
+    return result.data;
   }
 
   // Managed App Deployments (`app_deployment` RBAC resource)

@@ -7,6 +7,7 @@ import {
   ClipboardIcon,
   ClockIcon,
   CreditCardIcon,
+  DocumentTextIcon,
   FireIcon,
   GlobeAltIcon,
   NoSymbolIcon,
@@ -60,6 +61,10 @@ export function VMDetailPage() {
   const { isSuperAdmin } = useUserRoles();
   const [copiedPaymentId, setCopiedPaymentId] = useState<string | null>(null);
   const [copiedExternalId, setCopiedExternalId] = useState<string | null>(null);
+  // Notes are edited from a draft rather than bound to `vm` directly: the page
+  // reloads itself every 30s, which would otherwise wipe half-typed text.
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesDraft, setNotesDraft] = useState("");
 
   const vmId = id ? parseInt(id, 10) : null;
 
@@ -245,6 +250,29 @@ export function VMDetailPage() {
       setHistoryRefreshKey((prev) => prev + 1);
     } catch (error) {
       console.error(`Failed to ${action} VM:`, error);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleEditNotes = () => {
+    setNotesDraft(vm?.admin_notes ?? "");
+    setEditingNotes(true);
+  };
+
+  const handleSaveNotes = async () => {
+    if (!vm) return;
+    try {
+      setActionLoading("notes");
+      // Explicit null clears: a blanked box means "remove the notes", and
+      // sending undefined would leave the old text live instead.
+      await adminApi.updateVM(vm.id, { admin_notes: notesDraft.trim() || null });
+      setEditingNotes(false);
+      toastService.success(notesDraft.trim() ? "Notes saved" : "Notes cleared");
+      await loadVM(true);
+    } catch (err) {
+      console.error("Failed to save VM notes:", err);
+      toastService.error(err instanceof Error ? err.message : "Failed to save notes");
     } finally {
       setActionLoading(null);
     }
@@ -824,6 +852,52 @@ export function VMDetailPage() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Admin Notes — admin-only, never exposed to the customer API */}
+      <div className="bg-gray-800 border border-slate-700 rounded-lg p-4">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-white">
+            <DocumentTextIcon className="h-4 w-4" />
+            Admin Notes
+            <span className="text-xs font-normal text-gray-500">not visible to the customer</span>
+          </h3>
+          <PermissionGuard requiredPermissions={["virtual_machines::update"]} fallback={null}>
+            {!editingNotes && (
+              <Button variant="secondary" size="sm" onClick={handleEditNotes} disabled={!!actionLoading}>
+                {vm.admin_notes ? "Edit" : "Add notes"}
+              </Button>
+            )}
+          </PermissionGuard>
+        </div>
+        {editingNotes ? (
+          <div className="space-y-2">
+            <textarea
+              value={notesDraft}
+              onChange={(e) => setNotesDraft(e.target.value)}
+              className="w-full min-h-[6rem] text-sm"
+              placeholder="Context for other admins — abuse reports, support promises, why this VM is disabled…"
+            />
+            <div className="flex items-center justify-end gap-2">
+              <span className="mr-auto text-xs text-gray-500">Saving empty notes clears them.</span>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setEditingNotes(false)}
+                disabled={actionLoading === "notes"}
+              >
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handleSaveNotes} disabled={actionLoading === "notes"}>
+                {actionLoading === "notes" ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          </div>
+        ) : vm.admin_notes ? (
+          <p className="whitespace-pre-wrap text-sm text-gray-200">{vm.admin_notes}</p>
+        ) : (
+          <p className="text-sm text-gray-500">No notes.</p>
+        )}
       </div>
 
       {/* Real-time VM Metrics */}

@@ -11,7 +11,7 @@ import { Table } from "../components/Table";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { useCachedCompanies } from "../hooks/useCachedCompanies";
 import type { OssReportData, OssReportPeriod, OssReportRow } from "../lib/api";
-import { formatCurrency } from "../utils/currency";
+import { formatCurrency, signedAmountClass } from "../utils/currency";
 
 export function OssReportPage() {
   const api = useAdminApi();
@@ -114,15 +114,23 @@ export function OssReportPage() {
     {
       header: "Net",
       key: "net_total",
+      // Signed since api#255: a period that refunds more than it sells reports a
+      // negative net, so the colour follows the sign rather than the column.
       render: (item: OssReportRow) => (
-        <span className="text-green-400">{formatCurrency(item.net_total, item.currency)}</span>
+        <span className={signedAmountClass(item.net_total, "text-green-400")}>
+          {formatCurrency(item.net_total, item.currency)}
+        </span>
       ),
     },
     {
       header: "VAT",
       key: "tax_total",
+      // Yellow rather than red for a positive VAT, matching the other report
+      // pages, so red is left to mean "negative" here as it does everywhere else.
       render: (item: OssReportRow) => (
-        <span className="text-red-400">{formatCurrency(item.tax_total, item.currency)}</span>
+        <span className={signedAmountClass(item.tax_total, "text-yellow-400")}>
+          {formatCurrency(item.tax_total, item.currency)}
+        </span>
       ),
     },
     {

@@ -14,6 +14,7 @@ import { PaginatedTable } from "../components/PaginatedTable";
 import { StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
+import { useCachedCompanies } from "../hooks/useCachedCompanies";
 import type { AdminAvailableIpSpaceInfo, AdminIpSpacePricingInfo } from "../lib/api";
 import { confirmDialog } from "../services/confirmService";
 
@@ -245,9 +246,12 @@ export function IpSpacesPage() {
 
 function CreateIpSpaceModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const adminApi = useAdminApi();
+  const { data: companies } = useCachedCompanies();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
+    // Required by the API; a create without it is a 422.
+    company_id: 0,
     cidr: "",
     min_prefix_size: 24,
     max_prefix_size: 22,
@@ -276,6 +280,7 @@ function CreateIpSpaceModal({ onClose, onSuccess }: { onClose: () => void; onSuc
       }
 
       await adminApi.createIpSpace({
+        company_id: formData.company_id,
         cidr: formData.cidr,
         min_prefix_size: formData.min_prefix_size,
         max_prefix_size: formData.max_prefix_size,
@@ -297,6 +302,27 @@ function CreateIpSpaceModal({ onClose, onSuccess }: { onClose: () => void; onSuc
   return (
     <Modal isOpen={true} onClose={onClose} title="Create IP Space" icon={GlobeAltIcon}>
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="ip-space-company" className="block text-sm font-medium text-gray-300 mb-1">
+            Company
+          </label>
+          <select
+            id="ip-space-company"
+            value={formData.company_id || ""}
+            onChange={(e) => setFormData({ ...formData, company_id: Number(e.target.value) })}
+            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+            required
+          >
+            <option value="">Select a company…</option>
+            {companies?.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-gray-400 mt-1">The company that owns and bills this block.</p>
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-1">CIDR</label>
           <input

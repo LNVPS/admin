@@ -111,6 +111,7 @@ export function OsImagesPage() {
           <div className="truncate text-slate-400" title={image.default_username || ""}>
             User: {image.default_username || "-"}
           </div>
+          <div className="text-slate-400">Arch: {image.cpu_arch || "any"}</div>
         </div>
       </td>
       <td className="text-right align-top">
@@ -228,6 +229,8 @@ const EMPTY_FORM = {
   enabled: true,
   release_date: new Date().toISOString().split("T")[0],
   url: "",
+  // "" means unspecified, i.e. the image runs on any architecture.
+  cpu_arch: "",
   default_username: "",
   sha2: "",
   sha2_url: "",
@@ -266,6 +269,7 @@ function OsImageModal({
             enabled: image.enabled,
             release_date: new Date(image.release_date).toISOString().split("T")[0],
             url: image.url,
+            cpu_arch: image.cpu_arch || "",
             default_username: image.default_username || "",
             sha2: image.sha2 || "",
             sha2_url: image.sha2_url || "",
@@ -280,6 +284,10 @@ function OsImageModal({
               default_username: prefill.default_username,
               sha2_url: prefill.sha2_url || "",
               release_date: prefill.release_date || EMPTY_FORM.release_date,
+              // The curated catalog is x86_64-only. Leaving these unspecified
+              // would let an amd64 image be picked for an arm64 template and
+              // fail at provisioning instead of being filtered out.
+              cpu_arch: "x86_64",
             }),
           },
     );
@@ -304,9 +312,11 @@ function OsImageModal({
 
     try {
       if (isEdit) {
-        await adminApi.updateVmOsImage(image.id, payload);
+        // On PATCH an explicit null resets to unspecified; `undefined` would
+        // leave the existing value, so a cleared select has to send null.
+        await adminApi.updateVmOsImage(image.id, { ...payload, cpu_arch: formData.cpu_arch || null });
       } else {
-        await adminApi.createVmOsImage(payload);
+        await adminApi.createVmOsImage({ ...payload, cpu_arch: formData.cpu_arch || undefined });
       }
       onSuccess();
     } catch (err) {
@@ -411,6 +421,24 @@ function OsImageModal({
               className={INPUT_CLASS}
               placeholder="e.g., ubuntu, root, admin"
             />
+          </div>
+          <div>
+            <label htmlFor="os-cpu-arch" className="block text-xs font-medium text-white mb-2">
+              CPU Architecture
+            </label>
+            <select
+              id="os-cpu-arch"
+              value={formData.cpu_arch}
+              onChange={(e) => set({ cpu_arch: e.target.value })}
+              className={INPUT_CLASS}
+            >
+              <option value="">Any (unspecified)</option>
+              <option value="x86_64">x86_64</option>
+              <option value="arm64">arm64</option>
+            </select>
+            <p className="mt-1 text-xs text-slate-400">
+              Provisioning refuses an image whose architecture conflicts with the template's.
+            </p>
           </div>
         </div>
 

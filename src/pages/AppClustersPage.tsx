@@ -1,7 +1,8 @@
 import { PencilIcon, PlusIcon, Squares2X2Icon, TrashIcon } from "@heroicons/react/24/outline";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "../components/Button";
+import { countActiveFilters, FilterBar, FilterButton, type FilterField } from "../components/FilterBar";
 import { Modal } from "../components/Modal";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { StatsHeader } from "../components/StatsHeader";
@@ -25,6 +26,10 @@ export function AppClustersPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selected, setSelected] = useState<AdminAppClusterInfo | null>(null);
   const [regions, setRegions] = useState<AdminRegionInfo[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [searchFilter, setSearchFilter] = useState("");
+  const [enabledFilter, setEnabledFilter] = useState("");
+  const [regionFilter, setRegionFilter] = useState("");
   const { success, error: toastError } = useToast();
 
   useEffect(() => {
@@ -37,6 +42,57 @@ export function AppClustersPage() {
   const refreshData = () => setRefreshTrigger((prev) => prev + 1);
 
   const regionName = (id: number) => regions.find((r) => r.id === id)?.name ?? `Region #${id}`;
+
+  const filterFields: FilterField[] = [
+    {
+      kind: "text",
+      key: "cluster-search",
+      label: "Search",
+      value: searchFilter,
+      placeholder: "Name or ingress domain",
+      onChange: setSearchFilter,
+      colSpan: 2,
+    },
+    {
+      kind: "select",
+      key: "cluster-region",
+      label: "Region",
+      value: regionFilter,
+      onChange: setRegionFilter,
+      options: [{ value: "", label: "All regions" }, ...regions.map((r) => ({ value: String(r.id), label: r.name }))],
+    },
+    {
+      kind: "select",
+      key: "cluster-enabled",
+      label: "State",
+      value: enabledFilter,
+      onChange: setEnabledFilter,
+      options: [
+        { value: "", label: "Enabled and disabled" },
+        { value: "true", label: "Enabled only" },
+        { value: "false", label: "Disabled only" },
+      ],
+    },
+  ];
+
+  const clearFilters = () => {
+    setSearchFilter("");
+    setEnabledFilter("");
+    setRegionFilter("");
+  };
+
+  // Blanks are omitted rather than sent: the API rejects an empty value for a
+  // typed filter, and an empty `search` would be a no-op round trip anyway.
+  const fetchClusters = useCallback(
+    (params: { limit: number; offset: number }) =>
+      adminApi.getAppClusters({
+        ...params,
+        search: searchFilter.trim() || undefined,
+        enabled: enabledFilter === "" ? undefined : enabledFilter === "true",
+        region_id: regionFilter === "" ? undefined : Number(regionFilter),
+      }),
+    [adminApi, searchFilter, enabledFilter, regionFilter],
+  );
 
   const handleEdit = (cluster: AdminAppClusterInfo) => {
     setSelected(cluster);
@@ -125,10 +181,17 @@ export function AppClustersPage() {
         { label: "Enabled", value: clusters.filter((c) => c.enabled).length, tone: "success" },
       ]}
       actions={
-        <Button onClick={() => setShowCreateModal(true)}>
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Add Cluster
-        </Button>
+        <div className="flex items-center gap-2">
+          <FilterButton
+            open={showFilters}
+            activeCount={countActiveFilters(filterFields)}
+            onClick={() => setShowFilters((prev) => !prev)}
+          />
+          <Button onClick={() => setShowCreateModal(true)}>
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Add Cluster
+          </Button>
+        </div>
       }
     />
   );
@@ -136,7 +199,15 @@ export function AppClustersPage() {
   return (
     <div className="space-y-6">
       <PaginatedTable
-        apiCall={(params) => adminApi.getAppClusters(params)}
+        apiCall={fetchClusters}
+        toolbar={
+          <FilterBar
+            open={showFilters}
+            fields={filterFields}
+            onClear={clearFilters}
+            onClose={() => setShowFilters(false)}
+          />
+        }
         renderHeader={renderHeader}
         renderRow={renderRow}
         renderEmptyState={renderEmptyState}
@@ -144,7 +215,7 @@ export function AppClustersPage() {
         itemsPerPage={20}
         errorAction="view app clusters"
         loadingMessage="Loading app clusters..."
-        dependencies={[refreshTrigger, regions.length]}
+        dependencies={[refreshTrigger, regions.length, searchFilter, enabledFilter, regionFilter]}
         minWidth="1000px"
       />
 

@@ -35,6 +35,7 @@ import {
   type AdminSubscriptionLineItemInfo,
   type AdminSubscriptionLineItemResource,
   type AdminSubscriptionPaymentInfo,
+  SubscriptionType,
 } from "../lib/api";
 import { confirmDialog } from "../services/confirmService";
 import { formatCurrency } from "../utils/currency";
@@ -646,6 +647,9 @@ function CreateLineItemModal({
   const [formData, setFormData] = useState({
     name: "",
     description: "",
+    // Required by the API; a create without it is a 422. It selects which
+    // back-reference table resolves this line item to a concrete resource.
+    subscription_type: SubscriptionType.IP_RANGE,
     amount: 0,
     setup_amount: 0,
     configuration: "",
@@ -671,6 +675,7 @@ function CreateLineItemModal({
 
       await adminApi.createSubscriptionLineItem({
         subscription_id: subscriptionId,
+        subscription_type: formData.subscription_type,
         name: formData.name,
         description: formData.description || undefined,
         amount: Math.round(formData.amount * 100),
@@ -699,6 +704,28 @@ function CreateLineItemModal({
             className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500"
             required
           />
+        </div>
+
+        <div>
+          <label htmlFor="line-item-type" className="block text-sm font-medium text-gray-300 mb-1">
+            Subscription Type
+          </label>
+          <select
+            id="line-item-type"
+            value={formData.subscription_type}
+            onChange={(e) => setFormData({ ...formData, subscription_type: e.target.value as SubscriptionType })}
+            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+            required
+          >
+            <option value={SubscriptionType.IP_RANGE}>IP Range</option>
+            <option value={SubscriptionType.ASN_SPONSORING}>ASN Sponsoring</option>
+            <option value={SubscriptionType.DNS_HOSTING}>DNS Hosting</option>
+            <option value={SubscriptionType.VPS}>VPS</option>
+            <option value={SubscriptionType.APP}>Managed App</option>
+          </select>
+          <p className="text-xs text-gray-400 mt-1">
+            What is being sold — selects how this line resolves to a resource.
+          </p>
         </div>
 
         <div>

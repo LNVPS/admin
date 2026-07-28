@@ -147,6 +147,10 @@ export enum SubscriptionType {
   IP_RANGE = "ip_range",
   ASN_SPONSORING = "asn_sponsoring",
   DNS_HOSTING = "dns_hosting",
+  /** VM — links to the vm table via `vm.subscription_line_item_id`. */
+  VPS = "vps",
+  /** Managed app deployment — links via `app_deployment.subscription_line_item_id`. */
+  APP = "app",
 }
 
 export enum CostPlanIntervalType {
@@ -490,13 +494,6 @@ export interface AdminHostInfo {
   ssh_key_configured: boolean;
 }
 
-export interface AdminHostStats {
-  total_vms: number; // Count of active (non-deleted) VMs only
-  cpu_usage: number | null;
-  memory_usage: number | null;
-  disk_usage: number | null;
-}
-
 export interface AdminRegionInfo {
   id: number;
   name: string;
@@ -507,11 +504,6 @@ export interface AdminRegionInfo {
   total_cpu_cores: number;
   total_memory_bytes: number; // Total memory in bytes (not GB)
   total_ip_assignments: number; // IP assignments from active VMs only
-}
-
-export interface AdminRegionStats {
-  total_hosts: number;
-  total_vms: number; // Count of active (non-deleted) VMs only
 }
 
 export interface AdminHostDisk {
@@ -555,6 +547,12 @@ export interface AdminVmOsImageInfo {
   enabled: boolean;
   release_date: string;
   url: string;
+  /**
+   * CPU architecture (`x86_64` / `arm64`); null when unspecified, which means
+   * "any". Provisioning REJECTS an image whose arch is incompatible with the
+   * chosen template's arch (api#183), so this is not cosmetic.
+   */
+  cpu_arch: string | null;
   default_username: string | null;
   active_vm_count: number;
   sha2: string | null;
@@ -625,29 +623,6 @@ export interface AdminCustomPricingInfo {
   cpu_limit: number | null;
 }
 
-export interface AdminCustomTemplateInfo {
-  id: number;
-  cpu: number;
-  memory: number;
-  disk_size: number;
-  disk_type: DiskType;
-  disk_interface: DiskInterface;
-  pricing_id: number;
-  pricing_name: string | null;
-  region_id: number;
-  region_name: string | null;
-  currency: string;
-  calculated_cost: {
-    cpu_cost: number;
-    memory_cost: number;
-    disk_cost: number;
-    ip4_cost: number;
-    ip6_cost: number;
-    total_monthly_cost: number;
-  };
-  vm_count: number;
-}
-
 export interface AdminCostPlanInfo {
   id: number;
   name: string;
@@ -657,25 +632,6 @@ export interface AdminCostPlanInfo {
   interval_amount: number;
   interval_type: "day" | "month" | "year";
   template_count: number;
-}
-
-export interface CustomPricingCalculation {
-  currency: string;
-  cpu_cost: number;
-  memory_cost: number;
-  disk_cost: number;
-  ip4_cost: number;
-  ip6_cost: number;
-  total_monthly_cost: number;
-  configuration: {
-    cpu: number;
-    memory: number;
-    disk_size: number;
-    disk_type: DiskType;
-    disk_interface: DiskInterface;
-    ip4_count: number;
-    ip6_count: number;
-  };
 }
 
 export interface AdminCompanyInfo {
@@ -1187,6 +1143,8 @@ export interface AdminSshKeyInfo {
 
 export interface AdminAvailableIpSpaceInfo {
   id: number;
+  /** Owning/selling company for this block. */
+  company_id: number;
   cidr: string;
   min_prefix_size: number;
   max_prefix_size: number;
@@ -1280,6 +1238,11 @@ export interface AdminSubscriptionPaymentInfo {
   paid_at: string | null;
   rate: number | null;
   time_value: number;
+  /**
+   * Free-form payment metadata. For a refund row this carries
+   * `refund.reason`, `refund.external_ref` and `refund.recorded_by_admin_user_id`.
+   */
+  metadata: Record<string, unknown> | null;
   tax: number;
   processing_fee: number;
   external_id: string | null;
@@ -1705,6 +1668,9 @@ export class AdminApi {
       geo_country_code: string;
       /** empty string clears */
       geo_ip: string;
+      /** Free-form admin-only note on the account. */
+      notes: string;
+      status: AdminUserStatus;
       admin_role: string;
     }>,
   ) {
@@ -1722,7 +1688,13 @@ export class AdminApi {
     return await this.handleResponse<ApiResponse<null>>(await this.req(`/api/admin/v1/users/${id}`, "DELETE"));
   }
 
-  // Note: This endpoint may need to be implemented based on actual API
+  /**
+   * TODO(upstream): `GET /api/admin/v1/users/{id}/ssh_keys` is NOT mounted in
+   * the admin router — this call always 404s, so the SSH-key picker in
+   * CreateVmModal is permanently empty even though `POST /vms` requires a valid
+   * `ssh_key_id`. Needs an endpoint adding in LNVPS/api before admins can
+   * create VMs on a customer's behalf.
+   */
   async getUserSshKeys(userId: number) {
     const result = await this.handleResponse<ApiResponse<AdminSshKeyInfo[]>>(
       await this.req(`/api/admin/v1/users/${userId}/ssh_keys`, "GET"),
@@ -1988,10 +1960,15 @@ export class AdminApi {
     return result.data;
   }
 
-  async assignUserRole(userId: number, roleId: number) {
+  /**
+   * Grant a role. `expiresAt` (ISO 8601) makes the assignment time-limited;
+   * omit for a permanent grant.
+   */
+  async assignUserRole(userId: number, roleId: number, expiresAt?: string) {
     await this.handleResponse<ApiResponse<void>>(
       await this.req(`/api/admin/v1/users/${userId}/roles`, "POST", {
         role_id: roleId,
+        ...(expiresAt && { expires_at: expiresAt }),
       }),
     );
   }
@@ -2049,13 +2026,6 @@ export class AdminApi {
   ) {
     const result = await this.handleResponse<ApiResponse<AdminHostInfo>>(
       await this.req(`/api/admin/v1/hosts/${id}`, "PATCH", updates),
-    );
-    return result.data;
-  }
-
-  async getHostStats(id: number) {
-    const result = await this.handleResponse<ApiResponse<AdminHostStats>>(
-      await this.req(`/api/admin/v1/hosts/${id}/stats`, "GET"),
     );
     return result.data;
   }
@@ -2211,13 +2181,6 @@ export class AdminApi {
     return result.data;
   }
 
-  async getRegionStats(id: number) {
-    const result = await this.handleResponse<ApiResponse<AdminRegionStats>>(
-      await this.req(`/api/admin/v1/regions/${id}/stats`, "GET"),
-    );
-    return result.data;
-  }
-
   // VM OS Image Management
   async getVmOsImages(params?: { limit?: number; offset?: number }) {
     return await this.handleResponse<PaginatedApiResponse<AdminVmOsImageInfo>>(
@@ -2239,6 +2202,8 @@ export class AdminApi {
     enabled: boolean;
     release_date: string;
     url: string;
+    /** `x86_64` / `arm64`. Defaults to `x86_64` server-side when omitted. */
+    cpu_arch?: string;
     default_username?: string;
     sha2?: string;
     sha2_url?: string;
@@ -2258,6 +2223,8 @@ export class AdminApi {
       enabled: boolean;
       release_date: string;
       url: string;
+      /** `x86_64` / `arm64`; send `null` to reset to unspecified ("any"). */
+      cpu_arch: string | null;
       default_username: string;
       sha2: string;
       sha2_url: string;
@@ -2485,73 +2452,11 @@ export class AdminApi {
     return result.data;
   }
 
-  async getCustomTemplates(pricingId: number, params?: { limit?: number; offset?: number }) {
-    return await this.handleResponse<PaginatedApiResponse<AdminCustomTemplateInfo>>(
-      await this.req(`/api/admin/v1/custom_pricing/${pricingId}/templates`, "GET", undefined, params),
-    );
-  }
-
-  async createCustomTemplate(
-    pricingId: number,
-    data: {
-      cpu: number;
-      memory: number;
-      disk_size: number;
-      disk_type: string;
-      disk_interface: string;
-    },
-  ) {
-    const result = await this.handleResponse<ApiResponse<AdminCustomTemplateInfo>>(
-      await this.req(`/api/admin/v1/custom_pricing/${pricingId}/templates`, "POST", data),
-    );
-    return result.data;
-  }
-
-  async getCustomTemplate(id: number) {
-    const result = await this.handleResponse<ApiResponse<AdminCustomTemplateInfo>>(
-      await this.req(`/api/admin/v1/custom_templates/${id}`, "GET"),
-    );
-    return result.data;
-  }
-
-  async updateCustomTemplate(
-    id: number,
-    updates: Partial<{
-      cpu: number;
-      memory: number;
-      disk_size: number;
-      disk_type: string;
-      disk_interface: string;
-      pricing_id: number;
-    }>,
-  ) {
-    const result = await this.handleResponse<ApiResponse<AdminCustomTemplateInfo>>(
-      await this.req(`/api/admin/v1/custom_templates/${id}`, "PATCH", updates),
-    );
-    return result.data;
-  }
-
-  async deleteCustomTemplate(id: number) {
-    await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/custom_templates/${id}`, "DELETE"));
-  }
-
-  async calculateCustomPricing(
-    pricingId: number,
-    data: {
-      cpu: number;
-      memory: number;
-      disk_size: number;
-      disk_type: string;
-      disk_interface: string;
-      ip4_count?: number;
-      ip6_count?: number;
-    },
-  ) {
-    const result = await this.handleResponse<ApiResponse<CustomPricingCalculation>>(
-      await this.req(`/api/admin/v1/custom_pricing/${pricingId}/calculate`, "POST", data),
-    );
-    return result.data;
-  }
+  // NOTE: the custom-template CRUD and the `custom_pricing/{id}/calculate`
+  // helper are still documented in ADMIN_API_ENDPOINTS.md but no longer exist
+  // in the admin router (only /custom_pricing, /custom_pricing/{id} and
+  // /custom_pricing/{id}/copy are mounted). The client methods were removed
+  // rather than left to 404.
 
   // Company Management
   async getCompanies(params?: { limit?: number; offset?: number }) {
@@ -2849,6 +2754,14 @@ export class AdminApi {
     return result.data;
   }
 
+  /** Fetch one tag by id. */
+  async getAppTag(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminAppTagInfo>>(
+      await this.req(`/api/admin/v1/app-tags/${id}`, "GET"),
+    );
+    return result.data;
+  }
+
   async createAppTag(data: { slug: string; display_name: string; description?: string | null }) {
     const result = await this.handleResponse<ApiResponse<AdminAppTagInfo>>(
       await this.req("/api/admin/v1/app-tags", "POST", data),
@@ -2950,7 +2863,19 @@ export class AdminApi {
   }
 
   // Managed App Clusters
-  async getAppClusters(params?: { limit?: number; offset?: number }) {
+  /**
+   * List app clusters. Filters are applied server-side and combine with AND;
+   * omit one rather than passing a blank. `app_cluster` has no soft-delete, so
+   * `enabled` is the only visibility filter.
+   */
+  async getAppClusters(params?: {
+    limit?: number;
+    offset?: number;
+    enabled?: boolean;
+    region_id?: number;
+    /** Case-insensitive substring match against name, ingress_domain. */
+    search?: string;
+  }) {
     return await this.handleResponse<PaginatedApiResponse<AdminAppClusterInfo>>(
       await this.req("/api/admin/v1/app_clusters", "GET", undefined, params),
     );
@@ -3272,54 +3197,11 @@ export class AdminApi {
     return result.data;
   }
 
-  async getVmIpAssignmentsByVm(
-    vmId: number,
-    params?: {
-      limit?: number;
-      offset?: number;
-      include_deleted?: boolean;
-    },
-  ) {
-    const queryParams = params
-      ? {
-          ...params,
-          include_deleted: params.include_deleted !== undefined ? params.include_deleted.toString() : undefined,
-        }
-      : undefined;
-
-    return await this.handleResponse<PaginatedApiResponse<AdminVmIpAssignmentInfo>>(
-      await this.req(`/api/admin/v1/vms/${vmId}/ip_assignments`, "GET", undefined, queryParams),
-    );
-  }
-
-  async getVmIpAssignmentsByRange(
-    ipRangeId: number,
-    params?: {
-      limit?: number;
-      offset?: number;
-      include_deleted?: boolean;
-    },
-  ) {
-    const queryParams = params
-      ? {
-          ...params,
-          include_deleted: params.include_deleted !== undefined ? params.include_deleted.toString() : undefined,
-        }
-      : undefined;
-
-    return await this.handleResponse<PaginatedApiResponse<AdminVmIpAssignmentInfo>>(
-      await this.req(`/api/admin/v1/ip_ranges/${ipRangeId}/assignments`, "GET", undefined, queryParams),
-    );
-  }
+  // NOTE: there is no `/vms/{id}/ip_assignments`, `/ip_ranges/{id}/assignments`
+  // or `/reports/monthly-sales/...` route in the admin API. Filter the flat
+  // list instead: `getVmIpAssignments({ vm_id })` / `({ ip_range_id })`.
 
   // Reports Management
-  async getMonthlySalesReport(year: number, month: number, company_id: number) {
-    const result = await this.handleResponse<ApiResponse<any>>(
-      await this.req(`/api/admin/v1/reports/monthly-sales/${year}/${month}/${company_id}`, "GET"),
-    );
-    return result.data;
-  }
-
   async getTimeSeriesReport(params: { start_date: string; end_date: string; company_id: number; currency?: string }) {
     const result = await this.handleResponse<ApiResponse<TimeSeriesReportData>>(
       await this.req("/api/admin/v1/reports/time-series", "GET", undefined, params),
@@ -3426,6 +3308,8 @@ export class AdminApi {
   }
 
   async createIpSpace(data: {
+    /** Required by the API — omitting it is a `422`. */
+    company_id: number;
     cidr: string;
     min_prefix_size: number;
     max_prefix_size: number;
@@ -3560,6 +3444,8 @@ export class AdminApi {
 
   async createSubscription(data: {
     user_id: number;
+    /** Selling company. Required by the API — omitting it is a `422`. */
+    company_id: number;
     name: string;
     description?: string;
     expires?: string;
@@ -3598,9 +3484,17 @@ export class AdminApi {
     return result.data;
   }
 
-  async deleteSubscription(id: number) {
+  /**
+   * Delete a subscription. A regular delete is refused while paid payments
+   * exist; `purge` bypasses that guard and cascades line items and payments.
+   *
+   * `purge` requires the `super_admin` role (`403` otherwise) and is refused
+   * while a VM or app deployment still references one of the line items — those
+   * resources must be deleted first.
+   */
+  async deleteSubscription(id: number, purge = false) {
     await this.handleResponse<ApiResponse<{ deleted: boolean }>>(
-      await this.req(`/api/admin/v1/subscriptions/${id}`, "DELETE"),
+      await this.req(`/api/admin/v1/subscriptions/${id}`, "DELETE", purge ? { purge: true } : undefined),
     );
   }
 
@@ -3621,6 +3515,8 @@ export class AdminApi {
 
   async createSubscriptionLineItem(data: {
     subscription_id: number;
+    /** What is being sold. Required by the API — omitting it is a `422`. */
+    subscription_type: SubscriptionType;
     name: string;
     description?: string;
     amount: number;

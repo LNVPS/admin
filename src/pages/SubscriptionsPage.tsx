@@ -11,6 +11,7 @@ import { Profile } from "../components/Profile";
 import { StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
+import { useCachedCompanies } from "../hooks/useCachedCompanies";
 import type { AdminSubscriptionInfo } from "../lib/api";
 import { confirmDialog } from "../services/confirmService";
 import { formatCurrency } from "../utils/currency";
@@ -397,10 +398,13 @@ export function SubscriptionsPage() {
 
 function CreateSubscriptionModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const adminApi = useAdminApi();
+  const { data: companies } = useCachedCompanies();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     user_id: "",
+    // Required by the API; a create without it is a 422.
+    company_id: 0,
     name: "",
     description: "",
     expires: "",
@@ -426,8 +430,15 @@ function CreateSubscriptionModal({ onClose, onSuccess }: { onClose: () => void; 
         return;
       }
 
+      if (!formData.company_id) {
+        setError("Please select a company");
+        setSubmitting(false);
+        return;
+      }
+
       await adminApi.createSubscription({
         user_id: userId,
+        company_id: formData.company_id,
         name: formData.name,
         description: formData.description || undefined,
         expires: formData.expires || undefined,
@@ -461,6 +472,29 @@ function CreateSubscriptionModal({ onClose, onSuccess }: { onClose: () => void; 
             className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500"
             required
           />
+        </div>
+
+        <div>
+          <label htmlFor="subscription-company" className="block text-sm font-medium text-gray-300 mb-1">
+            Company
+          </label>
+          <select
+            id="subscription-company"
+            value={formData.company_id || ""}
+            onChange={(e) => setFormData({ ...formData, company_id: Number(e.target.value) })}
+            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+            required
+          >
+            <option value="">Select a company…</option>
+            {companies?.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-gray-400 mt-1">
+            The seller. All line items on a subscription share it, and it fixes the VAT treatment.
+          </p>
         </div>
 
         <div>

@@ -14,7 +14,8 @@ import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { Table } from "../components/Table";
 import { useAdminApi } from "../hooks/useAdminApi";
-import type { AdminCompanyInfo, TimeSeriesReportData } from "../lib/api";
+import type { AdminCompanyInfo, TimeSeriesPayment, TimeSeriesReportData } from "../lib/api";
+import { isRefundPayment, paymentSign } from "../lib/api";
 import { formatCurrency, signedAmountClass } from "../utils/currency";
 
 const INTERVALS = [
@@ -26,6 +27,9 @@ const INTERVALS = [
 ] as const;
 
 const CURRENCIES = ["USD", "EUR", "GBP", "CAD", "CHF", "AUD", "JPY", "BTC"];
+
+/** A payment row as the table receives it: the feed row plus the table's own index key. */
+type PaymentRow = Omit<TimeSeriesPayment, "id"> & { id: number };
 
 export function SalesReportPage() {
   const [reportData, setReportData] = useState<TimeSeriesReportData | null>(null);
@@ -208,9 +212,13 @@ export function SalesReportPage() {
         taxAmount = Math.round(payment.tax * payment.rate);
       }
 
-      total.net_total_base += netAmount;
-      total.tax_total_base += taxAmount;
-      total.gross_total_base += netAmount + taxAmount;
+      // Amounts on a payment row are unsigned magnitudes — the direction lives in
+      // `payment_type` (api#193). This feed is raw rows aggregated client-side, so
+      // adding a refund here would count money we returned as money we took.
+      const sign = paymentSign(payment.payment_type);
+      total.net_total_base += sign * netAmount;
+      total.tax_total_base += sign * taxAmount;
+      total.gross_total_base += sign * (netAmount + taxAmount);
     });
 
     return Array.from(periodTotals.values())
@@ -250,8 +258,11 @@ export function SalesReportPage() {
         currencyTotals[payment.currency] = { net: 0, tax: 0 };
       }
 
-      currencyTotals[payment.currency].net += payment.amount;
-      currencyTotals[payment.currency].tax += payment.tax;
+      // Signed for the same reason as the period totals: a refund reduces what
+      // was sold and what VAT was collected in this period.
+      const sign = paymentSign(payment.payment_type);
+      currencyTotals[payment.currency].net += sign * payment.amount;
+      currencyTotals[payment.currency].tax += sign * payment.tax;
     });
 
     const items: Array<{
@@ -268,8 +279,9 @@ export function SalesReportPage() {
       const netHuman = totals.net / divisor;
       const taxHuman = totals.tax / divisor;
 
-      // Add sales item (net amount)
-      if (netHuman > 0) {
+      // Net of refunds, so a period that refunded more than it sold reports a
+      // negative — `!== 0` rather than `> 0`, which would drop that line entirely.
+      if (netHuman !== 0) {
         items.push({
           description: "LNVPS Sales",
           currency: currency,
@@ -278,8 +290,7 @@ export function SalesReportPage() {
         });
       }
 
-      // Add tax item if there's tax
-      if (taxHuman > 0) {
+      if (taxHuman !== 0) {
         items.push({
           description: "Tax Collected",
           currency: currency,
@@ -316,29 +327,40 @@ export function SalesReportPage() {
       "Period",
       "VM ID",
       "Created",
+      "Type",
       "Amount (Main Unit)",
       "Currency",
       "Payment Method",
       "Tax (Main Unit)",
       "Is Paid",
       "Rate",
+      "Refunded Payment",
       "Region",
       "Host",
     ];
 
-    const csvRows = filteredPayments.map((payment) => [
-      payment.period,
-      payment.vm_id,
-      new Date(payment.created).toISOString(),
-      payment.currency === "BTC" ? (payment.amount / 1e11).toFixed(8) : (payment.amount / 100).toFixed(2),
-      payment.currency,
-      payment.payment_method,
-      payment.currency === "BTC" ? (payment.tax / 1e11).toFixed(8) : (payment.tax / 100).toFixed(2),
-      payment.is_paid ? "Yes" : "No",
-      payment.rate,
-      payment.region_name,
-      payment.host_name,
-    ]);
+    // Amounts are signed on export: a spreadsheet SUM() over this column has to
+    // land on the same number the page reports, which means refunds subtract.
+    const csvRows = filteredPayments.map((payment) => {
+      const sign = paymentSign(payment.payment_type);
+      const toMain = (v: number) =>
+        payment.currency === "BTC" ? ((sign * v) / 1e11).toFixed(8) : ((sign * v) / 100).toFixed(2);
+      return [
+        payment.period,
+        payment.vm_id,
+        new Date(payment.created).toISOString(),
+        payment.payment_type,
+        toMain(payment.amount),
+        payment.currency,
+        payment.payment_method,
+        toMain(payment.tax),
+        payment.is_paid ? "Yes" : "No",
+        payment.rate,
+        payment.refunded_payment_id ?? "",
+        payment.region_name,
+        payment.host_name,
+      ];
+    });
 
     const csvContent = [csvHeaders, ...csvRows].map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\n");
 
@@ -693,19 +715,37 @@ export function SalesReportPage() {
                   key: "created",
                   render: (item: any) => new Date(item.created).toLocaleDateString(),
                 },
+                {
+                  header: "Type",
+                  key: "payment_type",
+                  render: (item: PaymentRow) =>
+                    isRefundPayment(item.payment_type) ? (
+                      <span className="text-red-400">refund</span>
+                    ) : (
+                      <span className="text-gray-300">{item.payment_type}</span>
+                    ),
+                },
                 { header: "Currency", key: "currency" },
                 {
                   header: "Amount",
                   key: "amount",
-                  render: (item: any) => (
-                    <span className="text-green-400">{formatCurrency(item.amount, item.currency)}</span>
+                  // Rows carry unsigned magnitudes, so a refund has to be rendered
+                  // as the negative it is or the table contradicts its own totals.
+                  render: (item: PaymentRow) => (
+                    <span className={isRefundPayment(item.payment_type) ? "text-red-400" : "text-green-400"}>
+                      {isRefundPayment(item.payment_type) ? "-" : ""}
+                      {formatCurrency(item.amount, item.currency)}
+                    </span>
                   ),
                 },
                 {
                   header: "Tax",
                   key: "tax",
-                  render: (item: any) => (
-                    <span className="text-yellow-400">{formatCurrency(item.tax, item.currency)}</span>
+                  render: (item: PaymentRow) => (
+                    <span className={isRefundPayment(item.payment_type) ? "text-red-400" : "text-yellow-400"}>
+                      {isRefundPayment(item.payment_type) ? "-" : ""}
+                      {formatCurrency(item.tax, item.currency)}
+                    </span>
                   ),
                 },
                 { header: "Payment Method", key: "payment_method" },

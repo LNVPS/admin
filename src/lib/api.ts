@@ -1048,6 +1048,14 @@ export interface TimeSeriesPayment {
   amount: number;
   currency: string;
   payment_method: AdminPaymentMethod;
+  /**
+   * A `refund` row's `amount`/`tax` are the magnitude returned to the customer,
+   * so any total built from these rows must subtract them (api#193). Use
+   * {@link paymentSign}.
+   */
+  payment_type: SubscriptionPaymentType;
+  /** For a refund row, the hex id of the payment it reverses; null otherwise. */
+  refunded_payment_id: string | null;
   external_id: string | null;
   is_paid: boolean;
   rate: number;

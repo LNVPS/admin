@@ -124,6 +124,23 @@ export enum PaymentProviderType {
 export enum SubscriptionPaymentType {
   PURCHASE = "purchase",
   RENEWAL = "renewal",
+  UPGRADE = "upgrade",
+  /**
+   * Money returned to the customer. `amount`/`tax` are magnitudes to SUBTRACT
+   * from earnings, not another sale — anything totalling payment rows must
+   * branch on this (api#193).
+   */
+  REFUND = "refund",
+}
+
+/** `true` when a payment row reverses money rather than collecting it. */
+export function isRefundPayment(paymentType: SubscriptionPaymentType | undefined): boolean {
+  return paymentType === SubscriptionPaymentType.REFUND;
+}
+
+/** `+1` for a sale, `-1` for a refund — multiply any amount by this before summing. */
+export function paymentSign(paymentType: SubscriptionPaymentType | undefined): 1 | -1 {
+  return isRefundPayment(paymentType) ? -1 : 1;
 }
 
 export enum SubscriptionType {
@@ -889,6 +906,13 @@ export interface AdminVmPaymentInfo {
   paid_at: string | null;
   rate: number;
   company_base_currency: string;
+  /**
+   * What this row is. A `refund` row's `amount`/`tax` are the magnitude returned
+   * to the customer, so anything totalling a VM's payments must subtract it.
+   */
+  payment_type: SubscriptionPaymentType;
+  /** For a `refund` row, the hex id of the payment it reverses; null otherwise. */
+  refunded_payment_id: string | null;
 }
 
 export interface AdminRefundAmountInfo {
@@ -897,6 +921,40 @@ export interface AdminRefundAmountInfo {
   rate: number;
   expires: string;
   seconds_remaining: number;
+}
+
+/** Refunds recorded against one payment, with what is still refundable on it. */
+export interface AdminPaymentRefundsInfo {
+  /** Hex id of the payment these refunds reverse. */
+  payment_id: string;
+  /** Currency of the payment and of every amount in this response. */
+  currency: string;
+  /** Gross amount originally charged, in the smallest unit. */
+  amount: number;
+  /** Sum of the refunds already recorded against it. */
+  refunded_total: number;
+  /** `amount - refunded_total`: the ceiling on the next refund. */
+  refundable_remaining: number;
+  /** The refund rows themselves, oldest first. */
+  refunds: AdminVmPaymentInfo[];
+}
+
+/** Body for recording a refund that has already been paid out by hand. */
+export interface AdminRecordRefundRequest {
+  /**
+   * Gross magnitude refunded (net + tax), in the refunded payment's own currency
+   * and smallest unit. Omit to refund everything still refundable.
+   */
+  amount?: number;
+  /** Why the money was returned. Stored on the refund row and the VM history. */
+  reason?: string;
+  /** Proof the money moved — Lightning preimage, processor refund id, bank reference. */
+  external_ref?: string;
+  /**
+   * When the money left, unix seconds. Defaults to now. This is the period the
+   * refund lands in for reports, so backdating is deliberate.
+   */
+  refunded_at?: number;
 }
 
 export interface AdminAccessPolicyInfo {
@@ -1829,6 +1887,11 @@ export class AdminApi {
     return result.data;
   }
 
+  /**
+   * @deprecated Automated refund payout is not implemented — the API answers
+   * `501` unconditionally and moves no money (api#193). Issue the refund
+   * out-of-band and record it with {@link recordPaymentRefund}.
+   */
   async processVMRefund(
     vmId: number,
     data: {
@@ -1840,6 +1903,32 @@ export class AdminApi {
   ) {
     const result = await this.handleResponse<ApiResponse<{ job_dispatched: boolean; job_id: string }>>(
       await this.req(`/api/admin/v1/vms/${vmId}/refund`, "POST", data),
+    );
+    return result.data;
+  }
+
+  /**
+   * List the refunds already recorded against one payment, with how much of it
+   * is still refundable.
+   */
+  async getPaymentRefunds(vmId: number, paymentId: string) {
+    const result = await this.handleResponse<ApiResponse<AdminPaymentRefundsInfo>>(
+      await this.req(`/api/admin/v1/vms/${vmId}/payments/${paymentId}/refund`, "GET"),
+    );
+    return result.data;
+  }
+
+  /**
+   * Record a refund that has **already been paid out by hand** against the
+   * payment it reverses. This moves no money — it is the accounting entry, so
+   * every earnings figure stops counting the returned money as revenue.
+   *
+   * Resubmitting an identical refund is a `409`: the row id is derived from
+   * `(payment, amount, timestamp, admin)` rather than random.
+   */
+  async recordPaymentRefund(vmId: number, paymentId: string, data: AdminRecordRefundRequest = {}) {
+    const result = await this.handleResponse<ApiResponse<AdminVmPaymentInfo>>(
+      await this.req(`/api/admin/v1/vms/${vmId}/payments/${paymentId}/refund`, "POST", data),
     );
     return result.data;
   }

@@ -24,23 +24,25 @@ import { ErrorState } from "../components/ErrorState";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { PermissionGuard } from "../components/PermissionGuard";
 import { Profile } from "../components/Profile";
+import { RecordPaymentRefundModal } from "../components/RecordPaymentRefundModal";
 import { StatusBadge } from "../components/StatusBadge";
 import { VmIpAssignmentModal } from "../components/VmIpAssignmentModal";
 import { VmRefundModal } from "../components/VmRefundModal";
-import { VmTransferModal } from "../components/VmTransferModal";
 import { getVmStatus, VmStatusBadge } from "../components/VmStatusBadge";
+import { VmTransferModal } from "../components/VmTransferModal";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { useUserRoles } from "../hooks/useUserRoles";
-import { confirmDialog, promptDialog } from "../services/confirmService";
-import { toastService } from "../services/toastService";
 import {
   AdminPaymentMethod,
   AdminVmHistoryActionType,
   type AdminVmHistoryInfo,
   type AdminVmInfo,
   type AdminVmPaymentInfo,
+  isRefundPayment,
   VmRunningStates,
 } from "../lib/api";
+import { confirmDialog, promptDialog } from "../services/confirmService";
+import { toastService } from "../services/toastService";
 import { CURRENCIES, formatCurrency } from "../utils/currency";
 import { formatBytes } from "../utils/formatBytes";
 
@@ -57,6 +59,7 @@ export function VMDetailPage() {
   const [paymentsRefreshKey, setPaymentsRefreshKey] = useState(0);
   const [showIpAssignModal, setShowIpAssignModal] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
+  const [refundPayment, setRefundPayment] = useState<AdminVmPaymentInfo | null>(null);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const { isSuperAdmin } = useUserRoles();
   const [copiedPaymentId, setCopiedPaymentId] = useState<string | null>(null);
@@ -382,7 +385,21 @@ export function VMDetailPage() {
       {/* Amount: total + rate / base / tax / fee */}
       <td className="align-top">
         <div className="min-w-0 max-w-[16rem]">
-          <div className="font-medium text-slate-100">{formatCurrency(payment.amount, payment.currency)}</div>
+          {/* Amounts are unsigned magnitudes — the direction is in `payment_type`,
+              so a refund has to be rendered as the negative it is (api#193). */}
+          <div
+            className={
+              isRefundPayment(payment.payment_type) ? "font-medium text-red-400" : "font-medium text-slate-100"
+            }
+          >
+            {isRefundPayment(payment.payment_type) ? "-" : ""}
+            {formatCurrency(payment.amount, payment.currency)}
+          </div>
+          {isRefundPayment(payment.payment_type) && (
+            <div className="mt-0.5 text-xs text-red-400/80">
+              Refund{payment.refunded_payment_id ? ` of ${payment.refunded_payment_id.slice(0, 8)}…` : ""}
+            </div>
+          )}
           <div className="mt-0.5 space-y-0.5 font-mono text-xs text-slate-400">
             {payment.rate && payment.rate !== 1 && (
               <div>
@@ -477,6 +494,18 @@ export function VMDetailPage() {
               title="Manually mark this payment as paid"
             >
               Complete
+            </Button>
+          )}
+          {/* A refund reverses a settled sale, so it is offered only on a paid
+              row and never on a refund row (the API refuses both). */}
+          {payment.is_paid && !isRefundPayment(payment.payment_type) && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setRefundPayment(payment)}
+              title="Record a refund already paid out by hand"
+            >
+              Refund
             </Button>
           )}
         </PermissionGuard>
@@ -721,7 +750,7 @@ export function VMDetailPage() {
             onClick={() => setShowRefundModal(true)}
             disabled={!!actionLoading}
             className="text-slate-400 hover:text-white p-2"
-            title="Process refund"
+            title="Estimate pro-rated refund"
           >
             <BanknotesIcon className="h-4 w-4" />
           </Button>
@@ -1049,14 +1078,19 @@ export function VMDetailPage() {
         }}
       />
 
-      {/* Refund Modal */}
-      <VmRefundModal
-        isOpen={showRefundModal}
-        onClose={() => setShowRefundModal(false)}
-        vm={vm}
+      {/* Pro-rated refund estimate (read-only — no payout is implemented) */}
+      <VmRefundModal isOpen={showRefundModal} onClose={() => setShowRefundModal(false)} vm={vm} />
+
+      {/* Record a refund already paid out by hand, against the payment it reverses */}
+      <RecordPaymentRefundModal
+        isOpen={refundPayment !== null}
+        onClose={() => setRefundPayment(null)}
+        vmId={vm.id}
+        payment={refundPayment}
         onSuccess={() => {
-          loadVM(true);
+          setPaymentsRefreshKey((prev) => prev + 1);
           setHistoryRefreshKey((prev) => prev + 1);
+          loadVM(true);
         }}
       />
     </div>

@@ -1,5 +1,5 @@
+import type { Footprint } from "lnvps-compose";
 import type { AdminCustomPricingInfo } from "../lib/api";
-import type { ComposeFootprint } from "../lib/composeSchema";
 
 /** 1 GB as used by the pricing engine (binary gibibyte). */
 export const PRICING_GB = 1024 ** 3;
@@ -49,7 +49,7 @@ function billableUnits(value: number, rounding: PricingRounding): number {
  * since the storage cost would otherwise be silently dropped.
  */
 export function suggestAppPrice(
-  footprint: ComposeFootprint,
+  footprint: Footprint,
   pricing: AdminCustomPricingInfo,
   rounding: PricingRounding = "prorated",
   diskRate?: DiskRate,
@@ -104,7 +104,7 @@ export interface SuggestedAppPriceRange {
  * an FX conversion); returns `null` when nothing in that currency can be priced.
  */
 export function suggestAppPriceRange(
-  footprint: ComposeFootprint,
+  footprint: Footprint,
   pricings: AdminCustomPricingInfo[],
   currency: string,
   rounding: PricingRounding = "prorated",

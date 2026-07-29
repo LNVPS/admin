@@ -1,4 +1,5 @@
 import { FireIcon, PencilIcon, PlusIcon, RocketLaunchIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { configFieldDisplayLabel, parseComposeSchema } from "lnvps-compose";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -21,7 +22,6 @@ import {
   type AppDeploymentDesiredState,
   type AppDeploymentStatus,
 } from "../lib/api";
-import { parseComposeSchema } from "../lib/composeSchema";
 import { fetchAllPages } from "../lib/paginate";
 import { confirmDialog } from "../services/confirmService";
 
@@ -642,7 +642,7 @@ function EditDeploymentModal({
                 return (
                   <div key={field.name}>
                     <label htmlFor={inputId} className="block text-xs text-gray-300 mb-1">
-                      {field.label}
+                      {configFieldDisplayLabel(field)}
                       {field.required && <span className="text-red-400"> *</span>}
                       <span className="ml-2 font-mono text-[0.65rem] text-gray-500">
                         {field.name} ({field.type})

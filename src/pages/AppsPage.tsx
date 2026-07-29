@@ -1,5 +1,6 @@
 import { CubeIcon, PencilIcon, PlusIcon, TagIcon, TrashIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
+import { parseComposeFootprint } from "lnvps-compose";
 import type React from "react";
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { AppTagsModal } from "../components/AppTagsModal";
@@ -21,7 +22,6 @@ import type {
   AdminCustomPricingInfo,
   AppIntervalType,
 } from "../lib/api";
-import { parseComposeFootprint } from "../lib/composeSchema";
 import { fetchAllPages } from "../lib/paginate";
 import { confirmDialog } from "../services/confirmService";
 import { suggestAppPriceRange } from "../utils/appPricing";

@@ -2392,6 +2392,7 @@ __metadata:
     clsx: "npm:^2.1.1"
     eventemitter3: "npm:^5.0.1"
     iso-3166-1: "npm:^2.1.1"
+    lnvps-compose: "github:LNVPS/lnvps-compose#v0.1.1"
     react: "npm:^19.1.1"
     react-dom: "npm:^19.1.1"
     react-is: "npm:^19.1.1"
@@ -2400,9 +2401,17 @@ __metadata:
     tailwindcss: "npm:^4.1.11"
     typescript: "npm:^5.9.2"
     vite: "npm:^7.0.6"
-    yaml: "npm:^2.9.0"
   languageName: unknown
   linkType: soft
+
+"lnvps-compose@github:LNVPS/lnvps-compose#v0.1.1":
+  version: 0.1.0
+  resolution: "lnvps-compose@https://github.com/LNVPS/lnvps-compose.git#commit=cf0985956ce93e7e1a1f9c66ca3c5822f1e37d08"
+  dependencies:
+    yaml: "npm:^2.9.0"
+  checksum: 10c0/34871d8b77e81b3da1db45952d7dbb2453475cf8edf454f7b07676a4793af4388e03f8f081653fa02d9a2d32d9cca21941befdc7f46c437d36f99d11274bc69f
+  languageName: node
+  linkType: hard
 
 "lru-cache@npm:^10.0.1, lru-cache@npm:^10.2.0":
   version: 10.4.3

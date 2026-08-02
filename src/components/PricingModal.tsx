@@ -40,6 +40,10 @@ interface FormData {
   max_cpu: string;
   min_memory: string;
   max_memory: string;
+  min_ip4: string;
+  max_ip4: string;
+  min_ip6: string;
+  max_ip6: string;
   disk_pricing: DiskPricingFormData[];
   cpu_limit: string;
   network_mbps: string;
@@ -70,6 +74,10 @@ const getDefaultFormData = (): FormData => ({
   max_cpu: "64",
   min_memory: "1",
   max_memory: "128",
+  min_ip4: "1",
+  max_ip4: "1",
+  min_ip6: "1",
+  max_ip6: "1",
   disk_pricing: [...DEFAULT_DISK_PRICING],
   cpu_limit: "",
   network_mbps: "",
@@ -95,6 +103,10 @@ const getFormDataFromPricing = (pricing: AdminCustomPricingInfo): FormData => ({
   max_cpu: pricing.max_cpu.toString(),
   min_memory: Math.round(pricing.min_memory / (1024 * 1024 * 1024)).toString(),
   max_memory: Math.round(pricing.max_memory / (1024 * 1024 * 1024)).toString(),
+  min_ip4: (pricing.min_ip4 ?? 1).toString(),
+  max_ip4: (pricing.max_ip4 ?? 1).toString(),
+  min_ip6: (pricing.min_ip6 ?? 1).toString(),
+  max_ip6: (pricing.max_ip6 ?? 1).toString(),
   disk_pricing: pricing.disk_pricing.map((disk) => ({
     kind: disk.kind as string,
     interface: disk.interface as string,
@@ -144,6 +156,10 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
         max_cpu: parseInt(formData.max_cpu) || 0,
         min_memory: (parseInt(formData.min_memory) || 0) * 1024 * 1024 * 1024,
         max_memory: (parseInt(formData.max_memory) || 0) * 1024 * 1024 * 1024,
+        min_ip4: parseInt(formData.min_ip4) || 0,
+        max_ip4: parseInt(formData.max_ip4) || 0,
+        min_ip6: parseInt(formData.min_ip6) || 0,
+        max_ip6: parseInt(formData.max_ip6) || 0,
         disk_pricing: formData.disk_pricing.map((disk) => ({
           kind: disk.kind,
           interface: disk.interface,
@@ -391,6 +407,51 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
                 max="9999"
                 value={formData.max_memory}
                 onChange={(e) => setFormData({ ...formData, max_memory: e.target.value })}
+              />
+            </div>
+          </div>
+          <p className="mt-3 mb-1 text-xs text-gray-400">
+            Address counts a customer can order on this plan. Cost is count × the per-IP price above.
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Min IPv4</label>
+              <input
+                type="number"
+                min="0"
+                max="32"
+                value={formData.min_ip4}
+                onChange={(e) => setFormData({ ...formData, min_ip4: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Max IPv4</label>
+              <input
+                type="number"
+                min="0"
+                max="32"
+                value={formData.max_ip4}
+                onChange={(e) => setFormData({ ...formData, max_ip4: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Min IPv6</label>
+              <input
+                type="number"
+                min="0"
+                max="32"
+                value={formData.min_ip6}
+                onChange={(e) => setFormData({ ...formData, min_ip6: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Max IPv6</label>
+              <input
+                type="number"
+                min="0"
+                max="32"
+                value={formData.max_ip6}
+                onChange={(e) => setFormData({ ...formData, max_ip6: e.target.value })}
               />
             </div>
           </div>

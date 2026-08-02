@@ -149,6 +149,11 @@ export function VmTemplatesPage() {
                 {template.disk_type} · {template.disk_interface}
               </span>
             </div>
+            {((template.ip4_count ?? 1) !== 1 || (template.ip6_count ?? 1) !== 1) && (
+              <div className="font-mono text-xs text-slate-300">
+                {template.ip4_count ?? 1}× IPv4 · {template.ip6_count ?? 1}× IPv6
+              </div>
+            )}
             {hasConstraints && (
               <>
                 {constraintText && (
@@ -334,6 +339,8 @@ const emptyForm = {
   disk_type: DiskType.SSD,
   disk_interface: DiskInterface.PCIE,
   region_id: 0,
+  ip4_count: "1",
+  ip6_count: "1",
   // Cost plan
   create_new_cost_plan: true,
   cost_plan_id: 0,
@@ -378,6 +385,8 @@ function VmTemplateModal({ isOpen, onClose, onSuccess, template, regions, costPl
         disk_type: template.disk_type,
         disk_interface: template.disk_interface,
         region_id: template.region_id,
+        ip4_count: (template.ip4_count ?? 1).toString(),
+        ip6_count: (template.ip6_count ?? 1).toString(),
         create_new_cost_plan: false,
         cost_plan_id: template.cost_plan_id,
         cost_plan_name: template.cost_plan_name || "",
@@ -448,6 +457,8 @@ function VmTemplateModal({ isOpen, onClose, onSuccess, template, regions, costPl
           disk_type: formData.disk_type,
           disk_interface: formData.disk_interface,
           region_id: formData.region_id,
+          ip4_count: parseInt(formData.ip4_count) || 0,
+          ip6_count: parseInt(formData.ip6_count) || 0,
           cost_plan_name: formData.cost_plan_name,
           cost_plan_amount: formData.cost_plan_amount,
           cost_plan_currency: formData.cost_plan_currency,
@@ -467,6 +478,8 @@ function VmTemplateModal({ isOpen, onClose, onSuccess, template, regions, costPl
           disk_type: formData.disk_type,
           disk_interface: formData.disk_interface,
           region_id: formData.region_id,
+          ip4_count: parseInt(formData.ip4_count) || 0,
+          ip6_count: parseInt(formData.ip6_count) || 0,
         };
         if (formData.cpu_mfg) data.cpu_mfg = formData.cpu_mfg;
         if (formData.cpu_arch) data.cpu_arch = formData.cpu_arch;
@@ -635,6 +648,31 @@ function VmTemplateModal({ isOpen, onClose, onSuccess, template, regions, costPl
                   <option value={DiskInterface.SCSI}>SCSI</option>
                   <option value={DiskInterface.PCIE}>PCIe</option>
                 </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">IPv4 Addresses</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.ip4_count}
+                  onChange={(e) => setFormData({ ...formData, ip4_count: e.target.value })}
+                  className={inputCls}
+                />
+                <p className="mt-1 text-xs text-gray-500">Included in the offer; allocation is all-or-nothing.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">IPv6 Addresses</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.ip6_count}
+                  onChange={(e) => setFormData({ ...formData, ip6_count: e.target.value })}
+                  className={inputCls}
+                />
+                <p className="mt-1 text-xs text-gray-500">Best-effort: a region with no IPv6 range still provisions.</p>
               </div>
             </div>
 

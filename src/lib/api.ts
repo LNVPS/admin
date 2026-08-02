@@ -100,6 +100,12 @@ export enum AdminVmHistoryActionType {
   PAYMENT_RECEIVED = "payment_received",
   CONFIGURATION_CHANGED = "configuration_changed",
   TRANSFERRED = "transferred",
+  /**
+   * VM moved to a different host. Recorded both for an admin-requested
+   * migration and for a move made outside the API that the periodic
+   * `ReconcileVmHosts` job noticed (`metadata.detected === true`).
+   */
+  MIGRATED = "migrated",
 }
 
 export enum AdminPaymentMethod {
@@ -612,6 +618,10 @@ export interface AdminVmTemplateInfo {
   disk_interface: DiskInterface;
   cost_plan_id: number;
   region_id: number;
+  /** IPv4 addresses included in the offer (default 1). */
+  ip4_count: number;
+  /** IPv6 addresses included in the offer (default 1); assignment is best-effort. */
+  ip6_count: number;
   region_name: string | null; // Populated with region name
   cost_plan_name: string | null; // Populated with cost plan name
   active_vm_count: number;
@@ -643,6 +653,12 @@ export interface AdminCustomPricingInfo {
   max_cpu: number;
   min_memory: number;
   max_memory: number;
+  /** Selectable IPv4 address range for an order on this plan (default 1–1). */
+  min_ip4: number;
+  max_ip4: number;
+  /** Selectable IPv6 address range for an order on this plan (default 1–1). */
+  min_ip6: number;
+  max_ip6: number;
   disk_pricing: {
     id: number;
     kind: DiskType;
@@ -1850,6 +1866,25 @@ export class AdminApi {
     return result.data;
   }
 
+  /**
+   * Move a VM to another host.
+   *
+   * Dispatches a `MigrateVm` job: the endpoint only rejects the obvious cases
+   * (409 when the VM is deleted, already on the target, or the target is
+   * disabled; 404 when the host does not exist). Region/architecture/hypervisor
+   * mismatches and capacity shortfalls are checked by the worker, so those
+   * failures surface on the job rather than here.
+   *
+   * `live` attempts an online migration; without it a running VM is stopped,
+   * moved and started again on the destination. Proxmox hosts only.
+   */
+  async migrateVM(id: number, data: { target_host_id: number; live?: boolean; reason?: string }) {
+    const result = await this.handleResponse<ApiResponse<{ job_id: string }>>(
+      await this.req(`/api/admin/v1/vms/${id}/migrate`, "POST", data),
+    );
+    return result.data;
+  }
+
   async transferVM(id: number, userId: number, reason?: string) {
     const body = { user_id: userId, ...(reason && { reason }) };
     await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/vms/${id}/transfer`, "POST", body));
@@ -2017,6 +2052,11 @@ export class AdminApi {
   /**
    * Grant a role. `expiresAt` (ISO 8601) makes the assignment time-limited;
    * omit for a permanent grant.
+   *
+   * Requires `roles::update` (not `users::update`). The server also returns 403
+   * when the caller assigns a role to themselves, when a non-super-admin grants
+   * `super_admin`, or when the granted role holds permissions the caller does
+   * not have (super admins are exempt from the subset rule).
    */
   async assignUserRole(userId: number, roleId: number, expiresAt?: string) {
     await this.handleResponse<ApiResponse<void>>(
@@ -2027,6 +2067,10 @@ export class AdminApi {
     );
   }
 
+  /**
+   * Revoke a role. Requires `roles::update`. Only a super admin may revoke
+   * `super_admin`, and the last super admin cannot revoke their own.
+   */
   async revokeUserRole(userId: number, roleId: number) {
     await this.handleResponse<ApiResponse<void>>(
       await this.req(`/api/admin/v1/users/${userId}/roles/${roleId}`, "DELETE"),
@@ -2329,6 +2373,10 @@ export class AdminApi {
     disk_interface: string;
     cost_plan_id?: number;
     region_id: number;
+    /** IPv4 addresses included in the offer; defaults to 1 server-side. */
+    ip4_count?: number;
+    /** IPv6 addresses included in the offer; defaults to 1 server-side. */
+    ip6_count?: number;
     // Cost plan auto-creation fields (used when cost_plan_id not provided)
     cost_plan_name?: string;
     cost_plan_amount?: number;
@@ -2365,6 +2413,8 @@ export class AdminApi {
       disk_interface: string;
       cost_plan_id: number;
       region_id: number;
+      ip4_count: number;
+      ip6_count: number;
       cost_plan_name: string;
       cost_plan_amount: number;
       cost_plan_currency: string;
@@ -2428,6 +2478,12 @@ export class AdminApi {
     max_cpu: number;
     min_memory: number;
     max_memory: number;
+    /** Selectable IPv4 count range; both default to 1 server-side. */
+    min_ip4?: number;
+    max_ip4?: number;
+    /** Selectable IPv6 count range; both default to 1 server-side. */
+    min_ip6?: number;
+    max_ip6?: number;
     disk_pricing: {
       kind: string;
       interface: string;
@@ -2467,6 +2523,10 @@ export class AdminApi {
       max_cpu: number;
       min_memory: number;
       max_memory: number;
+      min_ip4: number;
+      max_ip4: number;
+      min_ip6: number;
+      max_ip6: number;
       disk_pricing: {
         kind: string;
         interface: string;

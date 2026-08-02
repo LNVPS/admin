@@ -13,6 +13,7 @@ import {
   NoSymbolIcon,
   PlayIcon,
   PlusIcon,
+  ServerStackIcon,
   StopIcon,
   TrashIcon,
   XCircleIcon,
@@ -27,6 +28,7 @@ import { Profile } from "../components/Profile";
 import { RecordPaymentRefundModal } from "../components/RecordPaymentRefundModal";
 import { StatusBadge } from "../components/StatusBadge";
 import { VmIpAssignmentModal } from "../components/VmIpAssignmentModal";
+import { VmMigrateModal } from "../components/VmMigrateModal";
 import { VmRefundModal } from "../components/VmRefundModal";
 import { getVmStatus, VmStatusBadge } from "../components/VmStatusBadge";
 import { VmTransferModal } from "../components/VmTransferModal";
@@ -61,6 +63,7 @@ export function VMDetailPage() {
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [refundPayment, setRefundPayment] = useState<AdminVmPaymentInfo | null>(null);
   const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showMigrateModal, setShowMigrateModal] = useState(false);
   const { isSuperAdmin } = useUserRoles();
   const [copiedPaymentId, setCopiedPaymentId] = useState<string | null>(null);
   const [copiedExternalId, setCopiedExternalId] = useState<string | null>(null);
@@ -537,6 +540,8 @@ export function VMDetailPage() {
         return "bg-yellow-900 text-yellow-300"; // Yellow for config changes
       case AdminVmHistoryActionType.TRANSFERRED:
         return "bg-teal-900 text-teal-300"; // Teal for transfers
+      case AdminVmHistoryActionType.MIGRATED:
+        return "bg-sky-900 text-sky-300"; // Sky for host migrations
       case AdminVmHistoryActionType.STATE_CHANGED:
         return "bg-amber-900 text-amber-300"; // Amber for state changes
       default:
@@ -772,6 +777,15 @@ export function VMDetailPage() {
               title="Transfer VM to another user"
             >
               <ArrowsRightLeftIcon className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setShowMigrateModal(true)}
+              disabled={!!actionLoading}
+              className="text-slate-400 hover:text-white p-2"
+              title="Migrate VM to another host"
+            >
+              <ServerStackIcon className="h-4 w-4" />
             </Button>
           </PermissionGuard>
           <Button
@@ -1079,6 +1093,17 @@ export function VMDetailPage() {
       />
 
       {/* Pro-rated refund estimate (read-only — no payout is implemented) */}
+      {/* Migrate Modal */}
+      <VmMigrateModal
+        isOpen={showMigrateModal}
+        onClose={() => setShowMigrateModal(false)}
+        vm={vm}
+        onMigrating={() => {
+          loadVM(true);
+          setHistoryRefreshKey((prev) => prev + 1);
+        }}
+      />
+
       <VmRefundModal isOpen={showRefundModal} onClose={() => setShowRefundModal(false)} vm={vm} />
 
       {/* Record a refund already paid out by hand, against the payment it reverses */}

@@ -138,6 +138,9 @@ export function CustomPricingPage() {
             <div>
               RAM: {formatBytes(pricing.min_memory)}-{formatBytes(pricing.max_memory)}
             </div>
+            <div>
+              IPs: {pricing.min_ip4 ?? 1}-{pricing.max_ip4 ?? 1} v4 / {pricing.min_ip6 ?? 1}-{pricing.max_ip6 ?? 1} v6
+            </div>
             {(pricing.cpu_mfg || pricing.cpu_arch) && (
               <div className="truncate text-xs text-slate-400">
                 {[pricing.cpu_mfg, pricing.cpu_arch].filter(Boolean).join(" / ")}

@@ -24,13 +24,15 @@ import { StatusBadge } from "../components/StatusBadge";
 import { UserPasskeysSection } from "../components/UserPasskeysSection";
 import { UserPaymentMethodsSection } from "../components/UserPaymentMethodsSection";
 import { getVmStatus, VmStatusBadge } from "../components/VmStatusBadge";
-import { useToast } from "../hooks/useToast";
 import { useAdminApi } from "../hooks/useAdminApi";
+import useLogin from "../hooks/useLogin";
+import { useToast } from "../hooks/useToast";
 import { useUserRoles } from "../hooks/useUserRoles";
 import {
   type AdminRoleInfo,
   type AdminSubscriptionInfo,
   type AdminUserInfo,
+  AdminUserRole,
   type AdminVmInfo,
   getCountryName,
   type UserRoleInfo,
@@ -46,7 +48,8 @@ export function UserDetailsPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const adminApi = useAdminApi();
-  const { hasPermission } = useUserRoles();
+  const { hasPermission, permissions, isSuperAdmin } = useUserRoles();
+  const login = useLogin();
   const { success, error: showError } = useToast();
 
   // Get user data from navigation state
@@ -64,8 +67,12 @@ export function UserDetailsPage() {
   // Parse userId from params
   const userId = id ? parseInt(id, 10) : null;
 
-  // Check if user has permission to update users (assign/revoke roles)
-  const canManageRoles = hasPermission("users::update");
+  // Role assignment/revocation is gated on `roles::update` (not `users::update`,
+  // which used to be a path to granting yourself super_admin). The server also
+  // refuses self-assignment outright, so the grant UI is hidden on your own user.
+  const isSelf = !!login?.publicKey && !!user && user.pubkey === login.publicKey;
+  const canManageRoles = hasPermission("roles::update");
+  const canGrantRoles = canManageRoles && !isSelf;
 
   // If user data is in state, use it; otherwise fetch from API
   useEffect(() => {
@@ -108,7 +115,12 @@ export function UserDetailsPage() {
   };
 
   const handleRemoveRole = async (roleId: number, roleName: string) => {
-    if (await confirmDialog({ title: "Remove Role", message: `Are you sure you want to remove the "${roleName}" role from this user?` })) {
+    if (
+      await confirmDialog({
+        title: "Remove Role",
+        message: `Are you sure you want to remove the "${roleName}" role from this user?`,
+      })
+    ) {
       try {
         await adminApi.revokeUserRole(user.id, roleId);
         refreshRoles();
@@ -225,12 +237,18 @@ export function UserDetailsPage() {
       </td>
       {canManageRoles && (
         <td className="align-top text-right">
+          {/* Only a super admin may revoke super_admin (the server returns 403 otherwise). */}
           <Button
             size="sm"
             variant="secondary"
+            disabled={roleInfo.role.name === AdminUserRole.SUPER_ADMIN && !isSuperAdmin}
             onClick={() => handleRemoveRole(roleInfo.role.id, roleInfo.role.name)}
             className="text-red-400 hover:text-red-300 p-1"
-            title="Remove Role"
+            title={
+              roleInfo.role.name === AdminUserRole.SUPER_ADMIN && !isSuperAdmin
+                ? "Only a super admin can revoke super_admin"
+                : "Remove Role"
+            }
           >
             <TrashIcon className="h-4 w-4" />
           </Button>
@@ -636,12 +654,15 @@ export function UserDetailsPage() {
             <ShieldCheckIcon className="h-5 w-5" />
             <span>Roles & Permissions</span>
           </h2>
-          <PermissionGuard requiredPermissions={["users::update"]}>
+          {canGrantRoles && (
             <Button onClick={() => setShowAddRoleModal(true)} className="flex items-center space-x-2">
               <PlusIcon className="h-4 w-4" />
               <span>Add Role</span>
             </Button>
-          </PermissionGuard>
+          )}
+          {canManageRoles && isSelf && (
+            <span className="text-xs text-gray-400">You cannot assign a role to your own account</span>
+          )}
         </div>
         <PaginatedTable
           apiCall={async () => {
@@ -680,6 +701,8 @@ export function UserDetailsPage() {
 
       {/* Add Role Modal */}
       <AddRoleModal
+        callerPermissions={permissions}
+        callerIsSuperAdmin={isSuperAdmin}
         isOpen={showAddRoleModal}
         onClose={() => setShowAddRoleModal(false)}
         user={user}
@@ -709,17 +732,41 @@ export function UserDetailsPage() {
   );
 }
 
+/**
+ * Why the caller may not grant `role`, or null when they may.
+ *
+ * Mirrors the server's rules on `POST /users/{id}/roles` so an impossible grant
+ * is not offered: only a super admin can hand out `super_admin`, and a role may
+ * not carry permissions the caller does not already hold.
+ */
+function ungrantableReason(
+  role: AdminRoleInfo,
+  callerPermissions: string[],
+  callerIsSuperAdmin: boolean,
+): string | null {
+  if (role.name === AdminUserRole.SUPER_ADMIN && !callerIsSuperAdmin) {
+    return "super admin only";
+  }
+  if (callerIsSuperAdmin) return null;
+  const missing = (role.permissions ?? []).filter((permission) => !callerPermissions.includes(permission));
+  return missing.length > 0 ? `grants permissions you lack: ${missing.slice(0, 3).join(", ")}` : null;
+}
+
 // Add Role Modal Component
 function AddRoleModal({
   isOpen,
   onClose,
   user,
   onSuccess,
+  callerPermissions,
+  callerIsSuperAdmin,
 }: {
   isOpen: boolean;
   onClose: () => void;
   user: AdminUserInfo;
   onSuccess: () => void;
+  callerPermissions: string[];
+  callerIsSuperAdmin: boolean;
 }) {
   const adminApi = useAdminApi();
   const [loading, setLoading] = useState(false);
@@ -796,12 +843,15 @@ function AddRoleModal({
                 required
               >
                 <option value="">Select a role...</option>
-                {assignableRoles.map((role) => (
-                  <option key={role.id} value={role.id}>
-                    {role.name} {role.is_system_role ? "(System)" : "(Custom)"}
-                    {role.description && ` - ${role.description}`}
-                  </option>
-                ))}
+                {assignableRoles.map((role) => {
+                  const blocked = ungrantableReason(role, callerPermissions, callerIsSuperAdmin);
+                  return (
+                    <option key={role.id} value={role.id} disabled={blocked !== null}>
+                      {role.name} {role.is_system_role ? "(System)" : "(Custom)"}
+                      {blocked ? ` — ${blocked}` : role.description ? ` - ${role.description}` : ""}
+                    </option>
+                  );
+                })}
               </select>
             )}
           </div>

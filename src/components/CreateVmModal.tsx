@@ -389,6 +389,8 @@ export function CreateVmModal({ isOpen, onClose, onSuccess, preselectedUser }: C
                     <div className="text-sm text-gray-400 mt-1">
                       CPU {selectedPricing.min_cpu}–{selectedPricing.max_cpu} cores • Memory{" "}
                       {Math.round(selectedPricing.min_memory / GIB)}–{Math.round(selectedPricing.max_memory / GIB)} GiB
+                      {" • "}IPv4 {selectedPricing.min_ip4 ?? 1}–{selectedPricing.max_ip4 ?? 1} • IPv6{" "}
+                      {selectedPricing.min_ip6 ?? 1}–{selectedPricing.max_ip6 ?? 1}
                     </div>
                   )}
                 </div>
@@ -466,7 +468,8 @@ export function CreateVmModal({ isOpen, onClose, onSuccess, preselectedUser }: C
                     <label className="block text-sm font-medium text-gray-300 mb-2">IPv4 Addresses</label>
                     <input
                       type="number"
-                      min={0}
+                      min={selectedPricing?.min_ip4 ?? 0}
+                      max={selectedPricing?.max_ip4}
                       value={formData.ip4_count}
                       onChange={(e) => setField("ip4_count", e.target.value)}
                       className={inputClass}
@@ -476,7 +479,8 @@ export function CreateVmModal({ isOpen, onClose, onSuccess, preselectedUser }: C
                     <label className="block text-sm font-medium text-gray-300 mb-2">IPv6 Addresses</label>
                     <input
                       type="number"
-                      min={0}
+                      min={selectedPricing?.min_ip6 ?? 0}
+                      max={selectedPricing?.max_ip6}
                       value={formData.ip6_count}
                       onChange={(e) => setField("ip6_count", e.target.value)}
                       className={inputClass}

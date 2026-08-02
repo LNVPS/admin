@@ -15,6 +15,21 @@ import type { AdminHostInfo, AdminRegionInfo, AdminUnmanagedVm, AdminUserInfo, V
 import { CpuArch, CpuFeature, CpuMfg } from "../lib/api";
 import { formatBytes } from "../utils/formatBytes";
 
+/**
+ * Colour a per-resource quota usage figure (0..1, where 1 = quota exhausted).
+ *
+ * A host is only as free as its most constrained dimension, so each usage
+ * figure is graded on its own: green while there is headroom, then
+ * yellow/orange/red as it approaches the quota. Averaging the dimensions would
+ * hide a single maxed-out resource that already blocks provisioning.
+ */
+const usageColor = (load: number): string => {
+  if (load >= 1) return "text-red-400";
+  if (load >= 0.9) return "text-orange-400";
+  if (load >= 0.75) return "text-yellow-400";
+  return "text-slate-300";
+};
+
 export function HostsPage() {
   const adminApi = useAdminApi();
   const [showEditModal, setShowEditModal] = useState(false);
@@ -157,16 +172,27 @@ export function HostsPage() {
       {/* Load factors + active VMs */}
       <td className="align-top text-gray-300">
         <div className="text-xs space-y-0.5">
-          <div>
-            CPU {(host.load_cpu * 100).toFixed(0)}% / {(host.calculated_load.cpu_load * 100).toFixed(0)}%
-          </div>
-          <div>
-            RAM {(host.load_memory * 100).toFixed(0)}% / {(host.calculated_load.memory_load * 100).toFixed(0)}%
-          </div>
-          <div>
-            Disk {(host.load_disk * 100).toFixed(0)}% / {(host.calculated_load.disk_load * 100).toFixed(0)}%
-          </div>
-          <div className="font-medium text-white">Overall {(host.calculated_load.overall_load * 100).toFixed(0)}%</div>
+          {(
+            [
+              ["CPU", host.load_cpu, host.calculated_load.cpu_load],
+              ["RAM", host.load_memory, host.calculated_load.memory_load],
+              ["Disk", host.load_disk, host.calculated_load.disk_load],
+            ] as const
+          ).map(([label, factor, used]) => (
+            <div key={label}>
+              {label} {(factor * 100).toFixed(0)}% /{" "}
+              <span
+                className={`font-medium ${usageColor(used)}`}
+                title={
+                  used >= 1
+                    ? `${label} quota exhausted — this host cannot take more VMs`
+                    : `${(used * 100).toFixed(0)}% of the ${label} quota used`
+                }
+              >
+                {(used * 100).toFixed(0)}%
+              </span>
+            </div>
+          ))}
           <div className="mt-1">
             <span
               className={`inline-flex px-1.5 py-0.5 font-medium rounded ${

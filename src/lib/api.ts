@@ -341,6 +341,43 @@ export interface VmRunningState {
   disk_read: number;
 }
 
+/**
+ * Body for `POST /api/admin/v1/vms/custom` — an arbitrary VM spec ordered on a
+ * user's behalf against a custom pricing plan.
+ *
+ * The spec fields are flattened into the body, matching the shape of the
+ * customer endpoint `POST /api/v1/vm/custom-template`. Optional `cpu_*` fields
+ * mean "any" when omitted; misspelled optional keys are silently dropped by the
+ * server rather than rejected, so they must match exactly.
+ */
+export interface AdminCreateCustomVmRequest {
+  user_id: number;
+  /** Custom pricing plan id — decides the region and the billing currency. */
+  pricing_id: number;
+  cpu: number;
+  /** Memory in bytes. */
+  memory: number;
+  /** Disk size in bytes. */
+  disk: number;
+  disk_type: DiskType;
+  disk_interface: DiskInterface;
+  /** e.g. "intel", "amd"; omit for any. */
+  cpu_mfg?: string;
+  /** e.g. "x86_64", "arm64"; omit for any. */
+  cpu_arch?: string;
+  /** Required CPU features, e.g. ["AVX2"]; omit or empty for any. */
+  cpu_feature?: string[];
+  /** IPv4 addresses to assign (default 1); must sit within the plan's range. */
+  ip4_count?: number;
+  /** IPv6 addresses to assign (default 1); must sit within the plan's range. */
+  ip6_count?: number;
+  image_id: number;
+  /** Must belong to `user_id`. */
+  ssh_key_id: number;
+  ref_code?: string;
+  reason?: string;
+}
+
 export interface AdminVmInfo {
   id: number;
   created: string;
@@ -1691,9 +1728,10 @@ export class AdminApi {
   /**
    * TODO(upstream): `GET /api/admin/v1/users/{id}/ssh_keys` is NOT mounted in
    * the admin router — this call always 404s, so the SSH-key picker in
-   * CreateVmModal is permanently empty even though `POST /vms` requires a valid
-   * `ssh_key_id`. Needs an endpoint adding in LNVPS/api before admins can
-   * create VMs on a customer's behalf.
+   * CreateVmModal is permanently empty even though `POST /vms` and
+   * `POST /vms/custom` both require a valid `ssh_key_id`. Until an endpoint is
+   * added in LNVPS/api, CreateVmModal falls back to a manual `ssh_key_id`
+   * input whenever this returns nothing.
    */
   async getUserSshKeys(userId: number) {
     const result = await this.handleResponse<ApiResponse<AdminSshKeyInfo[]>>(
@@ -1749,6 +1787,22 @@ export class AdminApi {
   }) {
     const result = await this.handleResponse<ApiResponse<{ job_id: string }>>(
       await this.req("/api/admin/v1/vms", "POST", data),
+    );
+    return result.data;
+  }
+
+  /**
+   * Create a VM from an arbitrary spec (rather than a fixed template), billed
+   * against a custom pricing plan. The region comes from `pricing_id`.
+   *
+   * Unknown `disk_type`/`disk_interface`/`cpu_mfg`/`cpu_arch`/`cpu_feature`
+   * values are rejected with 400 up front; spec range limits, plan
+   * enabled/expiry, image architecture and host capacity are only checked when
+   * the async job runs, so those failures surface on the job, not here.
+   */
+  async createCustomVM(data: AdminCreateCustomVmRequest) {
+    const result = await this.handleResponse<ApiResponse<{ job_id: string }>>(
+      await this.req("/api/admin/v1/vms/custom", "POST", data),
     );
     return result.data;
   }
@@ -3480,6 +3534,23 @@ export class AdminApi {
   ) {
     const result = await this.handleResponse<ApiResponse<AdminSubscriptionInfo>>(
       await this.req(`/api/admin/v1/subscriptions/${id}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
+  /**
+   * Grant free time on any subscription (apps, IP ranges, ASN sponsoring, DNS
+   * hosting, VPS) — the subscription-level counterpart of {@link extendVM}.
+   *
+   * No payment row is written: this is granted time, not a settlement. `days`
+   * must be 1–365 and is added to the current expiry (or to now when the
+   * subscription has no expiry yet), so unused paid time is never lost.
+   * Granting time also flips `is_setup`/`is_active` to true, otherwise the
+   * lifecycle worker would tear the resource down despite the extension.
+   */
+  async extendSubscription(id: number, days: number, reason?: string) {
+    const result = await this.handleResponse<ApiResponse<AdminSubscriptionInfo>>(
+      await this.req(`/api/admin/v1/subscriptions/${id}/extend`, "PUT", { days, ...(reason && { reason }) }),
     );
     return result.data;
   }

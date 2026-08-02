@@ -3,6 +3,7 @@ import {
   ArrowPathIcon,
   ArrowTopRightOnSquareIcon,
   BanknotesIcon,
+  CalendarDaysIcon,
   CheckCircleIcon,
   CheckIcon,
   ClipboardIcon,
@@ -37,7 +38,8 @@ import {
   type AdminSubscriptionPaymentInfo,
   SubscriptionType,
 } from "../lib/api";
-import { confirmDialog } from "../services/confirmService";
+import { confirmDialog, promptDialog } from "../services/confirmService";
+import { toastService } from "../services/toastService";
 import { formatCurrency } from "../utils/currency";
 import { EditSubscriptionModal } from "./SubscriptionsPage";
 
@@ -49,6 +51,7 @@ export function SubscriptionDetailPage() {
   const [showAddLineItem, setShowAddLineItem] = useState(false);
   const [showEditSubscription, setShowEditSubscription] = useState(false);
   const [editingLineItem, setEditingLineItem] = useState<AdminSubscriptionLineItemInfo | null>(null);
+  const [extending, setExtending] = useState(false);
 
   const {
     data: subscription,
@@ -69,6 +72,53 @@ export function SubscriptionDetailPage() {
       refreshData();
     } catch (error) {
       // Error handled by API layer
+    }
+  };
+
+  /**
+   * Grant free time on this subscription. Time is added to the existing expiry
+   * (or to now when there is none), and also flips the subscription back to
+   * set-up/active so the lifecycle worker does not tear the resource down.
+   */
+  const handleExtendSubscription = async () => {
+    if (!subscription) return;
+
+    const daysInput = await promptDialog({
+      title: "Extend Subscription",
+      label: "Number of days to grant (1-365)",
+      defaultValue: "30",
+      inputType: "number",
+      required: true,
+      confirmText: "Continue",
+    });
+    if (daysInput === null) return;
+
+    const days = parseInt(daysInput, 10);
+    if (Number.isNaN(days) || days < 1 || days > 365) {
+      toastService.error("Invalid input", "Please enter a valid number of days between 1 and 365.");
+      return;
+    }
+
+    const reason = await promptDialog({
+      title: "Extend Subscription",
+      message: `Granting ${days} free day(s) on "${subscription.name}". No payment is recorded.`,
+      label: "Reason (optional)",
+      confirmText: "Extend Subscription",
+    });
+    if (reason === null) return;
+
+    try {
+      setExtending(true);
+      const updated = await adminApi.extendSubscription(subscription.id, days, reason || undefined);
+      toastService.success(
+        "Subscription extended",
+        updated.expires ? `Now expires ${new Date(updated.expires).toLocaleString()}.` : `Granted ${days} day(s).`,
+      );
+      refreshData();
+    } catch (error) {
+      // Error handled by API layer
+    } finally {
+      setExtending(false);
     }
   };
 
@@ -164,6 +214,16 @@ export function SubscriptionDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleExtendSubscription}
+            disabled={extending}
+            title="Grant free time on this subscription"
+          >
+            <CalendarDaysIcon className="h-4 w-4 mr-1.5" />
+            {extending ? "Extending..." : "Extend"}
+          </Button>
           <Button variant="secondary" size="sm" onClick={() => setShowEditSubscription(true)}>
             <PencilIcon className="h-4 w-4 mr-1.5" />
             Edit

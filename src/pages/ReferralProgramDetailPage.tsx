@@ -6,6 +6,7 @@ import {
   GiftIcon,
   PencilIcon,
   PlusIcon,
+  ScaleIcon,
   XCircleIcon,
 } from "@heroicons/react/24/outline";
 import { useState } from "react";
@@ -20,7 +21,7 @@ import { useAdminApi } from "../hooks/useAdminApi";
 import { useApiCall } from "../hooks/useApiCall";
 import { useToast } from "../hooks/useToast";
 import { useUserRoles } from "../hooks/useUserRoles";
-import type { AdminReferralDetail, AdminReferralPayoutInfo, ReferralMode } from "../lib/api";
+import type { AdminReferralBalance, AdminReferralDetail, AdminReferralPayoutInfo, ReferralMode } from "../lib/api";
 import { formatCurrency } from "../utils/currency";
 
 const MODE_LABELS: Record<ReferralMode, string> = {
@@ -188,6 +189,9 @@ export function ReferralProgramDetailPage() {
             </div>
           )}
         </Card>
+
+        {/* Outstanding balance vs the payout threshold */}
+        <OutstandingCard referral={referral} />
       </div>
 
       {/* Payouts */}
@@ -211,7 +215,8 @@ export function ReferralProgramDetailPage() {
               <thead className="text-left text-xs uppercase tracking-wider text-slate-400">
                 <tr>
                   <th className="py-2 pr-4">ID</th>
-                  <th className="py-2 pr-4">Amount</th>
+                  <th className="py-2 pr-4">Settled</th>
+                  <th className="py-2 pr-4">Sent</th>
                   <th className="py-2 pr-4">Status</th>
                   <th className="py-2 pr-4">Output</th>
                   <th className="py-2 pr-4">Created</th>
@@ -238,12 +243,111 @@ export function ReferralProgramDetailPage() {
       {showCreatePayout && (
         <CreatePayoutModal
           referralId={referralId}
-          defaultCurrency={referral.earned[0]?.currency ?? "BTC"}
+          balances={referral.balances}
+          defaultMode={referral.mode}
           onClose={() => setShowCreatePayout(false)}
           onSuccess={refresh}
         />
       )}
     </div>
+  );
+}
+
+/**
+ * Outstanding (unpaid) commission, per currency and as one millisat total.
+ *
+ * The payout threshold is judged on everything owed valued in sats, not on each
+ * currency separately, so the total is the number that decides whether the next
+ * payout run pays this referrer — it is shown next to the threshold rather than
+ * left for an admin to work out from gross earnings minus the payout list.
+ */
+function OutstandingCard({ referral }: { referral: AdminReferralDetail }) {
+  const total = referral.outstanding_total_msat;
+  const thresholdMsat = referral.payout_threshold != null ? referral.payout_threshold * 1000 : null;
+  const clears = thresholdMsat == null ? null : total >= thresholdMsat;
+  // A balance we could not price is missing from the total, so say so rather
+  // than let the total read as the whole story.
+  const unvalued = referral.balances.filter((b) => b.outstanding > 0 && b.outstanding_msat == null);
+
+  return (
+    <Card title="Outstanding Balance" icon={<ScaleIcon className="h-5 w-5" />} className="lg:col-span-2">
+      <div className="mb-4 rounded-lg border border-slate-700 bg-slate-900/40 p-3">
+        <div className="text-xs text-slate-400">Owed across all currencies</div>
+        <div className="mt-1 font-mono text-2xl font-semibold text-amber-300">{formatCurrency(total, "BTC")}</div>
+        <div className="mt-1 text-[11px] text-slate-500">
+          Fiat balances valued at current rates. This is the figure the payout threshold is judged against.
+        </div>
+        <div className="mt-2 text-xs">
+          {thresholdMsat == null ? (
+            <span className="text-slate-400">
+              No referrer threshold set — the system minimum applies to this total.
+            </span>
+          ) : clears ? (
+            <span className="text-green-400">
+              Clears the {referral.payout_threshold?.toLocaleString()} sats threshold (the system minimum still
+              applies).
+            </span>
+          ) : (
+            <span className="text-slate-400">
+              {formatCurrency(thresholdMsat - total, "BTC")} short of the {referral.payout_threshold?.toLocaleString()}{" "}
+              sats threshold.
+            </span>
+          )}
+        </div>
+      </div>
+
+      {referral.balances.length === 0 ? (
+        <p className="text-sm text-slate-500">Nothing earned yet.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs uppercase tracking-wider text-slate-400">
+              <tr>
+                <th className="py-1 pr-3">Currency</th>
+                <th className="py-1 pr-3 text-right">Earned</th>
+                <th className="py-1 pr-3 text-right">Paid / reserved</th>
+                <th className="py-1 pr-3 text-right">Outstanding</th>
+                <th className="py-1 text-right">≈ sats</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800">
+              {referral.balances.map((b) => (
+                <BalanceRow key={b.currency} balance={b} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {unvalued.length > 0 && (
+        <p className="mt-2 text-xs text-amber-400">
+          No rate available for {unvalued.map((b) => b.currency).join(", ")} — excluded from the total.
+        </p>
+      )}
+    </Card>
+  );
+}
+
+function BalanceRow({ balance }: { balance: AdminReferralBalance }) {
+  return (
+    <tr>
+      <td className="py-1.5 pr-3 text-slate-400">{balance.currency}</td>
+      <td className="py-1.5 pr-3 text-right font-mono text-slate-300">
+        {formatCurrency(balance.earned, balance.currency)}
+      </td>
+      <td className="py-1.5 pr-3 text-right font-mono text-slate-500">
+        {formatCurrency(balance.settled, balance.currency)}
+      </td>
+      <td className="py-1.5 pr-3 text-right font-mono text-slate-100">
+        {formatCurrency(balance.outstanding, balance.currency)}
+      </td>
+      <td className="py-1.5 text-right font-mono text-xs text-slate-400">
+        {balance.outstanding_msat == null ? (
+          <span className="text-amber-400">no rate</span>
+        ) : (
+          formatCurrency(balance.outstanding_msat, "BTC")
+        )}
+      </td>
+    </tr>
   );
 }
 
@@ -261,6 +365,10 @@ function PayoutRow({
   const api = useAdminApi();
   const { success, error: showError } = useToast();
   const [busy, setBusy] = useState(false);
+  // A converted payout discharges one currency and sends another; showing only
+  // the settled side hides what actually left the wallet, and the rate is the
+  // only thing that reconciles the two later.
+  const converted = payout.sent_currency !== payout.currency;
 
   const handleTogglePaid = async () => {
     setBusy(true);
@@ -278,7 +386,30 @@ function PayoutRow({
   return (
     <tr>
       <td className="py-2 pr-4 font-mono text-slate-400">#{payout.id}</td>
-      <td className="py-2 pr-4 font-mono text-slate-100">{formatCurrency(payout.amount, payout.currency)}</td>
+      <td className="py-2 pr-4 font-mono text-slate-100">
+        {formatCurrency(payout.amount, payout.currency)}
+        {payout.fee > 0 && (
+          <div className="text-[11px] text-slate-500">+{formatCurrency(payout.fee, payout.currency)} fee</div>
+        )}
+      </td>
+      <td className="py-2 pr-4 font-mono">
+        {converted ? (
+          <>
+            <div className="text-slate-100">{formatCurrency(payout.sent_amount, payout.sent_currency)}</div>
+            <div className="text-[11px] text-slate-500">
+              @ {payout.rate.toLocaleString()} {payout.currency}/{payout.sent_currency}
+              {payout.sent_fee > 0 && <> · {formatCurrency(payout.sent_fee, payout.sent_currency)} fee</>}
+            </div>
+            {payout.rate_collected && (
+              <div className="text-[11px] text-slate-600">
+                quoted {new Date(payout.rate_collected).toLocaleString()}
+              </div>
+            )}
+          </>
+        ) : (
+          <span className="text-xs text-slate-500">same currency</span>
+        )}
+      </td>
       <td className="py-2 pr-4">
         {payout.is_paid ? (
           <span className="inline-flex items-center gap-1 text-green-400">
@@ -335,6 +466,10 @@ function EditRateModal({
   const [code, setCode] = useState(referral.code);
   const [useDefault, setUseDefault] = useState(referral.referral_rate == null);
   const [rate, setRate] = useState(referral.referral_rate != null ? String(referral.referral_rate) : "");
+  const [useSystemMinimum, setUseSystemMinimum] = useState(referral.payout_threshold == null);
+  const [threshold, setThreshold] = useState(
+    referral.payout_threshold != null ? String(referral.payout_threshold) : "",
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -355,7 +490,19 @@ function EditRateModal({
       }
       value = parsed;
     }
-    const updates: { referral_rate: number | null; code?: string } = { referral_rate: value };
+    let thresholdValue: number | null = null;
+    if (!useSystemMinimum) {
+      const parsed = parseInt(threshold, 10);
+      if (Number.isNaN(parsed) || parsed < 0) {
+        setError("Payout threshold must be a whole number of sats >= 0");
+        return;
+      }
+      thresholdValue = parsed;
+    }
+    const updates: { referral_rate: number | null; code?: string; payout_threshold: number | null } = {
+      referral_rate: value,
+      payout_threshold: thresholdValue,
+    };
     if (trimmedCode !== referral.code) {
       updates.code = trimmedCode;
     }
@@ -409,6 +556,28 @@ function EditRateModal({
             </p>
           </div>
         )}
+        <label className="flex items-center gap-2 text-sm text-slate-200">
+          <input type="checkbox" checked={useSystemMinimum} onChange={(e) => setUseSystemMinimum(e.target.checked)} />
+          Use system minimum payout threshold
+        </label>
+        {!useSystemMinimum && (
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Payout Threshold (sats)</label>
+            <input
+              type="number"
+              step="1"
+              min="0"
+              value={threshold}
+              onChange={(e) => setThreshold(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white font-mono"
+              required
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Judged against the referrer's <em>total</em> outstanding commission across every currency, valued in sats.
+              The effective threshold is the larger of this and the system minimum.
+            </p>
+          </div>
+        )}
         {error && (
           <div className="bg-red-900/20 border border-red-900 rounded-lg p-3 text-red-300 text-sm">{error}</div>
         )}
@@ -425,26 +594,71 @@ function EditRateModal({
   );
 }
 
+/** One standard unit (BTC, EUR…) expressed in that currency's smallest unit. */
+function smallestUnitsPerStandardUnit(currency: string): number {
+  // BTC amounts are millisats (1 BTC = 100,000,000 sats = 1e11 msat); fiat is cents.
+  return currency === "BTC" ? 1e11 : 100;
+}
+
+/**
+ * The rate the two entered amounts imply: settled standard units per one sent
+ * standard unit, which is exactly what the API stores and cross-checks.
+ *
+ * Returns null when either side is empty, so nothing is suggested from a
+ * half-filled form.
+ */
+export function impliedPayoutRate(
+  amount: number,
+  currency: string,
+  sentAmount: number,
+  sentCurrency: string,
+): number | null {
+  if (amount <= 0 || sentAmount <= 0 || currency === sentCurrency) {
+    return null;
+  }
+  const settled = amount / smallestUnitsPerStandardUnit(currency);
+  const sent = sentAmount / smallestUnitsPerStandardUnit(sentCurrency);
+  return settled / sent;
+}
+
 function CreatePayoutModal({
   referralId,
-  defaultCurrency,
+  balances,
+  defaultMode,
   onClose,
   onSuccess,
 }: {
   referralId: number;
-  defaultCurrency: string;
+  balances: AdminReferralBalance[];
+  defaultMode: ReferralMode;
   onClose: () => void;
   onSuccess: () => void;
 }) {
   const api = useAdminApi();
   const { success } = useToast();
-  const [amount, setAmount] = useState(0);
-  const [currency, setCurrency] = useState(defaultCurrency);
+  // Default to the largest outstanding balance: that is the one an admin is
+  // almost always here to settle.
+  const owed = [...balances].filter((b) => b.outstanding > 0).sort((a, b) => b.outstanding - a.outstanding);
+  const initial = owed[0];
+  const [amount, setAmount] = useState(initial?.outstanding ?? 0);
+  const [currency, setCurrency] = useState(initial?.currency ?? "BTC");
+  const [fee, setFee] = useState(0);
+  const [converted, setConverted] = useState(false);
+  const [sentCurrency, setSentCurrency] = useState("BTC");
+  const [sentAmount, setSentAmount] = useState(0);
+  const [sentFee, setSentFee] = useState(0);
+  const [rate, setRate] = useState("");
   const [output, setOutput] = useState("");
-  const [mode, setMode] = useState<ReferralMode>("lightning_address");
+  const [mode, setMode] = useState<ReferralMode>(defaultMode === "account_credit" ? "lightning_address" : defaultMode);
   const [isPaid, setIsPaid] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const selected = balances.find((b) => b.currency === currency);
+  // The rate the API stores is settled units per one sent unit; showing what the
+  // entered pair implies lets an admin catch a typo before it is written into a
+  // record that has to reconcile against the transfer later.
+  const impliedRate = impliedPayoutRate(amount, currency, sentAmount, sentCurrency);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -453,11 +667,35 @@ function CreatePayoutModal({
       setError("Amount must be greater than 0");
       return;
     }
+    let conversion: { sent_currency: string; sent_amount: number; sent_fee: number; rate: number } | undefined;
+    if (converted) {
+      if (sentCurrency === currency) {
+        setError("Sent currency must differ from the settled currency");
+        return;
+      }
+      if (sentAmount <= 0) {
+        setError("Sent amount must be greater than 0");
+        return;
+      }
+      const parsedRate = parseFloat(rate);
+      if (Number.isNaN(parsedRate) || parsedRate <= 0) {
+        setError(`Rate must be a number > 0 (${currency} per 1 ${sentCurrency})`);
+        return;
+      }
+      conversion = {
+        sent_currency: sentCurrency,
+        sent_amount: sentAmount,
+        sent_fee: sentFee,
+        rate: parsedRate,
+      };
+    }
     setSubmitting(true);
     try {
       await api.createReferralPayout(referralId, {
         amount,
         currency,
+        fee: fee > 0 ? fee : undefined,
+        ...conversion,
         output: output.trim() || undefined,
         mode,
         is_paid: isPaid,
@@ -478,7 +716,7 @@ function CreatePayoutModal({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
-              Amount ({currency === "BTC" ? "sats" : currency})
+              Settled amount ({currency === "BTC" ? "sats" : currency})
             </label>
             <MoneyAmountInput
               value={amount}
@@ -487,6 +725,7 @@ function CreatePayoutModal({
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
               required
             />
+            <p className="mt-1 text-xs text-slate-500">Comes off the referrer's balance in this currency.</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">Currency</label>
@@ -497,7 +736,120 @@ function CreatePayoutModal({
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white font-mono"
               required
             />
+            {selected && (
+              <p className="mt-1 text-xs text-slate-500">
+                Outstanding: {formatCurrency(selected.outstanding, selected.currency)}
+                {selected.outstanding_msat != null && selected.currency !== "BTC" && (
+                  <> (≈ {formatCurrency(selected.outstanding_msat, "BTC")})</>
+                )}
+                <button
+                  type="button"
+                  className="ml-2 text-blue-400 hover:underline"
+                  onClick={() => setAmount(selected.outstanding)}
+                >
+                  use full
+                </button>
+              </p>
+            )}
           </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            Fee charged to the referrer ({currency === "BTC" ? "sats" : currency})
+          </label>
+          <MoneyAmountInput
+            value={fee}
+            currency={currency}
+            onChange={setFee}
+            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            Debited from the balance alongside the amount. Leave at 0 if you absorbed the fee.
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-slate-700 bg-slate-900/40 p-3 space-y-3">
+          <label className="flex items-center gap-2 text-sm text-slate-200">
+            <input type="checkbox" checked={converted} onChange={(e) => setConverted(e.target.checked)} />
+            Paid in a different currency (converted payout)
+          </label>
+          {converted ? (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Sent amount ({sentCurrency === "BTC" ? "sats" : sentCurrency})
+                  </label>
+                  <MoneyAmountInput
+                    value={sentAmount}
+                    currency={sentCurrency}
+                    onChange={setSentAmount}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Sent currency</label>
+                  <input
+                    type="text"
+                    value={sentCurrency}
+                    onChange={(e) => setSentCurrency(e.target.value.toUpperCase())}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white font-mono"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Network fee ({sentCurrency === "BTC" ? "sats" : sentCurrency})
+                  </label>
+                  <MoneyAmountInput
+                    value={sentFee}
+                    currency={sentCurrency}
+                    onChange={setSentFee}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Rate ({currency} per 1 {sentCurrency})
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    value={rate}
+                    onChange={(e) => setRate(e.target.value)}
+                    placeholder={impliedRate ? impliedRate.toFixed(2) : ""}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white font-mono"
+                    required
+                  />
+                  {impliedRate != null && (
+                    <p className="mt-1 text-xs text-slate-500">
+                      Amounts imply {impliedRate.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      <button
+                        type="button"
+                        className="ml-2 text-blue-400 hover:underline"
+                        onClick={() => setRate(String(impliedRate))}
+                      >
+                        use
+                      </button>
+                    </p>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-slate-500">
+                The record keeps both sides: {formatCurrency(amount, currency)} discharged,{" "}
+                {formatCurrency(sentAmount, sentCurrency)} sent. The rate is what reconciles them later, so it must
+                agree with the amounts.
+              </p>
+            </>
+          ) : (
+            <p className="text-xs text-slate-500">
+              Sent side mirrors the settled side: {formatCurrency(amount, currency)} in {currency}.
+            </p>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-1">Mode</label>

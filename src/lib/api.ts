@@ -1142,7 +1142,30 @@ export interface AdminReferralEarning {
   amount: number;
 }
 
-/** A payout record for a referral (admin view; includes preimage for audit). */
+/**
+ * What a referral is still owed in one settled currency, and what that is worth
+ * in millisats — the unit the payout threshold is expressed in.
+ */
+export interface AdminReferralBalance {
+  currency: string;
+  /** Commission earned in this currency (smallest unit). */
+  earned: number;
+  /** Already paid **or reserved** against this currency (amount + fee). */
+  settled: number;
+  /** Still owed = earned - settled, in the currency's smallest unit. */
+  outstanding: number;
+  /** `outstanding` in millisats at the current rate; null when no rate exists. */
+  outstanding_msat: number | null;
+}
+
+/**
+ * A payout record for a referral (admin view; includes preimage for audit).
+ *
+ * A payout has a settled side (`amount`, `fee`, `currency`) — what it discharges
+ * against the earned balance — and a sent side (`sent_amount`, `sent_fee`,
+ * `sent_currency`) — what actually left the wallet. They are equal, with `rate`
+ * 1 and `rate_collected` null, when no conversion happened.
+ */
 export interface AdminReferralPayoutInfo {
   id: number;
   amount: number;
@@ -1151,6 +1174,16 @@ export interface AdminReferralPayoutInfo {
   is_paid: boolean;
   /** Network/routing fee charged to the referrer, debited from their balance. */
   fee: number;
+  /** Amount actually transferred, in the smallest unit of `sent_currency`. */
+  sent_amount: number;
+  /** Fee as the network charged it, in the smallest unit of `sent_currency`. */
+  sent_fee: number;
+  /** Currency actually transferred. */
+  sent_currency: string;
+  /** Settled-currency units per one sent-currency unit; 1 when not converted. */
+  rate: number;
+  /** When `rate` was quoted; null when no conversion happened. */
+  rate_collected: string | null;
   /** Payout mode used for this payout. */
   mode: ReferralMode;
   /** BOLT11 invoice for Lightning payouts, or on-chain outpoint "{txid}:{vout}". */
@@ -1162,6 +1195,14 @@ export interface AdminReferralPayoutInfo {
 /** Full referral detail: enrollment + earnings + payout history + counts. */
 export interface AdminReferralDetail extends AdminReferralInfo {
   earned: AdminReferralEarning[];
+  /** Outstanding (unpaid, unreserved) commission per settled currency. */
+  balances: AdminReferralBalance[];
+  /**
+   * Everything still owed valued in millisats at current rates — the figure the
+   * payout threshold is judged against, so it compares directly with
+   * `payout_threshold * 1000`. Currencies with no rate are excluded.
+   */
+  outstanding_total_msat: number;
   payouts: AdminReferralPayoutInfo[];
   /** Referred VMs that made at least one payment. */
   referrals_success: number;
@@ -3373,7 +3414,27 @@ export class AdminApi {
 
   async createReferralPayout(
     id: number,
-    data: { amount: number; currency: string; output?: string; mode?: ReferralMode; is_paid?: boolean },
+    data: {
+      /** Settled amount (smallest unit of `currency`): what comes off the balance. */
+      amount: number;
+      /** Currency the commission was earned in, i.e. what this payout discharges. */
+      currency: string;
+      /** Currency actually transferred, when it differs from `currency`. */
+      sent_currency?: string;
+      /** Amount transferred (smallest unit of `sent_currency`); required when converting. */
+      sent_amount?: number;
+      /** Fee as the network charged it (smallest unit of `sent_currency`). */
+      sent_fee?: number;
+      /** Fee charged to the referrer (smallest unit of `currency`). */
+      fee?: number;
+      /** Settled units per sent unit; required when converting, rejected otherwise. */
+      rate?: number;
+      /** When the rate was quoted; defaults to now for a converted payout. */
+      rate_collected?: string;
+      output?: string;
+      mode?: ReferralMode;
+      is_paid?: boolean;
+    },
   ) {
     const result = await this.handleResponse<ApiResponse<AdminReferralPayoutInfo>>(
       await this.req(`/api/admin/v1/referrals/${id}/payouts`, "POST", data),

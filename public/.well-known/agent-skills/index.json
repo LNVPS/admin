@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schemas.agentskills.io/discovery/0.2.0/schema.json",
+  "skills": [
+    {
+      "name": "lnvps-admin",
+      "type": "skill-md",
+      "description": "Admin API for managing LNVPS infrastructure including users, VMs, hosts, regions, templates, IP ranges, DNS, routers, subscriptions, payments, refunds, referrals, managed apps and reporting. Use when performing administrative operations on the LNVPS platform.",
+      "url": "https://admin.lnvps.net/SKILL.md",
+      "digest": "sha256:3d563333529778917b8ee02a71829cbb3d0f0c950921a1df97450e275cbba0a5"
+    }
+  ]
+}

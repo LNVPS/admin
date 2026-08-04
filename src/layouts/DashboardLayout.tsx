@@ -304,6 +304,27 @@ export function DashboardLayout() {
             <ArrowRightStartOnRectangleIcon className="mr-3 h-5 w-5" />
             Logout
           </button>
+          <div className="px-4 pb-1 text-xs text-slate-500">
+            <a
+              href="/SKILL.md"
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-slate-300"
+              title="Agent skill for the LNVPS Admin API"
+            >
+              SKILL.md
+            </a>
+            {" | "}
+            <a
+              href="/REFERENCE.md"
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-slate-300"
+              title="Admin API type reference"
+            >
+              REFERENCE.md
+            </a>
+          </div>
         </div>
       </div>
 

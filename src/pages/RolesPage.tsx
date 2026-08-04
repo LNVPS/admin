@@ -7,6 +7,7 @@ import { PaginatedTable } from "../components/PaginatedTable";
 import { StatsHeader } from "../components/StatsHeader";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { useApiCall } from "../hooks/useApiCall";
+import { useUserRoles } from "../hooks/useUserRoles";
 import type { AdminRoleInfo, PaginatedApiResponse } from "../lib/api";
 import { confirmDialog } from "../services/confirmService";
 import { toastService } from "../services/toastService";
@@ -426,6 +427,72 @@ const AVAILABLE_PERMISSIONS = [
   "app_deployment::delete",
 ];
 
+/**
+ * Checkbox grid for a role's permissions.
+ *
+ * The API refuses to create or update a role holding permissions the caller
+ * does not themselves have — that check exists because editing a role you hold
+ * is otherwise a self-escalation path. Mirroring it here means the constraint is
+ * visible up front rather than arriving as a rejected submit. Super admins hold
+ * everything implicitly and are unrestricted.
+ *
+ * Permissions the caller cannot grant are shown disabled with an explanation,
+ * not hidden: on an existing role they may already be set, and silently
+ * dropping them on save would quietly strip the role.
+ */
+function PermissionPicker({
+  idPrefix,
+  selected,
+  onToggle,
+}: {
+  idPrefix: string;
+  selected: string[];
+  onToggle: (permission: string) => void;
+}) {
+  const { hasPermission, isSuperAdmin } = useUserRoles();
+  const canGrant = (permission: string) => isSuperAdmin || hasPermission(permission);
+  const blocked = AVAILABLE_PERMISSIONS.filter((p) => !canGrant(p)).length;
+
+  return (
+    <div>
+      <label className="block text-xs font-medium text-white mb-2">Permissions</label>
+      <div className="max-h-60 overflow-y-auto border border-slate-600 rounded p-3 bg-slate-800">
+        <div className="grid grid-cols-2 gap-2">
+          {AVAILABLE_PERMISSIONS.map((permission) => {
+            const grantable = canGrant(permission);
+            return (
+              <div key={permission} className="flex items-center">
+                <input
+                  type="checkbox"
+                  id={`${idPrefix}-${permission}`}
+                  checked={selected.includes(permission)}
+                  onChange={() => onToggle(permission)}
+                  disabled={!grantable}
+                  className=""
+                />
+                <label
+                  htmlFor={`${idPrefix}-${permission}`}
+                  className={`ml-2 text-xs font-mono ${grantable ? "text-white" : "text-gray-500"}`}
+                  title={grantable ? undefined : "You cannot grant a permission you do not hold yourself"}
+                >
+                  {permission}
+                </label>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      {blocked > 0 && (
+        <p className="mt-2 text-xs text-gray-400">
+          {blocked} permission{blocked === 1 ? " is" : "s are"} greyed out because you do not hold
+          {blocked === 1 ? " it" : " them"} yourself.
+        </p>
+      )}
+    </div>
+  );
+}
+
+
 // Create Role Modal Component
 function CreateRoleModal({
   isOpen,
@@ -458,7 +525,11 @@ function CreateRoleModal({
       onClose();
       setFormData({ name: "", description: "", permissions: [] });
     } catch (error) {
+      // Surfaced, not just logged: the API rejects a role holding permissions
+      // the caller lacks, and that message names them. Swallowing it made the
+      // form look like it had done nothing.
       console.error("Failed to create role:", error);
+      toastService.error(error instanceof Error ? error.message : "Failed to create role");
     } finally {
       setLoading(false);
     }
@@ -497,27 +568,7 @@ function CreateRoleModal({
           />
         </div>
 
-        <div>
-          <label className="block text-xs font-medium text-white mb-2">Permissions</label>
-          <div className="max-h-60 overflow-y-auto border border-slate-600 rounded p-3 bg-slate-800">
-            <div className="grid grid-cols-2 gap-2">
-              {AVAILABLE_PERMISSIONS.map((permission) => (
-                <div key={permission} className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id={`create-${permission}`}
-                    checked={formData.permissions.includes(permission)}
-                    onChange={() => togglePermission(permission)}
-                    className=""
-                  />
-                  <label htmlFor={`create-${permission}`} className="ml-2 text-xs text-white font-mono">
-                    {permission}
-                  </label>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <PermissionPicker idPrefix="create" selected={formData.permissions} onToggle={togglePermission} />
 
         <div className="flex justify-end space-x-3 pt-4">
           <Button type="button" variant="secondary" onClick={onClose}>
@@ -565,7 +616,9 @@ function EditRoleModal({
       onSuccess();
       onClose();
     } catch (error) {
+      // See CreateRoleModal: the permission-subset rejection has to be visible.
       console.error("Failed to update role:", error);
+      toastService.error(error instanceof Error ? error.message : "Failed to update role");
     } finally {
       setLoading(false);
     }
@@ -604,27 +657,7 @@ function EditRoleModal({
           />
         </div>
 
-        <div>
-          <label className="block text-xs font-medium text-white mb-2">Permissions</label>
-          <div className="max-h-60 overflow-y-auto border border-slate-600 rounded p-3 bg-slate-800">
-            <div className="grid grid-cols-2 gap-2">
-              {AVAILABLE_PERMISSIONS.map((permission) => (
-                <div key={permission} className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id={`edit-${permission}`}
-                    checked={formData.permissions.includes(permission)}
-                    onChange={() => togglePermission(permission)}
-                    className=""
-                  />
-                  <label htmlFor={`edit-${permission}`} className="ml-2 text-xs text-white font-mono">
-                    {permission}
-                  </label>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <PermissionPicker idPrefix="edit" selected={formData.permissions} onToggle={togglePermission} />
 
         <div className="flex justify-end space-x-3 pt-4">
           <Button type="button" variant="secondary" onClick={onClose}>

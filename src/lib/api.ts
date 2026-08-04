@@ -279,6 +279,20 @@ export interface ApiResponse<T> extends ApiResponseBase {
   data: T;
 }
 
+/**
+ * Short-lived credential for endpoints a browser cannot send an
+ * `Authorization` header to — currently just the job-feedback WebSocket.
+ *
+ * Minted by `POST /api/admin/v1/auth/ticket` and passed as `?ticket=`. Good for
+ * one use, on one path, for `expires_in` seconds, so a copy left in an access
+ * log or browser history is inert.
+ */
+export interface AuthTicket {
+  ticket: string;
+  /** Lifetime in seconds. */
+  expires_in: number;
+}
+
 // Paginated list response
 export interface PaginatedApiResponse<T> extends ApiResponseBase {
   data: T[];
@@ -1735,6 +1749,25 @@ export class AdminApi {
       await this.req(`/api/admin/v1/users/${id}`, "GET"),
     );
     return result.data;
+  }
+
+  /**
+   * Mint a single-use ticket for an endpoint that cannot carry an
+   * `Authorization` header (the job-feedback WebSocket).
+   *
+   * `path` must be the exact path the ticket will be used on — the server binds
+   * it and refuses the ticket anywhere else. Mint immediately before use:
+   * tickets expire in ~30s and die on first use, so they cannot be cached.
+   *
+   * Requires the same permission the target endpoint does, so this is never a
+   * way to widen access — only to carry existing access through a handshake
+   * that cannot send a header.
+   */
+  async issueAuthTicket(path: string) {
+    const result = await this.handleResponse<ApiResponse<AuthTicket>>(
+      await this.req("/api/admin/v1/auth/ticket", "POST", { path }),
+    );
+    return result.data.ticket;
   }
 
   async getUserByEmail(email: string) {

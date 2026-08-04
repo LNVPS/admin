@@ -1,6 +1,6 @@
-import { LoginState } from "../lib/login";
-import { base64 } from "@scure/base";
 import { EventEmitter } from "eventemitter3";
+import { AdminApi } from "../lib/api";
+import { LoginState } from "../lib/login";
 
 export interface JobFeedback {
   job_id: string;
@@ -58,6 +58,25 @@ export interface JobFeedbackEvents {
   error: (error: string) => void;
 }
 
+/** Path the feedback socket lives on, and which its ticket is bound to. */
+const JOB_FEEDBACK_PATH = "/api/admin/v1/jobs/feedback";
+
+/**
+ * Whether an error says this account lacks the permission, as opposed to any
+ * other 403.
+ *
+ * The API returns 403 both for "insufficient permissions" and for transient
+ * failures while building the admin identity (a DB blip resolving the user's
+ * roles). Only the former is permanent, so match the message too — latching on
+ * the latter would disable job feedback for the rest of the session over a
+ * momentary hiccup.
+ */
+function isPermissionDenied(error: unknown): boolean {
+  const err = error as { errorCode?: number; message?: string } | undefined;
+  if (err?.errorCode !== 403) return false;
+  return /insufficient permissions/i.test(err.message ?? "");
+}
+
 class JobFeedbackService extends EventEmitter<JobFeedbackEvents> {
   private ws: WebSocket | null = null;
   private reconnectAttempts = 0;
@@ -66,6 +85,12 @@ class JobFeedbackService extends EventEmitter<JobFeedbackEvents> {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private pingTimer: ReturnType<typeof setInterval> | null = null;
   private isConnecting = false;
+  /**
+   * Set once the server has told us this account may not read job feedback.
+   * Latches so we stop retrying — a permission error is not transient, and the
+   * admin API is now rate limited.
+   */
+  private permissionDenied = false;
 
   constructor() {
     super();
@@ -109,32 +134,39 @@ class JobFeedbackService extends EventEmitter<JobFeedbackEvents> {
     return false;
   }
 
-  private async getAuthToken(): Promise<string | null> {
+  /**
+   * Mint a single-use ticket for the feedback socket.
+   *
+   * Replaces the old approach of signing a NIP-98 event over the `ws://` URL
+   * and passing it as `?auth=`. That put a signature made by the admin's
+   * identity key into a URL, and the server did not verify it at all — it now
+   * does, and also requires `virtual_machines::view`.
+   *
+   * Returns `null` when no ticket can be obtained; the caller distinguishes
+   * "not ready yet" from "not allowed" via {@link permissionDenied}.
+   */
+  private async getAuthTicket(): Promise<string | null> {
     try {
-      // First, wait for signer to be available
+      // The ticket request is itself NIP-98 authenticated, so the signer has to
+      // be up before we can ask for one.
       const signerReady = await this.waitForSigner();
       if (!signerReady) {
         console.warn("Signer not available after waiting");
         return null;
       }
 
-      const signer = LoginState.getSigner();
-      if (!signer) return null;
-
-      const wsUrl = `${this.getServerUrl().replace("http", "ws")}/api/admin/v1/jobs/feedback`;
-
-      const auth = await signer.generic((eb) => {
-        return eb
-          .kind(27235) // NIP-98 HTTP Authentication
-          .tag(["u", wsUrl])
-          .tag(["method", "GET"]);
-      });
-
-      if (auth) {
-        return base64.encode(new TextEncoder().encode(JSON.stringify(auth)));
-      }
+      const api = new AdminApi(this.getServerUrl());
+      return await api.issueAuthTicket(JOB_FEEDBACK_PATH);
     } catch (error) {
-      console.error("Failed to create auth token:", error);
+      // Lacking `virtual_machines::view` will never succeed on retry, so stop
+      // reconnecting rather than hammering a now rate-limited endpoint. Any
+      // other failure is treated as transient and retried as before.
+      if (isPermissionDenied(error)) {
+        this.permissionDenied = true;
+        console.warn("Job feedback WebSocket: account lacks virtual_machines::view, not connecting");
+      } else {
+        console.error("Failed to obtain job feedback ticket:", error);
+      }
     }
     return null;
   }
@@ -158,24 +190,27 @@ class JobFeedbackService extends EventEmitter<JobFeedbackEvents> {
       return;
     }
 
+    // This account is not permitted to read the feedback stream; nothing to do.
+    if (this.permissionDenied) {
+      return;
+    }
+
     this.isConnecting = true;
 
     try {
-      const authToken = await this.getAuthToken();
-      if (!authToken) {
-        console.warn(
-          "Job feedback WebSocket: Authentication token not available (NIP-07 extension may not be loaded yet)",
-        );
+      const ticket = await this.getAuthTicket();
+      if (!ticket) {
         this.isConnecting = false;
-        // Schedule a retry if we have listeners waiting (signer might load later)
-        if (this.listenerCount("feedback") > 0) {
+        // A permission failure will never resolve; only retry for transient
+        // reasons (e.g. the NIP-07 extension had not loaded yet).
+        if (!this.permissionDenied && this.listenerCount("feedback") > 0) {
           this.scheduleReconnect();
         }
         return;
       }
 
       const serverUrl = this.getServerUrl().replace("http", "ws");
-      const wsUrl = `${serverUrl}/api/admin/v1/jobs/feedback?auth=${encodeURIComponent(authToken)}`;
+      const wsUrl = `${serverUrl}${JOB_FEEDBACK_PATH}?ticket=${encodeURIComponent(ticket)}`;
 
       console.log("Connecting to job feedback WebSocket...");
       this.ws = new WebSocket(wsUrl);
@@ -317,6 +352,8 @@ class JobFeedbackService extends EventEmitter<JobFeedbackEvents> {
 
     this.reconnectAttempts = 0;
     this.isConnecting = false;
+    // A fresh login may have different permissions, so clear the latch.
+    this.permissionDenied = false;
   }
 
   // Get connection status

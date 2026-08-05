@@ -215,7 +215,7 @@ export function AppClustersPage() {
         itemsPerPage={20}
         errorAction="view app clusters"
         loadingMessage="Loading app clusters..."
-        dependencies={[refreshTrigger, regions.length, searchFilter, enabledFilter, regionFilter]}
+        dependencies={[refreshTrigger, searchFilter, enabledFilter, regionFilter]}
         minWidth="1000px"
       />
 

@@ -421,8 +421,6 @@ export function AppDeploymentsPage() {
         errorAction="view app deployments"
         loadingMessage="Loading app deployments..."
         dependencies={[
-          apps.length,
-          clusters.length,
           refreshTrigger,
           searchFilter,
           userIdFilter,

@@ -1603,6 +1603,36 @@ function getConfiguredServerUrl(): string {
   return window.location.origin;
 }
 
+/**
+ * Per-tab random prefix for {@link nextAuthSeq}.
+ *
+ * The counter alone restarts at zero on reload, while the server keeps
+ * remembering burnt ids for the whole auth window — so a reload could re-emit
+ * an id it had already spent. A prefix per page load (and so per tab) keeps the
+ * sequences from ever overlapping.
+ */
+const AUTH_SEQ_PREFIX = Math.random().toString(36).slice(2, 10);
+let authSeqCounter = 0;
+
+/**
+ * A value unique to every NIP-98 auth event this tab signs.
+ *
+ * The API burns auth events by event id (single-use replay protection), and our
+ * events otherwise carry only `u`, `method`, the pubkey and a *second*-
+ * granularity `created_at`. Two concurrent requests to the same URL therefore
+ * signed a byte-identical event, collided on id, and the second was rejected
+ * with "Credential has already been used" — which is why a page that issued
+ * parallel requests failed to load. Perturbing the event with this makes each
+ * id distinct.
+ *
+ * Tagged `seq` rather than `nonce` because NIP-13 already defines a `nonce` tag
+ * with proof-of-work semantics. The server reads only `u`, `method` and
+ * `payload`, so any other tag name is simply ignored.
+ */
+function nextAuthSeq(): string {
+  return `${AUTH_SEQ_PREFIX}-${authSeqCounter++}`;
+}
+
 export class AdminApi {
   readonly url: string;
   readonly timeout?: number;
@@ -1676,8 +1706,9 @@ export class AdminApi {
 
   private async authEvent(url: string, method: string) {
     const signer = LoginState.getSigner();
+    const seq = nextAuthSeq();
     return await signer?.generic((eb) => {
-      return eb.kind(EventKind.HttpAuthentication).tag(["u", url]).tag(["method", method]);
+      return eb.kind(EventKind.HttpAuthentication).tag(["u", url]).tag(["method", method]).tag(["seq", seq]);
     });
   }
 

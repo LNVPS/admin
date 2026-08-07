@@ -103,4 +103,9 @@ export type Permission =
   | "subscription_payments::view"
   | "referral::view"
   | "referral::create"
-  | "referral::update";
+  | "referral::update"
+  | "marketplace_node::view"
+  | "marketplace_node::update"
+  | "marketplace_node::delete"
+  | "marketplace_operator::view"
+  | "marketplace_operator::update";

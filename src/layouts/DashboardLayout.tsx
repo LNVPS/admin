@@ -38,7 +38,7 @@ import { useToast } from "../hooks/useToast";
 import { useUserRoles } from "../hooks/useUserRoles";
 import { LoginState } from "../lib/login";
 
-type NavAccent = "blue" | "teal";
+type NavAccent = "blue" | "teal" | "violet";
 
 interface NavItem {
   name: string;
@@ -75,6 +75,13 @@ const ACCENTS: Record<
     activeNode: "bg-teal-300 ring-teal-400/40",
     activeLink: "nav-active-teal bg-teal-500/10 text-teal-200 ring-1 ring-inset ring-teal-400/30",
     sectionIcon: "text-teal-400",
+  },
+  violet: {
+    rail: "border-violet-400/25",
+    node: "bg-violet-500/40 ring-slate-800",
+    activeNode: "bg-violet-300 ring-violet-400/40",
+    activeLink: "bg-violet-500/10 text-violet-200 ring-1 ring-inset ring-violet-400/30",
+    sectionIcon: "text-violet-400",
   },
 };
 
@@ -137,8 +144,28 @@ const navigation: NavSection[] = [
         requiredPermissions: ["access_policy::view"],
       },
       { name: "Routers", to: "/routers", icon: ServerIcon, requiredPermissions: ["router::view"] },
+      { name: "Tunnel Pools", to: "/tunnel-pools", icon: GlobeAltIcon, requiredPermissions: ["router::view"] },
       { name: "DNS Servers", to: "/dns-servers", icon: ServerStackIcon, requiredPermissions: ["dns_server::view"] },
       { name: "IP Space", to: "/ip-spaces", icon: GlobeAltIcon, requiredPermissions: ["ip_space::view"] },
+    ],
+  },
+  {
+    label: "Marketplace",
+    icon: CpuChipIcon,
+    accent: "violet",
+    items: [
+      {
+        name: "Nodes",
+        to: "/marketplace/nodes",
+        icon: ServerStackIcon,
+        requiredPermissions: ["marketplace_node::view"],
+      },
+      {
+        name: "Operators",
+        to: "/marketplace/operators",
+        icon: UsersIcon,
+        requiredPermissions: ["marketplace_operator::view"],
+      },
     ],
   },
   {

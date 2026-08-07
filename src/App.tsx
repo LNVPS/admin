@@ -22,6 +22,8 @@ import { IpSpacesPage } from "./pages/IpSpacesPage";
 import { JobHistoryPage } from "./pages/JobHistoryPage";
 // Import pages (we'll create these next)
 import { LoginPage } from "./pages/LoginPage";
+import { MarketplaceNodesPage } from "./pages/MarketplaceNodesPage";
+import { MarketplaceOperatorsPage } from "./pages/MarketplaceOperatorsPage";
 import { OsImagesPage } from "./pages/OsImagesPage";
 import { OssReportPage } from "./pages/OssReportPage";
 import { PaymentMethodsPage } from "./pages/PaymentMethodsPage";
@@ -38,6 +40,7 @@ import { SalesReportPage } from "./pages/SalesReportPage";
 import { SubscriptionDetailPage } from "./pages/SubscriptionDetailPage";
 import { SubscriptionsPage } from "./pages/SubscriptionsPage";
 import { SystemPage } from "./pages/SystemPage";
+import { TunnelPoolsPage } from "./pages/TunnelPoolsPage";
 import { UserDetailsPage } from "./pages/UserDetailsPage";
 import { UsersPage } from "./pages/UsersPage";
 import { VMDetailPage } from "./pages/VMDetailPage";
@@ -279,6 +282,30 @@ function AppContent() {
               element={
                 <PermissionGuard requiredPermissions={["router::view"]}>
                   <RouterDetailPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="marketplace/nodes"
+              element={
+                <PermissionGuard requiredPermissions={["marketplace_node::view"]}>
+                  <MarketplaceNodesPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="marketplace/operators"
+              element={
+                <PermissionGuard requiredPermissions={["marketplace_operator::view"]}>
+                  <MarketplaceOperatorsPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="tunnel-pools"
+              element={
+                <PermissionGuard requiredPermissions={["router::view"]}>
+                  <TunnelPoolsPage />
                 </PermissionGuard>
               }
             />

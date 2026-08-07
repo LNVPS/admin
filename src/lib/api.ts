@@ -1588,6 +1588,198 @@ export interface AdminPaymentMethodConfigInfo {
   modified: string;
 }
 
+// Marketplace
+
+/** Lifecycle state of a marketplace node. */
+export type MarketplaceNodeStatus = "pending" | "approved" | "suspended" | "draining";
+
+/** Trust tier of a marketplace node's backing host. */
+export type MarketplaceTrustTier = "untrusted" | "verified" | "partner";
+
+/** Payout rail for a marketplace operator. */
+export type MarketplaceOperatorMode = "lightning_address" | "nwc" | "account_credit" | "on_chain";
+
+/**
+ * A registered marketplace node as an admin sees it.
+ *
+ * Node tokens are never returned — LNVPS keeps no copy of them. `tls_fingerprint`
+ * is `null` when the node cannot be reached (and therefore cannot be approved).
+ */
+export interface AdminMarketplaceNodeInfo {
+  id: number;
+  operator_id: number;
+  /** The account behind the operator enrolment, so an admin can see whose hardware it is. */
+  operator_user_id: number;
+  operator_pubkey: string;
+  name: string;
+  status: MarketplaceNodeStatus;
+  trust_tier: MarketplaceTrustTier;
+  tls_fingerprint: string | null;
+  /** The node's data-plane tunnel, once one is allocated. */
+  tunnel_id: number | null;
+  /** The backing host row, created by approval. `null` before then. */
+  host_id: number | null;
+  /** Whether the one-off listing fee has settled. */
+  fee_paid: boolean;
+  /** The subscription billing the listing fee, once started. */
+  fee_subscription_id: number | null;
+  last_seen: string | null;
+  created: string;
+}
+
+/** A marketplace operator enrolment as an admin sees it. */
+export interface AdminMarketplaceOperatorInfo {
+  id: number;
+  user_id: number;
+  user_pubkey: string;
+  /** Payout target; meaning depends on `mode`. */
+  address: string | null;
+  mode: MarketplaceOperatorMode;
+  /** Minimum accrued earnings (satoshis) before an automated payout runs. */
+  payout_threshold: number | null;
+  /** Revenue-share override as a whole percentage; `null` = company default. */
+  rate: number | null;
+  enabled: boolean;
+  /** How many nodes this operator has registered. */
+  node_count: number;
+  created: string;
+}
+
+/** Body for approving a marketplace node. */
+export interface AdminApproveNodeRequest {
+  /** Region the backing host is created in. Required for a first approval. */
+  region_id?: number;
+  /** Host name; defaults to the operator's own label for the node. */
+  name?: string;
+  /** Trust tier to grant; omitted leaves the node's current tier. */
+  trust_tier?: MarketplaceTrustTier;
+  /** Total CPU cores the host may sell. Defaults to 0. */
+  cpu?: number;
+  /** Total memory in bytes the host may sell. Defaults to 0. */
+  memory?: number;
+  /** Overcommit factors, default 1.0. */
+  load_cpu?: number;
+  load_memory?: number;
+  load_disk?: number;
+}
+
+/** Body for updating a marketplace node (suspend / drain / trust tier). */
+export interface AdminUpdateNodeRequest {
+  /** `suspended` or `draining` — `approved` is rejected here. */
+  status?: MarketplaceNodeStatus;
+  trust_tier?: MarketplaceTrustTier;
+}
+
+/** Body for updating a marketplace operator's revenue share / payout. */
+export interface AdminUpdateOperatorRequest {
+  /** Set (0-100) or clear (`null`) the per-operator revenue-share override. */
+  rate?: number | null;
+  /** Set or clear (in satoshis) the automated-payout threshold. */
+  payout_threshold?: number | null;
+  /** Payout target address; set or clear. */
+  address?: string | null;
+  mode?: MarketplaceOperatorMode;
+  /** Stop / resume placement across this operator's nodes. */
+  enabled?: boolean;
+}
+
+/** A marketplace node's packet filter, as the node reports it. */
+export interface AdminMarketplaceNodeFirewall {
+  available: boolean;
+  present: boolean;
+  /** Layer-2 isolation between guests. */
+  isolated: boolean;
+  bindings: number;
+  /** The ruleset tag the kernel is enforcing. */
+  ruleset: string | null;
+  /** Packets dropped for claiming an address the guest was not assigned. */
+  spoofed_packets: number;
+}
+
+/** A marketplace node's data plane, as the node reports it. */
+export interface AdminMarketplaceNodeDataPlane {
+  tunnel_up: boolean;
+  /** Seconds since the last handshake with the route server. */
+  last_handshake_secs: number | null;
+  tunnel_mtu: number | null;
+  bridge_up: boolean;
+  forwarding4: boolean;
+  forwarding6: boolean;
+  routed_guests: number;
+  firewall: AdminMarketplaceNodeFirewall;
+}
+
+/** What a marketplace node says about itself right now. */
+export interface AdminMarketplaceNodeStatus {
+  version: string;
+  dataplane: AdminMarketplaceNodeDataPlane;
+}
+
+/** A tunnel pool: where tunnel inner addresses are allocated from. */
+export interface AdminTunnelPoolInfo {
+  id: number;
+  router_id: number;
+  router_name: string;
+  region_id: number;
+  region_name: string;
+  name: string;
+  /** The WireGuard interface LNVPS configures on the route server, named `wgln<id>`. */
+  interface: string;
+  /** The address peers send to. */
+  listen_addr: string;
+  /** The UDP port the interface listens on. */
+  listen_port: number;
+  /** Derived from `listen_addr` and `listen_port`. */
+  endpoint: string;
+  /** The interface's public key, hex. The private half is never returned. */
+  public_key: string;
+  cidr4: string | null;
+  cidr6: string | null;
+  keepalive: number | null;
+  mtu: number;
+  enabled: boolean;
+  /** Links already carved out of this pool. */
+  links_used: number;
+  /** Links the smaller of the two blocks can supply. */
+  links_total: number;
+  created: string;
+}
+
+/** Body for creating a tunnel pool. */
+export interface CreateTunnelPoolRequest {
+  router_id: number;
+  region_id: number;
+  name: string;
+  listen_addr: string;
+  /** Defaults to 51820. Unique per route server. */
+  listen_port?: number;
+  /** Optional existing private key (base64) to adopt an interface that already exists. */
+  private_key?: string;
+  /** Inner IPv4 block; at least one of the two blocks is required. */
+  cidr4?: string;
+  /** Inner IPv6 block. */
+  cidr6?: string;
+  keepalive?: number;
+  /** Defaults to 1420. */
+  mtu?: number;
+  enabled?: boolean;
+}
+
+/** Body for updating a tunnel pool. `router_id` is deliberately absent. */
+export interface UpdateTunnelPoolRequest {
+  region_id?: number;
+  name?: string;
+  listen_addr?: string;
+  listen_port?: number;
+  /** Omit to leave alone; blank to generate a fresh keypair. */
+  private_key?: string;
+  cidr4?: string | null;
+  cidr6?: string | null;
+  keepalive?: number | null;
+  mtu?: number;
+  enabled?: boolean;
+}
+
 function getConfiguredServerUrl(): string {
   try {
     const saved = localStorage.getItem("lnvps_admin_server_config");
@@ -3952,6 +4144,112 @@ export class AdminApi {
 
   async deleteResourceCost(id: number) {
     await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/resource_costs/${id}`, "DELETE"));
+  }
+
+  // Marketplace — Nodes
+  async getMarketplaceNodes(params?: {
+    limit?: number;
+    offset?: number;
+    status?: MarketplaceNodeStatus;
+    operator_id?: number;
+  }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminMarketplaceNodeInfo>>(
+      await this.req("/api/admin/v1/marketplace/nodes", "GET", undefined, params),
+    );
+  }
+
+  async getMarketplaceNode(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminMarketplaceNodeInfo>>(
+      await this.req(`/api/admin/v1/marketplace/nodes/${id}`, "GET"),
+    );
+    return result.data;
+  }
+
+  /** Calls the node and returns what it says about itself right now. */
+  async getMarketplaceNodeStatus(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminMarketplaceNodeStatus>>(
+      await this.req(`/api/admin/v1/marketplace/nodes/${id}/status`, "GET"),
+    );
+    return result.data;
+  }
+
+  async approveMarketplaceNode(id: number, data: AdminApproveNodeRequest) {
+    const result = await this.handleResponse<ApiResponse<AdminMarketplaceNodeInfo>>(
+      await this.req(`/api/admin/v1/marketplace/nodes/${id}/approve`, "POST", data),
+    );
+    return result.data;
+  }
+
+  async updateMarketplaceNode(id: number, updates: AdminUpdateNodeRequest) {
+    const result = await this.handleResponse<ApiResponse<AdminMarketplaceNodeInfo>>(
+      await this.req(`/api/admin/v1/marketplace/nodes/${id}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
+  async deleteMarketplaceNode(id: number) {
+    await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/marketplace/nodes/${id}`, "DELETE"));
+  }
+
+  // Marketplace — Operators
+  async getMarketplaceOperators(params?: { limit?: number; offset?: number }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminMarketplaceOperatorInfo>>(
+      await this.req("/api/admin/v1/marketplace/operators", "GET", undefined, params),
+    );
+  }
+
+  async getMarketplaceOperator(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminMarketplaceOperatorInfo>>(
+      await this.req(`/api/admin/v1/marketplace/operators/${id}`, "GET"),
+    );
+    return result.data;
+  }
+
+  async updateMarketplaceOperator(id: number, updates: AdminUpdateOperatorRequest) {
+    const result = await this.handleResponse<ApiResponse<AdminMarketplaceOperatorInfo>>(
+      await this.req(`/api/admin/v1/marketplace/operators/${id}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
+  // Tunnel Pools
+  async getTunnelPools(params?: { limit?: number; offset?: number; region_id?: number }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminTunnelPoolInfo>>(
+      await this.req("/api/admin/v1/tunnel_pools", "GET", undefined, params),
+    );
+  }
+
+  async getTunnelPool(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminTunnelPoolInfo>>(
+      await this.req(`/api/admin/v1/tunnel_pools/${id}`, "GET"),
+    );
+    return result.data;
+  }
+
+  async createTunnelPool(data: CreateTunnelPoolRequest) {
+    const result = await this.handleResponse<ApiResponse<AdminTunnelPoolInfo>>(
+      await this.req("/api/admin/v1/tunnel_pools", "POST", data),
+    );
+    return result.data;
+  }
+
+  async updateTunnelPool(id: number, updates: UpdateTunnelPoolRequest) {
+    const result = await this.handleResponse<ApiResponse<AdminTunnelPoolInfo>>(
+      await this.req(`/api/admin/v1/tunnel_pools/${id}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
+  async deleteTunnelPool(id: number) {
+    await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/tunnel_pools/${id}`, "DELETE"));
+  }
+
+  /** Re-applies the pool's interface on its route server. */
+  async syncTunnelPool(id: number) {
+    const result = await this.handleResponse<ApiResponse<{ job_id: string }>>(
+      await this.req(`/api/admin/v1/tunnel_pools/${id}/sync`, "POST"),
+    );
+    return result.data;
   }
 
   // Profit/Loss report

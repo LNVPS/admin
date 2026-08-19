@@ -1,14 +1,11 @@
 import {
   DocumentTextIcon,
-  EnvelopeIcon,
   ExclamationTriangleIcon,
-  MapPinIcon,
   PencilIcon,
   PlusIcon,
   ServerIcon,
   ShieldCheckIcon,
   TrashIcon,
-  UserIcon,
 } from "@heroicons/react/24/outline";
 import * as React from "react";
 import { useEffect, useState } from "react";
@@ -16,6 +13,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { AccountTypeBadge } from "../components/AccountTypeBadge";
 import { Button } from "../components/Button";
 import { EditUserModal } from "../components/EditUserModal";
+import { Fact, FactGroup, NotSet, SectionHeading } from "../components/Facts";
 import { Modal } from "../components/Modal";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { PermissionGuard } from "../components/PermissionGuard";
@@ -23,7 +21,7 @@ import { Profile } from "../components/Profile";
 import { StatusBadge } from "../components/StatusBadge";
 import { UserPasskeysSection } from "../components/UserPasskeysSection";
 import { UserPaymentMethodsSection } from "../components/UserPaymentMethodsSection";
-import { UserTaxSection } from "../components/UserTaxSection";
+import { UserTaxFacts } from "../components/UserTaxSection";
 import { getVmStatus, VmStatusBadge } from "../components/VmStatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import useLogin from "../hooks/useLogin";
@@ -357,181 +355,124 @@ export function UserDetailsPage() {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">User #{user.id}</h1>
-        </div>
-        <div className="flex items-center space-x-2">
-          <PermissionGuard requiredPermissions={["users::update"]}>
-            <Button onClick={() => setShowEditUserModal(true)} className="flex items-center space-x-2">
-              <PencilIcon className="h-4 w-4" />
-              <span>Edit User</span>
-            </Button>
-          </PermissionGuard>
-          <PermissionGuard requiredPermissions={["users::delete"]}>
-            <Button
-              variant="danger"
-              onClick={() => setShowDeleteUserModal(true)}
-              className="flex items-center space-x-2"
-            >
-              <TrashIcon className="h-4 w-4" />
-              <span>Delete User</span>
-            </Button>
-          </PermissionGuard>
-          <Link to="/users">
-            <Button variant="secondary" className="text-gray-400 hover:text-gray-300">
-              Back to Users
-            </Button>
-          </Link>
-        </div>
-      </div>
-
-      {/* User Info Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Profile Card */}
-        <div className="bg-gray-800 rounded-lg p-4">
-          <div className="flex items-center space-x-3 mb-4">
-            <UserIcon className="h-5 w-5 text-blue-400" />
-            <h3 className="text-lg font-semibold text-white">Profile</h3>
-          </div>
-          <div className="space-y-3">
-            <div className="flex items-center space-x-3">
-              <Profile pubkey={user.pubkey} avatarSize="md" />
-            </div>
-            <div>
-              <div className="text-gray-400 text-sm">Account Type</div>
-              <div className="mt-1">
-                <AccountTypeBadge accountType={user.account_type} />
-              </div>
-            </div>
-            <div>
-              <div className="text-gray-400 text-sm">Public Key</div>
-              <div className="font-mono text-white text-sm break-all">{user.pubkey}</div>
-            </div>
-            <div>
-              <div className="text-gray-400 text-sm">Created</div>
-              <div className="text-white">{new Date(user.created).toLocaleDateString()}</div>
-            </div>
+    <div className="space-y-3">
+      {/* One record, top to bottom: identity, then the facts that hang off it.
+          The identity was a 200px card and then a floating header row; as the
+          panel's own top band it costs one line and anchors everything under
+          it. Band labels sit in a left gutter, so a three-band record spends no
+          lines at all on headings. */}
+      <div className="rounded-lg border border-slate-700 bg-slate-800">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-slate-700 px-3 py-2">
+          <Profile pubkey={user.pubkey} avatarSize="sm" />
+          <span className="font-mono text-xs text-slate-500">#{user.id}</span>
+          <AccountTypeBadge accountType={user.account_type} />
+          <span className="text-xs text-slate-500">joined {new Date(user.created).toLocaleDateString()}</span>
+          {/* The npub beside the avatar is for a nostr client; this is the key
+              every API call and database row uses. Truncated to hold the row to
+              one line — the full value is still in the DOM, so selecting it
+              copies all 64 characters. */}
+          <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-slate-600" title={user.pubkey}>
+            {user.pubkey}
+          </span>
+          <div className="ml-auto flex items-center gap-2">
+            <PermissionGuard requiredPermissions={["users::update"]}>
+              <Button size="sm" onClick={() => setShowEditUserModal(true)} className="flex items-center gap-1.5">
+                <PencilIcon className="h-3.5 w-3.5" />
+                <span>Edit</span>
+              </Button>
+            </PermissionGuard>
+            <PermissionGuard requiredPermissions={["users::delete"]}>
+              <Button
+                size="sm"
+                variant="danger"
+                onClick={() => setShowDeleteUserModal(true)}
+                className="flex items-center gap-1.5"
+              >
+                <TrashIcon className="h-3.5 w-3.5" />
+                <span>Delete</span>
+              </Button>
+            </PermissionGuard>
+            <Link to="/users" className="text-xs text-slate-400 hover:text-slate-200">
+              All users
+            </Link>
           </div>
         </div>
-
-        {/* Contact Info Card */}
-        <div className="bg-gray-800 rounded-lg p-4">
-          <div className="flex items-center space-x-3 mb-4">
-            <EnvelopeIcon className="h-5 w-5 text-green-400" />
-            <h3 className="text-lg font-semibold text-white">Contact</h3>
-          </div>
-          <div className="space-y-3 text-sm">
-            <div className="min-w-0">
-              <div className="text-gray-400">Email</div>
-              <div className="break-all text-white">
-                {user.email || <span className="text-gray-500">Not provided</span>}
-              </div>
-            </div>
-            <div>
-              <div className="text-gray-400">Contact Methods</div>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {user.email_verified ? (
-                  <StatusBadge status="running">Email Verified</StatusBadge>
-                ) : (
-                  <StatusBadge status="stopped">Email Not Verified</StatusBadge>
-                )}
-                {user.contact_nip17 && <StatusBadge status="running">NIP-17</StatusBadge>}
-                {user.contact_email && <StatusBadge status="running">Email Contact</StatusBadge>}
-                {!user.email_verified && !user.contact_nip17 && !user.contact_email && (
-                  <span className="text-gray-500">None enabled</span>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Billing Info Card */}
-        <div className="bg-gray-800 rounded-lg p-4">
-          <div className="flex items-center space-x-3 mb-4">
-            <MapPinIcon className="h-5 w-5 text-purple-400" />
-            <h3 className="text-lg font-semibold text-white">Billing</h3>
-          </div>
-          <div className="space-y-3 text-sm">
-            <div>
-              <div className="text-gray-400">Country</div>
-              <div className="text-white">
-                {user.country_code ? getCountryName(user.country_code) : <span className="text-gray-500">Not set</span>}
-              </div>
-            </div>
-            <div>
-              <div className="text-gray-400">Name</div>
-              <div className="text-white">
-                {user.billing_name || <span className="text-gray-500">Not provided</span>}
-              </div>
-            </div>
-            {user.billing_address_1 && (
-              <div>
-                <div className="text-gray-400">Address</div>
-                <div className="text-white">
-                  <div>{user.billing_address_1}</div>
-                  {user.billing_address_2 && <div>{user.billing_address_2}</div>}
-                  <div>{[user.billing_city, user.billing_state, user.billing_postcode].filter(Boolean).join(", ")}</div>
-                </div>
-              </div>
-            )}
-            {user.billing_tax_id && (
-              <div className="min-w-0">
-                <div className="text-gray-400">Tax ID</div>
-                <div className="break-all font-mono text-white">{user.billing_tax_id}</div>
-              </div>
-            )}
-            <div className="border-t border-gray-700 pt-3 flex items-baseline gap-2 flex-wrap text-xs">
-              <span className="text-gray-400 uppercase tracking-wide shrink-0">Geo</span>
-              {user.geo_country_code || user.geo_ip || user.geo_updated ? (
-                <span className="text-gray-300 flex items-center gap-1.5 flex-wrap min-w-0">
-                  {user.geo_country_code && <span>{getCountryName(user.geo_country_code)}</span>}
-                  {user.geo_ip && (
-                    <>
-                      <span className="text-gray-600">·</span>
-                      <span className="font-mono break-all">{user.geo_ip}</span>
-                    </>
-                  )}
-                  {user.geo_updated && (
-                    <>
-                      <span className="text-gray-600">·</span>
-                      <span title={new Date(user.geo_updated).toLocaleString()}>
-                        {new Date(user.geo_updated).toLocaleDateString()}
-                      </span>
-                    </>
-                  )}
-                </span>
+        <FactGroup label="Contact">
+          <Fact label="Email">
+            {user.email ? <span className="break-all">{user.email}</span> : <NotSet>Not provided</NotSet>}
+          </Fact>
+          <Fact label="Methods">
+            <span className="flex flex-wrap gap-1.5">
+              {user.email_verified ? (
+                <StatusBadge status="running">Email verified</StatusBadge>
               ) : (
-                <span className="text-gray-500">Not set</span>
+                <StatusBadge status="stopped">Email unverified</StatusBadge>
               )}
-            </div>
-          </div>
-        </div>
+              {user.contact_nip17 && <StatusBadge status="running">NIP-17</StatusBadge>}
+              {user.contact_email && <StatusBadge status="running">Email contact</StatusBadge>}
+              {!user.email_verified && !user.contact_nip17 && !user.contact_email && <NotSet>None enabled</NotSet>}
+            </span>
+          </Fact>
+        </FactGroup>
 
-        {/* Sits beside Billing: it is decided by the country and VAT number in
-            that card, so the two are read together. */}
-        <UserTaxSection userId={user.id} />
+        <FactGroup label="Billing">
+          <Fact label="Country">{user.country_code ? getCountryName(user.country_code) : <NotSet />}</Fact>
+          <Fact label="Name">{user.billing_name || <NotSet>Not provided</NotSet>}</Fact>
+          <Fact label="Tax ID" mono>
+            {user.billing_tax_id || <NotSet />}
+          </Fact>
+          {user.billing_address_1 && (
+            <Fact label="Address" span>
+              {[
+                user.billing_address_1,
+                user.billing_address_2,
+                [user.billing_city, user.billing_state, user.billing_postcode].filter(Boolean).join(", "),
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </Fact>
+          )}
+          {/* Place-of-supply evidence captured from the connection, kept beside
+              the country it corroborates or contradicts. */}
+          <Fact label="Geo">
+            {user.geo_country_code || user.geo_ip || user.geo_updated ? (
+              <span className="flex flex-wrap items-baseline gap-x-2 text-slate-300">
+                {user.geo_country_code && <span>{getCountryName(user.geo_country_code)}</span>}
+                {user.geo_ip && <span className="break-all font-mono text-xs text-slate-400">{user.geo_ip}</span>}
+                {user.geo_updated && (
+                  <span className="text-xs text-slate-500" title={new Date(user.geo_updated).toLocaleString()}>
+                    {new Date(user.geo_updated).toLocaleDateString()}
+                  </span>
+                )}
+              </span>
+            ) : (
+              <NotSet />
+            )}
+          </Fact>
+        </FactGroup>
+
+        {/* Last in the record because it is decided by the two groups above. */}
+        <UserTaxFacts userId={user.id} />
       </div>
 
       {/* User's VMs */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold text-white flex items-center justify-between">
-          <span className="flex items-center space-x-2">
-            <ServerIcon className="h-5 w-5" />
-            <span>Virtual Machines</span>
-          </span>
-          <label className="flex items-center gap-2 text-sm font-normal text-gray-300 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={includeDeletedVms}
-              onChange={(e) => setIncludeDeletedVms(e.target.checked)}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            Include deleted
-          </label>
-        </h2>
+      <div className="space-y-2">
+        <SectionHeading
+          icon={<ServerIcon className="h-4 w-4 text-slate-500" />}
+          action={
+            <label className="flex cursor-pointer items-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={includeDeletedVms}
+                onChange={(e) => setIncludeDeletedVms(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              Include deleted
+            </label>
+          }
+        >
+          Virtual machines
+        </SectionHeading>
         <PaginatedTable
           apiCall={(params) =>
             adminApi.getVMs({
@@ -585,30 +526,28 @@ export function UserDetailsPage() {
 
       {/* User's Subscriptions */}
       <PermissionGuard requiredPermissions={["subscriptions::view"]}>
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-white flex items-center justify-between gap-4 flex-wrap">
-            <span className="flex items-center space-x-2">
-              <DocumentTextIcon className="h-5 w-5" />
-              <span>Subscriptions</span>
-            </span>
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 text-sm font-normal text-gray-300 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showInactiveSubs}
-                  onChange={(e) => setShowInactiveSubs(e.target.checked)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                Show inactive
-              </label>
-              <Link
-                to={`/subscriptions?user_id=${user.id}`}
-                className="text-sm font-normal text-blue-400 hover:text-blue-300"
-              >
-                View all →
-              </Link>
-            </div>
-          </h2>
+        <div className="space-y-2">
+          <SectionHeading
+            icon={<DocumentTextIcon className="h-4 w-4 text-slate-500" />}
+            action={
+              <>
+                <label className="flex cursor-pointer items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    checked={showInactiveSubs}
+                    onChange={(e) => setShowInactiveSubs(e.target.checked)}
+                    className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  Show inactive
+                </label>
+                <Link to={`/subscriptions?user_id=${user.id}`} className="text-blue-400 hover:text-blue-300">
+                  View all →
+                </Link>
+              </>
+            }
+          >
+            Subscriptions
+          </SectionHeading>
           <PaginatedTable
             apiCall={(params) =>
               adminApi.getSubscriptions({
@@ -653,22 +592,23 @@ export function UserDetailsPage() {
       </PermissionGuard>
 
       {/* User's Roles */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-white flex items-center space-x-2">
-            <ShieldCheckIcon className="h-5 w-5" />
-            <span>Roles & Permissions</span>
-          </h2>
-          {canGrantRoles && (
-            <Button onClick={() => setShowAddRoleModal(true)} className="flex items-center space-x-2">
-              <PlusIcon className="h-4 w-4" />
-              <span>Add Role</span>
-            </Button>
-          )}
-          {canManageRoles && isSelf && (
-            <span className="text-xs text-gray-400">You cannot assign a role to your own account</span>
-          )}
-        </div>
+      <div className="space-y-2">
+        <SectionHeading
+          icon={<ShieldCheckIcon className="h-4 w-4 text-slate-500" />}
+          action={
+            <>
+              {canManageRoles && isSelf && <span>You cannot assign a role to your own account</span>}
+              {canGrantRoles && (
+                <Button size="sm" onClick={() => setShowAddRoleModal(true)} className="flex items-center gap-1.5">
+                  <PlusIcon className="h-3.5 w-3.5" />
+                  <span>Add role</span>
+                </Button>
+              )}
+            </>
+          }
+        >
+          Roles &amp; permissions
+        </SectionHeading>
         <PaginatedTable
           apiCall={async () => {
             const roles = await adminApi.getUserRoles(user.id);

@@ -6,6 +6,7 @@ import { useUserRoles } from "../hooks/useUserRoles";
 import type { AdminPasskeyInfo } from "../lib/api";
 import { confirmDialog } from "../services/confirmService";
 import { Button } from "./Button";
+import { SectionHeading } from "./Facts";
 import { PaginatedTable } from "./PaginatedTable";
 
 function passkeyLabel(passkey: AdminPasskeyInfo): string {
@@ -92,11 +93,8 @@ export function UserPasskeysSection({ userId }: { userId: number }) {
   );
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold text-white flex items-center space-x-2">
-        <FingerPrintIcon className="h-5 w-5" />
-        <span>Passkeys</span>
-      </h2>
+    <div className="space-y-2">
+      <SectionHeading icon={<FingerPrintIcon className="h-4 w-4 text-slate-500" />}>Passkeys</SectionHeading>
       <PaginatedTable
         apiCall={async () => {
           const passkeys = await adminApi.getUserPasskeys(userId);

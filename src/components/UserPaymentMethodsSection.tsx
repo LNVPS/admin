@@ -6,6 +6,7 @@ import { useUserRoles } from "../hooks/useUserRoles";
 import type { AdminUserPaymentMethodInfo } from "../lib/api";
 import { confirmDialog } from "../services/confirmService";
 import { Button } from "./Button";
+import { SectionHeading } from "./Facts";
 import { Modal } from "./Modal";
 import { PaginatedTable } from "./PaginatedTable";
 
@@ -127,11 +128,10 @@ export function UserPaymentMethodsSection({ userId }: { userId: number }) {
   );
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold text-white flex items-center space-x-2">
-        <CreditCardIcon className="h-5 w-5" />
-        <span>Saved Payment Methods</span>
-      </h2>
+    <div className="space-y-2">
+      <SectionHeading icon={<CreditCardIcon className="h-4 w-4 text-slate-500" />}>
+        Saved payment methods
+      </SectionHeading>
       <PaginatedTable
         apiCall={(params) => adminApi.getUserPaymentMethods({ ...params, user_id: userId })}
         renderHeader={renderHeader}

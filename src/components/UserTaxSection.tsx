@@ -1,14 +1,16 @@
-import { ExclamationTriangleIcon, ReceiptPercentIcon } from "@heroicons/react/24/outline";
+import { ChevronRightIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import { useState } from "react";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { useApiCall } from "../hooks/useApiCall";
 import type { AdminUserTaxDetermination, TaxTreatment } from "../lib/api";
+import { Fact, FactGroup } from "./Facts";
 
 /**
  * Labels for how a sale is treated.
  *
- * Shown next to every rate, never instead of it: two determinations can both
- * read 0% for unrelated reasons, and the treatment is the only thing on the
- * card that says which.
+ * Always shown next to the rate, never instead of it: two determinations can
+ * both read 0% for unrelated reasons, and the treatment is the only thing here
+ * that says which.
  */
 const TREATMENT_LABEL: Record<TaxTreatment, string> = {
   domestic: "Domestic",
@@ -19,95 +21,120 @@ const TREATMENT_LABEL: Record<TaxTreatment, string> = {
 };
 
 const TREATMENT_CLASS: Record<TaxTreatment, string> = {
-  domestic: "border border-blue-500/40 bg-blue-500/10 text-blue-300",
-  oss_b2c: "border border-purple-500/40 bg-purple-500/10 text-purple-300",
-  reverse_charge: "border border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
-  out_of_scope: "border border-slate-600 bg-slate-700/40 text-slate-300",
-  // Amber: a fallback rate was applied because nothing identified the customer,
-  // which is a data problem rather than a tax outcome.
-  undetermined_default: "border border-yellow-500/40 bg-yellow-500/10 text-yellow-300",
+  domestic: "text-blue-300",
+  oss_b2c: "text-purple-300",
+  reverse_charge: "text-emerald-300",
+  out_of_scope: "text-slate-400",
+  // Amber: a fallback rate means nothing identified the customer, which is a
+  // data problem rather than a tax outcome.
+  undetermined_default: "text-yellow-300",
 };
 
 /** Why this determination came out the way it did, in the order it was decided. */
 function evidence(d: AdminUserTaxDetermination): string {
   const parts: string[] = [];
   if (d.vat_number) parts.push(`customer VAT ${d.vat_number}`);
-  if (d.place_of_supply) parts.push(`place of supply ${d.place_of_supply}`);
+  if (d.place_of_supply) parts.push(`supply ${d.place_of_supply}`);
   if (d.declared_country) parts.push(`declared ${d.declared_country}`);
   if (d.geo_country) parts.push(`geo ${d.geo_country}`);
   return parts.join(" · ");
 }
 
 /**
- * What tax a user attracts right now, per seller company.
+ * What tax a user attracts right now, one line per seller company.
  *
- * One row per company because a rate is not a property of a user: the seller's
- * country is half of the rule, so the same customer is domestic to one company
- * and zero-rated by another.
+ * A rate is not a property of a user — the seller's country is half of the rule
+ * — so every company gets a line. The reasoning behind each is one click away
+ * rather than always on screen: it is what you read when an invoice is being
+ * disputed, not every time you open a customer.
  */
-export function UserTaxSection({ userId }: { userId: number }) {
+export function UserTaxFacts({ userId }: { userId: number }) {
   const adminApi = useAdminApi();
   const { data, loading, error } = useApiCall(() => adminApi.getUserTax(userId), [userId]);
+  const [showEvidence, setShowEvidence] = useState(false);
+
+  // A disclosure, not a second heading: in the group's action slot a bare
+  // uppercase word sits in exactly the same style as the band label and reads
+  // as one. Sentence case plus a rotating chevron says "control".
+  const toggle =
+    data && data.determinations.length > 0 ? (
+      <button
+        type="button"
+        onClick={() => setShowEvidence((s) => !s)}
+        aria-expanded={showEvidence}
+        className="flex items-center gap-0.5 text-xs text-slate-500 hover:text-slate-300"
+      >
+        <ChevronRightIcon
+          className={`h-3 w-3 transition-transform motion-reduce:transition-none ${showEvidence ? "rotate-90" : ""}`}
+        />
+        Why
+      </button>
+    ) : null;
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4">
-      <div className="flex items-center space-x-3 mb-4">
-        <ReceiptPercentIcon className="h-5 w-5 text-emerald-400" />
-        <h3 className="text-lg font-semibold text-white">Tax treatment</h3>
-      </div>
-
+    <FactGroup label="Tax" action={toggle}>
       {loading ? (
-        <div className="flex items-center gap-2 text-sm text-slate-400">
-          <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-blue-500" />
-          Determining…
-        </div>
+        <Fact label="Rate">
+          <span className="text-slate-500">Determining…</span>
+        </Fact>
       ) : error ? (
-        // Inline rather than an ErrorState: the rest of the user page is still
-        // useful when only this lookup fails.
-        <div className="text-sm text-red-400">{error.message}</div>
+        // Inline: the rest of the record is still worth reading when only this
+        // lookup fails.
+        <Fact label="Rate" span>
+          <span className="text-red-400">{error.message}</span>
+        </Fact>
       ) : !data || data.determinations.length === 0 ? (
-        <div className="text-sm text-slate-500">No seller companies configured.</div>
+        <Fact label="Rate">
+          <span className="text-slate-600">No seller companies</span>
+        </Fact>
       ) : (
-        <div className="space-y-3">
+        <>
           {/* An empty rate table zero-rates every country. Saying so is the
               difference between "no VAT is due" and "we do not know yet". */}
           {!data.rates_loaded && (
-            <div className="flex items-start gap-2 rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-2 text-xs text-yellow-200">
-              <ExclamationTriangleIcon className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>
-                VAT rate table not loaded, so every rate below reads 0%. This is not a determination that no VAT is due
-                — the treatments are still correct.
+            <Fact label="Rates" span>
+              <span className="flex items-start gap-1.5 text-yellow-300">
+                <ExclamationTriangleIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                Rate table not loaded — every rate below reads 0%, which is not a finding that no VAT is due.
               </span>
-            </div>
+            </Fact>
           )}
-
-          {data.determinations.map((d) => (
-            <div key={d.company_id} className="border-t border-gray-700 pt-3 first:border-t-0 first:pt-0">
-              <div className="flex items-baseline justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="truncate text-sm text-white" title={d.company_name}>
+          {/* Rows rather than label/value pairs: the company is the subject of
+              each line, and a seller's name does not belong in the fixed label
+              column the rest of the record uses. Sized to its content, because a
+              company and its rate belong next to each other — spanning the grid
+              parks them at opposite ends of the screen. It widens only when the
+              evidence lines need the room. */}
+          <div className={`${showEvidence ? "space-y-2 sm:col-span-2" : ""} max-w-sm`}>
+            {data.determinations.map((d) => (
+              <div key={d.company_id} className="py-0.5">
+                <div className="flex items-baseline justify-between gap-3 text-sm">
+                  <span className="min-w-0 truncate text-slate-300" title={d.company_name}>
                     {d.company_name}
-                    {d.seller_country && <span className="ml-1 text-xs text-slate-500">({d.seller_country})</span>}
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-baseline gap-2">
-                  <span className="text-sm font-medium text-white">{d.rate.toFixed(1)}%</span>
-                  <span
-                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${TREATMENT_CLASS[d.treatment]}`}
-                  >
-                    {TREATMENT_LABEL[d.treatment] ?? d.treatment}
+                    {d.seller_country && (
+                      <span className="ml-1.5 font-mono text-xs text-slate-500">{d.seller_country}</span>
+                    )}
+                  </span>
+                  <span className="flex shrink-0 items-baseline gap-2">
+                    <span className={`text-xs ${TREATMENT_CLASS[d.treatment]}`}>
+                      {TREATMENT_LABEL[d.treatment] ?? d.treatment}
+                    </span>
+                    <span className="w-14 text-right font-mono tabular-nums text-white">{d.rate.toFixed(1)}%</span>
                   </span>
                 </div>
+                {/* Indented and rules back to its own row: an unindented line
+                    between two rows reads as a caption for the one below it,
+                    which is the wrong company. */}
+                {showEvidence && evidence(d) && (
+                  <div className="ml-3 border-l border-slate-700 pl-2 font-mono text-[11px] text-slate-500">
+                    {evidence(d)}
+                  </div>
+                )}
               </div>
-              {evidence(d) && <div className="mt-1 text-xs text-slate-500">{evidence(d)}</div>}
-            </div>
-          ))}
-
-          <p className="border-t border-gray-700 pt-2 text-xs text-slate-500">
-            What we would charge today. What was actually charged is on each payment.
-          </p>
-        </div>
+            ))}
+          </div>
+        </>
       )}
-    </div>
+    </FactGroup>
   );
 }

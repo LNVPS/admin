@@ -719,6 +719,11 @@ export interface AdminCompanyInfo {
   referral_rate: number;
   /** Max prepay window in days bounding renewals. 0 = inherit the global default. */
   max_prepay_days: number;
+  /**
+   * One-off fee charged per marketplace node before an admin can approve it,
+   * in this company's `base_currency`. 0 requires no fee.
+   */
+  marketplace_node_fee: number;
   region_count: number;
 }
 
@@ -827,6 +832,53 @@ export interface AdminAppTagInfo {
   created: string;
 }
 
+/** One service's share of a deployment's observed CPU and memory. */
+export interface AppDeploymentServiceUsage {
+  /** Compose service name. */
+  service: string;
+  cpu_milli: number;
+  memory_bytes: number;
+}
+
+/** One volume's observed use. */
+export interface AppDeploymentVolumeUsage {
+  /** Compose service this volume belongs to; a volume name is only unique within one. */
+  service: string;
+  /** Compose volume name. */
+  name: string;
+  storage_bytes: number;
+}
+
+/** What a deployment is consuming, as last observed. */
+export interface AppDeploymentUsage {
+  cpu_milli: number;
+  memory_bytes: number;
+  /**
+   * `null` for a deployment with no volumes, or when the metrics source carries
+   * no kubelet volume statistics — CPU and memory are still reported then.
+   */
+  storage_bytes: number | null;
+  /**
+   * When the reading was taken. Usage is sampled on the operator's reconcile
+   * interval, not on request, so it is always somewhat behind — render it with
+   * the age rather than as a live figure.
+   */
+  collected: string;
+  /**
+   * Per-service CPU and memory behind the totals. Empty when nothing has been
+   * observed yet. Worth rendering beside the totals rather than instead of
+   * them: limits are enforced per container, so a total cannot say which
+   * service is the one at its limit.
+   */
+  services: AppDeploymentServiceUsage[];
+  /**
+   * Per-volume storage behind `storage_bytes`. Empty when nothing has been
+   * observed yet. The size limit is per volume, so a deployment well under its
+   * total can still have one volume that is full.
+   */
+  volumes: AppDeploymentVolumeUsage[];
+}
+
 /**
  * A single deployed app instance (across all users/clusters), for admin oversight.
  * Excludes the encrypted per-deployment config blob.
@@ -849,6 +901,11 @@ export interface AdminAppDeploymentInfo {
   hostname: string | null;
   /** Customer-owned domain CNAME'd to `hostname`, served alongside it */
   custom_domain: string | null;
+  /**
+   * Whether that domain is served yet. `false` means held: stored, but never
+   * seen resolving to `hostname`, so no ingress rule and no certificate.
+   */
+  custom_domain_verified: boolean;
   /** Operator-requested state (e.g. "running", "stopped") */
   desired_state: string;
   /** Observed state (e.g. "pending", "running", "stopped", "error", "deleting") */
@@ -860,6 +917,12 @@ export interface AdminAppDeploymentInfo {
    * Only populated by the single-deployment GET; omitted on the list endpoint.
    */
   config?: Record<string, string> | null;
+  /**
+   * What the workload is consuming, in the same shape and units the customer
+   * API serves. `null` when nothing has been observed: a deployment that has
+   * never run, or a cluster with no metrics source.
+   */
+  usage: AppDeploymentUsage | null;
   created: string;
   /**
    * Soft-deleted: the workload is torn down and the row is retained only for
@@ -1713,6 +1776,31 @@ export interface AdminMarketplaceNodeDataPlane {
 export interface AdminMarketplaceNodeStatus {
   version: string;
   dataplane: AdminMarketplaceNodeDataPlane;
+}
+
+/**
+ * One probe run against a marketplace node.
+ *
+ * The measurement fields are `null` when the probe never got far enough to take
+ * them — a failed run usually carries only `failure`.
+ */
+export interface AdminNodeHealthInfo {
+  id: number;
+  created: string;
+  passed: boolean;
+  /** Why it failed, verbatim from whatever failed. `null` when it passed. */
+  failure: string | null;
+  /** Asking for the VM to being able to log in — what a customer waits. */
+  provision_ms: number | null;
+  /** Memory the guest allocated *and touched*, in MB. */
+  memory_mb: number | null;
+  disk_write_mb: number | null;
+  disk_read_mb: number | null;
+  /** What was asked for, so the numbers above can be read against a shape. */
+  cpu: number;
+  memory_bytes: number;
+  disk_bytes: number;
+  image: string;
 }
 
 /** A tunnel pool: where tunnel inner addresses are allocated from. */
@@ -2899,6 +2987,8 @@ export class AdminApi {
     referral_rate?: number;
     /** Max prepay window in days; 0 inherits the global default. */
     max_prepay_days?: number;
+    /** One-off marketplace node listing fee in `base_currency`; 0 requires no fee. */
+    marketplace_node_fee?: number;
   }) {
     const result = await this.handleResponse<ApiResponse<AdminCompanyInfo>>(
       await this.req("/api/admin/v1/companies", "POST", data),
@@ -2924,6 +3014,8 @@ export class AdminApi {
       referral_rate: number;
       /** Max prepay window in days; 0 inherits the global default. */
       max_prepay_days: number;
+      /** One-off marketplace node listing fee in `base_currency`; 0 requires no fee. */
+      marketplace_node_fee: number;
     }>,
   ) {
     const result = await this.handleResponse<ApiResponse<AdminCompanyInfo>>(
@@ -4185,6 +4277,16 @@ export class AdminApi {
       await this.req(`/api/admin/v1/marketplace/nodes/${id}`, "PATCH", updates),
     );
     return result.data;
+  }
+
+  /**
+   * Probe history for a node, newest first. A 404 means the node does not
+   * exist, as distinct from a node that has never been probed (empty page).
+   */
+  async getMarketplaceNodeHealth(id: number, params?: { limit?: number; offset?: number }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminNodeHealthInfo>>(
+      await this.req(`/api/admin/v1/marketplace/nodes/${id}/health`, "GET", undefined, params),
+    );
   }
 
   async deleteMarketplaceNode(id: number) {

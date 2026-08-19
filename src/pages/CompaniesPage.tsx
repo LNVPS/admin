@@ -2,12 +2,14 @@ import { BuildingOfficeIcon, PencilIcon, PlusIcon, TrashIcon } from "@heroicons/
 import { useState } from "react";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
+import { MoneyAmountInput } from "../components/MoneyInput";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { StatsHeader } from "../components/StatsHeader";
 import { useAdminApi } from "../hooks/useAdminApi";
 import type { AdminCompanyInfo } from "../lib/api";
 import { confirmDialog } from "../services/confirmService";
 import { toastService } from "../services/toastService";
+import { formatCurrency } from "../utils/currency";
 
 export function CompaniesPage() {
   const adminApi = useAdminApi();
@@ -79,6 +81,11 @@ export function CompaniesPage() {
             <div className="truncate text-xs text-slate-400">Referral rate: {company.referral_rate}%</div>
             {company.max_prepay_days > 0 && (
               <div className="truncate text-xs text-slate-400">Max prepay: {company.max_prepay_days} days</div>
+            )}
+            {company.marketplace_node_fee > 0 && (
+              <div className="truncate text-xs text-slate-400">
+                Node listing fee: {formatCurrency(company.marketplace_node_fee, company.base_currency)}
+              </div>
             )}
             {company.tax_id && (
               <div className="truncate text-xs text-slate-400" title={company.tax_id}>
@@ -240,6 +247,7 @@ function CreateCompanyModal({
     email: "",
     referral_rate: "0",
     max_prepay_days: "0",
+    marketplace_node_fee: 0,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -261,6 +269,7 @@ function CreateCompanyModal({
         email: formData.email || null,
         referral_rate: parseFloat(formData.referral_rate) || 0,
         max_prepay_days: parseInt(formData.max_prepay_days, 10) || 0,
+        marketplace_node_fee: formData.marketplace_node_fee,
       };
 
       await adminApi.createCompany(data);
@@ -280,6 +289,7 @@ function CreateCompanyModal({
         email: "",
         referral_rate: "0",
         max_prepay_days: "0",
+        marketplace_node_fee: 0,
       });
     } catch (error) {
       console.error("Failed to create company:", error);
@@ -445,6 +455,22 @@ function CreateCompanyModal({
           </p>
         </div>
 
+        <div>
+          <label htmlFor="create-company-node-fee" className="block text-xs font-medium text-white mb-2">
+            Marketplace Node Listing Fee ({formData.base_currency === "BTC" ? "sats" : formData.base_currency})
+          </label>
+          <MoneyAmountInput
+            id="create-company-node-fee"
+            value={formData.marketplace_node_fee}
+            currency={formData.base_currency}
+            onChange={(marketplace_node_fee) => setFormData({ ...formData, marketplace_node_fee })}
+            className=""
+          />
+          <p className="mt-1 text-xs text-slate-400">
+            One-off fee an operator must settle per node before it can be approved. 0 requires no fee.
+          </p>
+        </div>
+
         <div className="flex justify-end space-x-3 pt-4">
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
@@ -486,6 +512,7 @@ function EditCompanyModal({
     email: company.email || "",
     referral_rate: String(company.referral_rate ?? 0),
     max_prepay_days: String(company.max_prepay_days ?? 0),
+    marketplace_node_fee: company.marketplace_node_fee ?? 0,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -507,6 +534,7 @@ function EditCompanyModal({
         email: formData.email || null,
         referral_rate: parseFloat(formData.referral_rate) || 0,
         max_prepay_days: parseInt(formData.max_prepay_days, 10) || 0,
+        marketplace_node_fee: formData.marketplace_node_fee,
       };
 
       await adminApi.updateCompany(company.id, updates);
@@ -673,6 +701,23 @@ function EditCompanyModal({
           />
           <p className="mt-1 text-xs text-slate-400">
             Maximum window renewals may prepay into the future. 0 inherits the global default.
+          </p>
+        </div>
+
+        <div>
+          <label htmlFor="edit-company-node-fee" className="block text-xs font-medium text-white mb-2">
+            Marketplace Node Listing Fee ({formData.base_currency === "BTC" ? "sats" : formData.base_currency})
+          </label>
+          <MoneyAmountInput
+            id="edit-company-node-fee"
+            value={formData.marketplace_node_fee}
+            currency={formData.base_currency}
+            onChange={(marketplace_node_fee) => setFormData({ ...formData, marketplace_node_fee })}
+            className=""
+          />
+          <p className="mt-1 text-xs text-slate-400">
+            One-off fee an operator must settle per node before it can be approved. 0 requires no fee. Changing it does
+            not alter a fee already invoiced.
           </p>
         </div>
 

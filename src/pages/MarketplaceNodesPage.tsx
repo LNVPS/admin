@@ -1,5 +1,6 @@
 import {
   ArrowPathIcon,
+  BeakerIcon,
   CheckBadgeIcon,
   CheckIcon,
   ClockIcon,
@@ -22,11 +23,13 @@ import { useCachedRegions } from "../hooks/useCachedRegions";
 import type {
   AdminMarketplaceNodeInfo,
   AdminMarketplaceNodeStatus,
+  AdminNodeHealthInfo,
   MarketplaceNodeStatus,
   MarketplaceTrustTier,
 } from "../lib/api";
 import { confirmDialog } from "../services/confirmService";
 import { toastService } from "../services/toastService";
+import { formatBytes } from "../utils/formatBytes";
 
 const _STATUS_ORDER: Record<MarketplaceNodeStatus, number> = {
   pending: 0,
@@ -64,6 +67,7 @@ export function MarketplaceNodesPage() {
   const [nodeStatus, setNodeStatus] = useState<AdminMarketplaceNodeStatus | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
+  const [healthNode, setHealthNode] = useState<AdminMarketplaceNodeInfo | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   const refreshData = () => setRefreshTrigger((prev) => prev + 1);
@@ -239,6 +243,9 @@ export function MarketplaceNodesPage() {
           <Button variant="ghost" size="sm" title="Live status" onClick={() => openStatus(node)}>
             <ShieldCheckIcon className="h-4 w-4" />
           </Button>
+          <Button variant="ghost" size="sm" title="Probe history" onClick={() => setHealthNode(node)}>
+            <BeakerIcon className="h-4 w-4" />
+          </Button>
           {node.status === "pending" && (
             <Button
               variant="ghost"
@@ -398,12 +405,107 @@ export function MarketplaceNodesPage() {
         </Modal>
       )}
 
+      {healthNode && <NodeHealthModal node={healthNode} onClose={() => setHealthNode(null)} />}
+
       {actionLoading && (
         <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <span className="h-8 w-8 animate-spin rounded-full border-2 border-slate-600 border-t-blue-500" />
         </div>
       )}
     </div>
+  );
+}
+
+/** Milliseconds as a figure an admin can compare against "what a customer waits". */
+function formatDuration(ms: number | null): string {
+  if (ms === null || ms === undefined) return "—";
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
+/**
+ * Probe history for one node.
+ *
+ * The measurements are only meaningful against the shape that was asked for —
+ * regions sell different shapes, so the requested spec is shown on every row
+ * rather than once at the top.
+ */
+function NodeHealthModal({ node, onClose }: { node: AdminMarketplaceNodeInfo; onClose: () => void }) {
+  const adminApi = useAdminApi();
+
+  const renderHeader = () => (
+    <>
+      <th>When</th>
+      <th>Result</th>
+      <th>Provision</th>
+      <th>Memory</th>
+      <th>Disk write</th>
+      <th>Disk read</th>
+      <th>Requested</th>
+    </>
+  );
+
+  const renderRow = (probe: AdminNodeHealthInfo, index: number) => (
+    <tr key={probe.id || index}>
+      <td className="whitespace-nowrap align-top text-gray-300">{formatDateTime(probe.created)}</td>
+      <td className="align-top">
+        {probe.passed ? (
+          <StatusBadge status="active">Passed</StatusBadge>
+        ) : (
+          <StatusBadge status="disabled">Failed</StatusBadge>
+        )}
+        {probe.failure && (
+          <div
+            className="mt-1 max-w-[22rem] whitespace-pre-wrap break-words font-mono text-[11px] text-red-300/80"
+            title={probe.failure}
+          >
+            {probe.failure}
+          </div>
+        )}
+      </td>
+      <td className="align-top whitespace-nowrap text-white">{formatDuration(probe.provision_ms)}</td>
+      <td className="align-top whitespace-nowrap text-gray-300">
+        {probe.memory_mb !== null ? `${probe.memory_mb} MB` : "—"}
+      </td>
+      <td className="align-top whitespace-nowrap text-gray-300">
+        {probe.disk_write_mb !== null ? `${probe.disk_write_mb} MB/s` : "—"}
+      </td>
+      <td className="align-top whitespace-nowrap text-gray-300">
+        {probe.disk_read_mb !== null ? `${probe.disk_read_mb} MB/s` : "—"}
+      </td>
+      <td className="align-top">
+        <div className="whitespace-nowrap text-xs text-gray-400">
+          {probe.cpu} vCPU · {formatBytes(probe.memory_bytes)} · {formatBytes(probe.disk_bytes)}
+        </div>
+        <div className="truncate max-w-[12rem] font-mono text-[11px] text-gray-500" title={probe.image}>
+          {probe.image}
+        </div>
+      </td>
+    </tr>
+  );
+
+  const renderEmptyState = () => (
+    <div className="text-center py-10">
+      <BeakerIcon className="mx-auto h-10 w-10 text-gray-600" />
+      <h3 className="mt-2 text-sm font-medium text-gray-300">Never probed</h3>
+      <p className="mt-1 text-sm text-gray-500">No probe has run against this node yet.</p>
+    </div>
+  );
+
+  return (
+    <Modal isOpen={true} onClose={onClose} title={`Probe history — ${node.name}`} size="2xl">
+      <PaginatedTable
+        apiCall={(params) => adminApi.getMarketplaceNodeHealth(node.id, params)}
+        renderHeader={renderHeader}
+        renderRow={renderRow}
+        renderEmptyState={renderEmptyState}
+        itemsPerPage={10}
+        errorAction="view node probe history"
+        loadingMessage="Loading probe history..."
+        minWidth="900px"
+        inlineError
+      />
+    </Modal>
   );
 }
 

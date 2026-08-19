@@ -1,4 +1,12 @@
-import { FireIcon, PencilIcon, PlusIcon, RocketLaunchIcon, TrashIcon } from "@heroicons/react/24/outline";
+import {
+  ChartBarIcon,
+  ExclamationTriangleIcon,
+  FireIcon,
+  PencilIcon,
+  PlusIcon,
+  RocketLaunchIcon,
+  TrashIcon,
+} from "@heroicons/react/24/outline";
 import { configFieldDisplayLabel, parseComposeSchema } from "lnvps-compose";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -24,6 +32,7 @@ import {
 } from "../lib/api";
 import { fetchAllPages } from "../lib/paginate";
 import { confirmDialog } from "../services/confirmService";
+import { formatBytes } from "../utils/formatBytes";
 
 type BadgeStatus = "running" | "stopped" | "warning" | "unknown";
 
@@ -45,6 +54,7 @@ export function AppDeploymentsPage() {
   const [clusters, setClusters] = useState<AdminAppClusterInfo[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [editing, setEditing] = useState<AdminAppDeploymentInfo | null>(null);
+  const [usageOf, setUsageOf] = useState<AdminAppDeploymentInfo | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [searchFilter, setSearchFilter] = useState("");
   const [userIdFilter, setUserIdFilter] = useState("");
@@ -240,6 +250,7 @@ export function AppDeploymentsPage() {
       <th>App</th>
       <th>User</th>
       <th>Cluster</th>
+      <th>Usage</th>
       <th>State</th>
       <th>Created</th>
       {(canUpdate || canDelete) && <th className="text-right">Actions</th>}
@@ -273,17 +284,32 @@ export function AppDeploymentsPage() {
         ) : (
           <span className="text-gray-500">—</span>
         )}
-        {d.custom_domain && (
-          <a
-            href={`https://${d.custom_domain}`}
-            target="_blank"
-            rel="noreferrer"
-            className="block truncate font-mono text-xs text-emerald-400 hover:underline"
-            title={`Custom domain: ${d.custom_domain}`}
-          >
-            {d.custom_domain}
-          </a>
-        )}
+        {/* An unverified domain is stored but not served: no ingress rule and no
+            certificate. Linking it would offer a URL that cannot load, so a held
+            domain is plain text with the reason attached. */}
+        {d.custom_domain &&
+          (d.custom_domain_verified ? (
+            <a
+              href={`https://${d.custom_domain}`}
+              target="_blank"
+              rel="noreferrer"
+              className="block truncate font-mono text-xs text-emerald-400 hover:underline"
+              title={`Custom domain: ${d.custom_domain}`}
+            >
+              {d.custom_domain}
+            </a>
+          ) : (
+            <span
+              className="flex items-center gap-1 truncate font-mono text-xs text-yellow-500/90"
+              title={`Custom domain held: ${d.custom_domain} has never been seen resolving to ${
+                d.hostname ?? "the deployment hostname"
+              }, so it has no ingress rule and no certificate.`}
+            >
+              <ExclamationTriangleIcon className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{d.custom_domain}</span>
+              <span className="shrink-0 text-[10px] uppercase tracking-wider text-yellow-600">held</span>
+            </span>
+          ))}
       </td>
       <td className="align-top text-gray-300">
         {appName(d.app_id)}{" "}
@@ -302,6 +328,9 @@ export function AppDeploymentsPage() {
         </Link>
       </td>
       <td className="align-top text-gray-300">{clusterName(d.cluster_id)}</td>
+      <td className="align-top">
+        <UsageCell deployment={d} onOpen={() => setUsageOf(d)} />
+      </td>
       <td className="align-top">
         <div className="flex flex-col gap-1">
           {/* `status` is whatever the operator last wrote and can still say
@@ -431,8 +460,10 @@ export function AppDeploymentsPage() {
           desiredStateFilter,
           includeDeleted,
         ]}
-        minWidth="1100px"
+        minWidth="1250px"
       />
+
+      {usageOf && <UsageModal deployment={usageOf} onClose={() => setUsageOf(null)} />}
 
       {editing && (
         <EditDeploymentModal
@@ -444,6 +475,151 @@ export function AppDeploymentsPage() {
         />
       )}
     </div>
+  );
+}
+
+/** Milli-cores as cores, which is how limits are quoted. */
+function formatCpu(milli: number): string {
+  return milli >= 1000 ? `${(milli / 1000).toFixed(2)} cores` : `${milli}m`;
+}
+
+/**
+ * How long ago a sample was taken.
+ *
+ * Usage is collected on the operator's reconcile interval rather than on
+ * request, so it is always somewhat behind — the age is shown with every figure
+ * so none of them reads as live.
+ */
+function formatAge(collected: string): string {
+  const secs = Math.max(0, Math.round((Date.now() - new Date(collected).getTime()) / 1000));
+  if (secs < 60) return `${secs}s ago`;
+  if (secs < 3600) return `${Math.round(secs / 60)}m ago`;
+  if (secs < 86400) return `${Math.round(secs / 3600)}h ago`;
+  return `${Math.round(secs / 86400)}d ago`;
+}
+
+/** Totals in the table; the breakdown behind them lives in {@link UsageModal}. */
+function UsageCell({ deployment, onOpen }: { deployment: AdminAppDeploymentInfo; onOpen: () => void }) {
+  const usage = deployment.usage;
+  // Never run, or a cluster with no metrics source — distinct from "zero".
+  if (!usage) return <span className="text-gray-600">—</span>;
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="group text-left"
+      title="Show the per-service and per-volume breakdown"
+    >
+      <div className="whitespace-nowrap text-xs text-gray-300 group-hover:text-white">
+        {formatCpu(usage.cpu_milli)} · {formatBytes(usage.memory_bytes)}
+      </div>
+      {usage.storage_bytes !== null && (
+        <div className="whitespace-nowrap text-xs text-gray-400">{formatBytes(usage.storage_bytes)} disk</div>
+      )}
+      <div className="flex items-center gap-1 whitespace-nowrap text-[11px] text-gray-500">
+        <ChartBarIcon className="h-3 w-3 shrink-0" />
+        {formatAge(usage.collected)}
+      </div>
+    </button>
+  );
+}
+
+/**
+ * The per-service and per-volume breakdown behind a deployment's totals.
+ *
+ * Shown beside the totals rather than instead of them: CPU and memory limits
+ * are enforced per container and size limits are per volume, so a deployment
+ * well under its total can still have one part at its limit.
+ */
+function UsageModal({ deployment, onClose }: { deployment: AdminAppDeploymentInfo; onClose: () => void }) {
+  const usage = deployment.usage;
+
+  return (
+    <Modal isOpen={true} onClose={onClose} title={`Usage — ${deployment.name}`} size="lg">
+      {!usage ? (
+        <p className="text-sm text-gray-400">
+          Nothing has been observed for this deployment — it has never run, or its cluster has no metrics source.
+        </p>
+      ) : (
+        <div className="space-y-5">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-3">
+              <div className="text-[10px] uppercase tracking-wider text-slate-400">CPU</div>
+              <div className="mt-1 text-white">{formatCpu(usage.cpu_milli)}</div>
+            </div>
+            <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-3">
+              <div className="text-[10px] uppercase tracking-wider text-slate-400">Memory</div>
+              <div className="mt-1 text-white">{formatBytes(usage.memory_bytes)}</div>
+            </div>
+            <div className="rounded-lg border border-slate-700 bg-slate-800/60 p-3">
+              <div className="text-[10px] uppercase tracking-wider text-slate-400">Storage</div>
+              <div className="mt-1 text-white">
+                {usage.storage_bytes !== null ? formatBytes(usage.storage_bytes) : "—"}
+              </div>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-400">
+            Sampled {formatAge(usage.collected)} ({new Date(usage.collected).toLocaleString()}) on the operator's
+            reconcile interval, not on request.
+          </p>
+
+          <div>
+            <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Per service</div>
+            {usage.services.length === 0 ? (
+              <p className="text-sm text-gray-500">No per-service readings yet.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-slate-400">
+                    <th className="pb-1">Service</th>
+                    <th className="pb-1 text-right">CPU</th>
+                    <th className="pb-1 text-right">Memory</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {usage.services.map((s) => (
+                    <tr key={s.service} className="border-t border-slate-700/60">
+                      <td className="py-1 font-mono text-xs text-gray-300">{s.service}</td>
+                      <td className="py-1 text-right text-white">{formatCpu(s.cpu_milli)}</td>
+                      <td className="py-1 text-right text-white">{formatBytes(s.memory_bytes)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div>
+            <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Per volume</div>
+            {usage.volumes.length === 0 ? (
+              <p className="text-sm text-gray-500">No per-volume readings yet.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-slate-400">
+                    <th className="pb-1">Service</th>
+                    <th className="pb-1">Volume</th>
+                    <th className="pb-1 text-right">Storage</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* A volume name is only unique within its service, so key on both. */}
+                  {usage.volumes.map((v) => (
+                    <tr key={`${v.service}/${v.name}`} className="border-t border-slate-700/60">
+                      <td className="py-1 font-mono text-xs text-gray-300">{v.service}</td>
+                      <td className="py-1 font-mono text-xs text-gray-300">{v.name}</td>
+                      <td className="py-1 text-right text-white">{formatBytes(v.storage_bytes)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
+    </Modal>
   );
 }
 
@@ -611,6 +787,18 @@ function EditDeploymentModal({
             Customer-owned hostname CNAME'd at the deployment hostname; TLS is issued once DNS resolves. Leave blank to
             clear.
           </p>
+          {/* Saving a domain only stores it. Until it is seen resolving here it
+              is held: no ingress rule, no certificate, nothing served. */}
+          {deployment.custom_domain && !deployment.custom_domain_verified && (
+            <p className="mt-1 flex items-start gap-1 text-xs text-yellow-500/90">
+              <ExclamationTriangleIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>
+                Held: <span className="font-mono">{deployment.custom_domain}</span> has never been seen resolving to{" "}
+                <span className="font-mono">{deployment.hostname ?? "the deployment hostname"}</span>, so it has no
+                ingress rule and no certificate.
+              </span>
+            </p>
+          )}
         </div>
 
         <div>

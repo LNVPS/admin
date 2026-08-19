@@ -23,6 +23,7 @@ import { Profile } from "../components/Profile";
 import { StatusBadge } from "../components/StatusBadge";
 import { UserPasskeysSection } from "../components/UserPasskeysSection";
 import { UserPaymentMethodsSection } from "../components/UserPaymentMethodsSection";
+import { UserTaxSection } from "../components/UserTaxSection";
 import { getVmStatus, VmStatusBadge } from "../components/VmStatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import useLogin from "../hooks/useLogin";
@@ -508,6 +509,10 @@ export function UserDetailsPage() {
             </div>
           </div>
         </div>
+
+        {/* Sits beside Billing: it is decided by the country and VAT number in
+            that card, so the two are read together. */}
+        <UserTaxSection userId={user.id} />
       </div>
 
       {/* User's VMs */}

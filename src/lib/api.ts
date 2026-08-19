@@ -1778,6 +1778,46 @@ export interface AdminMarketplaceNodeStatus {
   dataplane: AdminMarketplaceNodeDataPlane;
 }
 
+/**
+ * How a sale to this user is treated for tax.
+ *
+ * Read this rather than the rate alone: a `0.0` from `reverse_charge` and one
+ * from `out_of_scope` are unrelated situations, and `undetermined_default`
+ * means no customer country was known and the seller's own rate was applied.
+ */
+export type TaxTreatment = "domestic" | "oss_b2c" | "reverse_charge" | "out_of_scope" | "undetermined_default";
+
+/** What one seller company would charge this user, and why. */
+export interface AdminUserTaxDetermination {
+  company_id: number;
+  company_name: string;
+  /** Seller country (ISO alpha-3), from the company's VAT number or its configured country. */
+  seller_country: string | null;
+  /** Whole percentage, e.g. 23.0. */
+  rate: number;
+  treatment: TaxTreatment;
+  /** Determined place of supply (ISO alpha-3). */
+  place_of_supply: string | null;
+  /** The customer VAT number the determination used. */
+  vat_number: string | null;
+  /** Evidence: self-declared country. */
+  declared_country: string | null;
+  /** Evidence: country resolved from their IP. */
+  geo_country: string | null;
+}
+
+/** A user's tax treatment across every seller company. */
+export interface AdminUserTaxInfo {
+  /**
+   * `false` when the EU rate table has not loaded. Every `rate` is then 0.0
+   * because an unknown country falls back to zero — which must not be shown as
+   * "this customer pays no VAT". Treatments stay correct regardless.
+   */
+  rates_loaded: boolean;
+  /** One per company: the seller's country is half of the rule. */
+  determinations: AdminUserTaxDetermination[];
+}
+
 /** The namespace a support thread hangs off. `nostr` is the publicly readable one. */
 export const AGENT_CONVERSATION_KINDS = ["user", "email", "pubkey", "nostr", "unknown"] as const;
 export type AgentConversationKind = (typeof AGENT_CONVERSATION_KINDS)[number];
@@ -4380,6 +4420,19 @@ export class AdminApi {
   async updateMarketplaceOperator(id: number, updates: AdminUpdateOperatorRequest) {
     const result = await this.handleResponse<ApiResponse<AdminMarketplaceOperatorInfo>>(
       await this.req(`/api/admin/v1/marketplace/operators/${id}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
+  /**
+   * What tax this user attracts right now, per seller company.
+   *
+   * Computed live from the pricing code, so it answers "what would we charge
+   * them today" — not what they were charged, which lives on the payments.
+   */
+  async getUserTax(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminUserTaxInfo>>(
+      await this.req(`/api/admin/v1/users/${id}/tax`, "GET"),
     );
     return result.data;
   }

@@ -175,6 +175,12 @@ const navigation: NavSection[] = [
       { name: "Users", to: "/users", icon: ListBulletIcon, requiredPermissions: ["users::view"] },
       { name: "Roles", to: "/roles", icon: KeyIcon, requiredPermissions: ["roles::view"] },
       {
+        name: "Support Chats",
+        to: "/agent/conversations",
+        icon: ChatBubbleLeftRightIcon,
+        requiredPermissions: ["support_agent::view"],
+      },
+      {
         name: "Bulk Message",
         to: "/bulk-message",
         icon: ChatBubbleLeftRightIcon,

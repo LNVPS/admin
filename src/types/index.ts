@@ -108,4 +108,6 @@ export type Permission =
   | "marketplace_node::update"
   | "marketplace_node::delete"
   | "marketplace_operator::view"
-  | "marketplace_operator::update";
+  | "marketplace_operator::update"
+  | "support_agent::view"
+  | "support_agent::update";

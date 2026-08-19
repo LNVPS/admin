@@ -1778,6 +1778,76 @@ export interface AdminMarketplaceNodeStatus {
   dataplane: AdminMarketplaceNodeDataPlane;
 }
 
+/** The namespace a support thread hangs off. `nostr` is the publicly readable one. */
+export const AGENT_CONVERSATION_KINDS = ["user", "email", "pubkey", "nostr", "unknown"] as const;
+export type AgentConversationKind = (typeof AGENT_CONVERSATION_KINDS)[number];
+
+/** Who produced a message. `tool` rows are the results the agent's tool calls returned. */
+export type AgentMessageRole = "user" | "assistant" | "tool";
+
+/** How a message travelled. Held per message: one private thread mixes channels. */
+export type AgentMessageChannel = "email" | "nostr" | "webchat";
+
+/**
+ * A support-agent conversation thread.
+ *
+ * `summary` and `compacted_upto` are the agent's *memory*, which is a different
+ * thing from the transcript: the summary stands in for everything at or below
+ * the watermark, and messages above it are replayed to the model verbatim.
+ */
+export interface AdminAgentConversationInfo {
+  id: number;
+  /** Namespaced sender identity: `user:<id>`, `email:<addr>`, `pubkey:<hex>`, `nostr:<hex>`. */
+  conversation_key: string;
+  /** The namespace part of the key. `nostr` threads are publicly readable; the rest are private. */
+  kind: AgentConversationKind;
+  /** Resolved account, when the sender matched one. A thread can start anonymous and become linked. */
+  user_id: number | null;
+  /** The agent's running memory — model-written text about the customer, not a customer message. */
+  summary: string | null;
+  /** Highest message id folded into `summary`; 0 when nothing is compacted. */
+  compacted_upto: number;
+  /** Total messages, ignoring the watermark. */
+  message_count: number;
+  /** `null` for a thread that has never carried a message. */
+  last_message_at: string | null;
+  created: string;
+  /** Touched on every append and every compaction. */
+  updated: string;
+}
+
+/** One message in a transcript. */
+export interface AdminAgentMessageInfo {
+  id: number;
+  conversation_id: number;
+  role: AgentMessageRole;
+  channel: AgentMessageChannel;
+  /** Decrypted text. `null` for an assistant turn that only requested tools — not the same as empty. */
+  content: string | null;
+  /** `[{id, name, arguments}]` for an assistant turn that requested tools. */
+  tool_calls: AgentToolCall[] | null;
+  /** For a `tool` row, the `tool_calls[].id` it answers. */
+  tool_call_id: string | null;
+  /** At or below the watermark: the agent no longer replays it and sees the summary instead. */
+  compacted: boolean;
+  created: string;
+}
+
+/** A tool the assistant asked for. `arguments` is a JSON string as the model emitted it. */
+export interface AgentToolCall {
+  id: string;
+  name: string;
+  arguments: string;
+}
+
+/** Body for rewriting a conversation's memory. Omitting a field leaves it alone. */
+export interface AdminUpdateAgentConversationRequest {
+  /** Replace the summary, or clear it with `null`. */
+  summary?: string | null;
+  /** Move the watermark. Must not exceed the last message id; 0 replays the whole transcript. */
+  compacted_upto?: number;
+}
+
 /**
  * One probe run against a marketplace node.
  *
@@ -4310,6 +4380,48 @@ export class AdminApi {
   async updateMarketplaceOperator(id: number, updates: AdminUpdateOperatorRequest) {
     const result = await this.handleResponse<ApiResponse<AdminMarketplaceOperatorInfo>>(
       await this.req(`/api/admin/v1/marketplace/operators/${id}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
+  // Support Agent Conversations
+  /**
+   * List support threads, most recently active first.
+   *
+   * `search` matches the conversation key only — message content is encrypted
+   * at rest, so the server cannot search it. The key includes the namespace, so
+   * `"nostr:"` selects every public thread.
+   */
+  async getAgentConversations(params?: { limit?: number; offset?: number; user_id?: number; search?: string }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminAgentConversationInfo>>(
+      await this.req("/api/admin/v1/agent/conversations", "GET", undefined, params),
+    );
+  }
+
+  async getAgentConversation(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminAgentConversationInfo>>(
+      await this.req(`/api/admin/v1/agent/conversations/${id}`, "GET"),
+    );
+    return result.data;
+  }
+
+  /** A conversation's transcript, **oldest first** — it reads as a conversation, not a feed. */
+  async getAgentConversationMessages(id: number, params?: { limit?: number; offset?: number }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminAgentMessageInfo>>(
+      await this.req(`/api/admin/v1/agent/conversations/${id}/messages`, "GET", undefined, params),
+    );
+  }
+
+  /**
+   * Rewrite what the agent remembers. Never touches the transcript.
+   *
+   * Clearing `summary` alone is the safe reset. Setting `compacted_upto` to 0
+   * makes the next turn replay the entire transcript, which is slow and
+   * expensive on a long thread.
+   */
+  async updateAgentConversation(id: number, updates: AdminUpdateAgentConversationRequest) {
+    const result = await this.handleResponse<ApiResponse<AdminAgentConversationInfo>>(
+      await this.req(`/api/admin/v1/agent/conversations/${id}`, "PATCH", updates),
     );
     return result.data;
   }

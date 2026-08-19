@@ -6,6 +6,8 @@ import { PermissionGuard } from "./components/PermissionGuard";
 import { SmartRedirect } from "./components/SmartRedirect";
 import { ProtectedLayout } from "./layouts/ProtectedLayout";
 import { AccessPoliciesPage } from "./pages/AccessPoliciesPage";
+import { AgentConversationDetailPage } from "./pages/AgentConversationDetailPage";
+import { AgentConversationsPage } from "./pages/AgentConversationsPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { AppClustersPage } from "./pages/AppClustersPage";
 import { AppDeploymentsPage } from "./pages/AppDeploymentsPage";
@@ -282,6 +284,22 @@ function AppContent() {
               element={
                 <PermissionGuard requiredPermissions={["router::view"]}>
                   <RouterDetailPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="agent/conversations"
+              element={
+                <PermissionGuard requiredPermissions={["support_agent::view"]}>
+                  <AgentConversationsPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="agent/conversations/:id"
+              element={
+                <PermissionGuard requiredPermissions={["support_agent::view"]}>
+                  <AgentConversationDetailPage />
                 </PermissionGuard>
               }
             />

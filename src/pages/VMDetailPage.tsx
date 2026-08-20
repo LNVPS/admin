@@ -23,6 +23,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/Button";
 import { ErrorState } from "../components/ErrorState";
 import { PaginatedTable } from "../components/PaginatedTable";
+import { PaymentDiscount } from "../components/PaymentDiscount";
 import { PermissionGuard } from "../components/PermissionGuard";
 import { Profile } from "../components/Profile";
 import { RecordPaymentRefundModal } from "../components/RecordPaymentRefundModal";
@@ -427,6 +428,7 @@ export function VMDetailPage() {
             {payment.tax > 0 && <div>Tax: {formatCurrency(payment.tax, payment.currency)}</div>}
             {payment.processing_fee > 0 && <div>Fee: {formatCurrency(payment.processing_fee, payment.currency)}</div>}
           </div>
+          {payment.discount && <PaymentDiscount discount={payment.discount} />}
         </div>
       </td>
       {/* External ID */}

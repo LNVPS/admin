@@ -24,6 +24,7 @@ import { Card } from "../components/Card";
 import { ErrorState } from "../components/ErrorState";
 import { Modal } from "../components/Modal";
 import { PaginatedTable } from "../components/PaginatedTable";
+import { PaymentDiscount } from "../components/PaymentDiscount";
 import { Profile } from "../components/Profile";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
@@ -576,6 +577,7 @@ function SubscriptionPaymentsTable({ subscriptionId, refreshKey }: { subscriptio
             )}
             {payment.processing_fee > 0 && <div>Fee: {formatCurrency(payment.processing_fee, payment.currency)}</div>}
           </div>
+          {payment.discount && <PaymentDiscount discount={payment.discount} />}
         </div>
       </td>
       {/* External ID */}

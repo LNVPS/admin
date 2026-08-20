@@ -977,6 +977,23 @@ export interface AdminVmHistoryInfo {
   description: string | null;
 }
 
+/**
+ * The discount applied to one payment, as seen from the payment.
+ *
+ * Absent when the payment carried no discount. The payment's `amount` is
+ * already net of `amount_off` — this only records which code was used.
+ */
+export interface AdminPaymentDiscountInfo {
+  discount_id: number;
+  /** The code the customer entered; null for a code-less (automatic) discount. */
+  code: string | null;
+  /** What was taken off, in minor units of `currency`. */
+  amount_off: number;
+  currency: string;
+  /** False while the discounted invoice is unpaid: it has cost the campaign nothing yet. */
+  settled: boolean;
+}
+
 export interface AdminVmPaymentInfo {
   id: string;
   vm_id: number;
@@ -999,6 +1016,8 @@ export interface AdminVmPaymentInfo {
   payment_type: SubscriptionPaymentType;
   /** For a `refund` row, the hex id of the payment it reverses; null otherwise. */
   refunded_payment_id: string | null;
+  /** The discount applied to this payment; omitted when there was none. */
+  discount?: AdminPaymentDiscountInfo;
 }
 
 export interface AdminRefundAmountInfo {
@@ -1417,6 +1436,8 @@ export interface AdminSubscriptionPaymentInfo {
   tax: number;
   processing_fee: number;
   external_id: string | null;
+  /** The discount applied to this payment; omitted when there was none. */
+  discount?: AdminPaymentDiscountInfo;
   company_id: number | null;
   company_name: string | null;
   company_base_currency: string | null;

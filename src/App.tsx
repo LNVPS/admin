@@ -16,6 +16,8 @@ import { AuditLogPage } from "./pages/AuditLogPage";
 import { BulkMessagePage } from "./pages/BulkMessagePage";
 import { CompaniesPage } from "./pages/CompaniesPage";
 import { CustomPricingPage } from "./pages/CustomPricingPage";
+import { DiscountDetailPage } from "./pages/DiscountDetailPage";
+import { DiscountsPage } from "./pages/DiscountsPage";
 import { DnsServersPage } from "./pages/DnsServersPage";
 import { HostsPage } from "./pages/HostsPage";
 import { IpAddressDetailsPage } from "./pages/IpAddressDetailsPage";
@@ -430,6 +432,22 @@ function AppContent() {
               element={
                 <PermissionGuard requiredPermissions={["payment_method_config::view"]}>
                   <PaymentMethodsPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="discounts"
+              element={
+                <PermissionGuard requiredPermissions={["discount::view"]}>
+                  <DiscountsPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="discounts/:id"
+              element={
+                <PermissionGuard requiredPermissions={["discount::view"]}>
+                  <DiscountDetailPage />
                 </PermissionGuard>
               }
             />

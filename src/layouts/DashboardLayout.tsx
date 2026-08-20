@@ -24,6 +24,7 @@ import {
   ServerStackIcon,
   Squares2X2Icon,
   SunIcon,
+  TagIcon,
   UsersIcon,
   WifiIcon,
 } from "@heroicons/react/24/outline";
@@ -210,6 +211,12 @@ const navigation: NavSection[] = [
         to: "/referral-program",
         icon: GiftIcon,
         requiredPermissions: ["referral::view", "virtual_machines::view"],
+      },
+      {
+        name: "Discounts",
+        to: "/discounts",
+        icon: TagIcon,
+        requiredPermissions: ["discount::view"],
       },
       {
         name: "Resource Costs",

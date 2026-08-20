@@ -1978,6 +1978,122 @@ export interface UpdateTunnelPoolRequest {
   enabled?: boolean;
 }
 
+// Discount Management
+
+/**
+ * A discount campaign as seen by admins.
+ *
+ * Eligibility and effect are one CEL expression (`rule`) that returns a
+ * decision map. The server clamps the result (percent 0..=100, amount >= 0 and
+ * never more than the order total), so a badly written rule cannot over-
+ * discount an order. `{}`, `null` and `false` from a rule mean "does not
+ * apply".
+ */
+export interface AdminDiscountInfo {
+  id: number;
+  company_id: number;
+  /**
+   * Customer-facing code. Unique across all companies — a customer types a code
+   * without choosing a company — and matched exactly (surrounding whitespace
+   * trimmed).
+   */
+  code: string;
+  /** Human-readable campaign name. */
+  name: string | null;
+  /** CEL expression, e.g. `order.amount >= 5000 ? {'percent': 10} : {}`. */
+  rule: string;
+  /** ISO 8601. Defaults to now at creation. */
+  valid_from: string;
+  /** ISO 8601. Null = no expiry. Must be after `valid_from`. */
+  valid_to: string | null;
+  /** Max redemptions; null = unlimited. */
+  usage_limit: number | null;
+  /** Owned by redemption, not editable. */
+  used_count: number;
+  /** Max redemptions per customer; null = unlimited. */
+  per_user_limit: number | null;
+  active: boolean;
+  created: string;
+  /** What the campaign has cost so far, per currency, in minor units. */
+  given_away: { currency: string; amount: number }[];
+}
+
+/** One redemption of a discount, newest first in listings. */
+export interface AdminDiscountRedemptionInfo {
+  id: number;
+  discount_id: number;
+  user_id: number;
+  /** Hex payment hash the discount was redeemed against. */
+  subscription_payment_id: string;
+  /** Magnitude of the discount in the payment's own currency, minor units. */
+  amount_off: number;
+  currency: string;
+  redeemed_at: string;
+}
+
+/**
+ * Body for `POST /api/admin/v1/discounts`.
+ *
+ * `valid_from` defaults to now; `valid_to` is optional and must be after
+ * `valid_from`. `usage_limit` / `per_user_limit` are `null` for unlimited.
+ * `active` defaults to `true`.
+ */
+export interface CreateDiscountRequest {
+  company_id: number;
+  code: string;
+  name?: string;
+  rule: string;
+  valid_from?: string;
+  valid_to?: string | null;
+  usage_limit?: number | null;
+  per_user_limit?: number | null;
+  active?: boolean;
+}
+
+/** Body for `PATCH /api/admin/v1/discounts/{id}` — all fields optional. */
+export interface UpdateDiscountRequest {
+  code?: string;
+  name?: string | null;
+  rule?: string;
+  valid_from?: string;
+  valid_to?: string | null;
+  usage_limit?: number | null;
+  per_user_limit?: number | null;
+  active?: boolean;
+}
+
+/**
+ * A sample order for the rule preview endpoint. Every field is optional;
+ * omitted fields fall back to a representative sample (a new 100.00 EUR
+ * monthly order for an Irish customer with no order history, one standard
+ * 2-core VM line).
+ */
+export interface DiscountPreviewOrder {
+  /** Order total, minor units. Use for a minimum-spend threshold. */
+  amount?: number;
+  currency?: string;
+  intervals?: number;
+  interval_type?: "day" | "month" | "year";
+  is_new?: boolean;
+  /** Customer country (ISO alpha-3). */
+  country?: string | null;
+  /** Customer's settled payment count. */
+  orders?: number;
+  items?: Record<string, unknown>[];
+}
+
+/** Preview response: the decision the rule makes against the sample order. */
+export interface AdminDiscountPreviewResult {
+  applies: boolean;
+  percent: number | null;
+  amount: number | null;
+  currency: string | null;
+  /** The reduction the sample order would actually get, after clamping. */
+  amount_off: number | null;
+  /** Set when the rule fails to evaluate or returns a non-decision type. */
+  error: string | null;
+}
+
 function getConfiguredServerUrl(): string {
   try {
     const saved = localStorage.getItem("lnvps_admin_server_config");
@@ -3907,6 +4023,60 @@ export class AdminApi {
   ) {
     const result = await this.handleResponse<ApiResponse<AdminReferralPayoutInfo>>(
       await this.req(`/api/admin/v1/referrals/${id}/payouts/${payoutId}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
+  // Discount Management
+  async getDiscounts(params: { company_id: number; limit?: number; offset?: number }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminDiscountInfo>>(
+      await this.req("/api/admin/v1/discounts", "GET", undefined, params),
+    );
+  }
+
+  async getDiscount(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminDiscountInfo>>(
+      await this.req(`/api/admin/v1/discounts/${id}`, "GET"),
+    );
+    return result.data;
+  }
+
+  async createDiscount(data: CreateDiscountRequest) {
+    const result = await this.handleResponse<ApiResponse<AdminDiscountInfo>>(
+      await this.req("/api/admin/v1/discounts", "POST", data),
+    );
+    return result.data;
+  }
+
+  async updateDiscount(id: number, updates: UpdateDiscountRequest) {
+    const result = await this.handleResponse<ApiResponse<AdminDiscountInfo>>(
+      await this.req(`/api/admin/v1/discounts/${id}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
+  /** Fails once the discount has been redeemed — deactivate instead. */
+  async deleteDiscount(id: number) {
+    const result = await this.handleResponse<ApiResponse<{ success: boolean }>>(
+      await this.req(`/api/admin/v1/discounts/${id}`, "DELETE"),
+    );
+    return result.data;
+  }
+
+  async getDiscountRedemptions(id: number, params?: { limit?: number; offset?: number }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminDiscountRedemptionInfo>>(
+      await this.req(`/api/admin/v1/discounts/${id}/redemptions`, "GET", undefined, params),
+    );
+  }
+
+  /**
+   * Evaluate a rule against a sample order without saving anything, so raw CEL
+   * can be checked before customers meet it. Omitted `order` fields fall back
+   * to a representative sample order.
+   */
+  async previewDiscountRule(rule: string, order?: DiscountPreviewOrder) {
+    const result = await this.handleResponse<ApiResponse<AdminDiscountPreviewResult>>(
+      await this.req("/api/admin/v1/discounts/preview", "POST", { rule, order }),
     );
     return result.data;
   }

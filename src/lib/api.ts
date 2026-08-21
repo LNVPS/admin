@@ -2104,6 +2104,37 @@ export interface DiscountPreviewOrder {
 }
 
 /** Preview response: the decision the rule makes against the sample order. */
+/** Recipient selector for a bulk message; populated fields are unioned and de-duplicated by user. */
+export interface AdminBulkMessageTarget {
+  /** Exactly these users, whether or not they currently own a VM. */
+  user_ids?: number[];
+  /** Owners of these VMs (deleted VMs select nobody). */
+  vm_ids?: number[];
+  /** Owners of any non-deleted VM on these hosts. */
+  host_ids?: number[];
+  /** Owners of any non-deleted VM in these regions. */
+  region_ids?: number[];
+}
+
+export interface AdminBulkMessageUnreachableUser {
+  user_id: number;
+  billing_name?: string | null;
+}
+
+export interface AdminBulkMessageResult {
+  /** False on a dry run, or if the job could not be dispatched. */
+  job_dispatched: boolean;
+  job_id: string | null;
+  /** Users the target resolved to. */
+  recipient_count: number;
+  /** How many of those have at least one usable contact method. */
+  reachable_count: number;
+  /** Recipients per contact method; a user opted into several channels counts once per channel. */
+  channel_counts: Record<string, number>;
+  /** Matched users with no contact method at all — reported, never messaged. */
+  unreachable_users: AdminBulkMessageUnreachableUser[];
+}
+
 export interface AdminDiscountPreviewResult {
   applies: boolean;
   percent: number | null;
@@ -4103,8 +4134,20 @@ export class AdminApi {
   }
 
   // Bulk messaging
-  async sendBulkMessage(params: { subject: string; message: string }) {
-    const result = await this.handleResponse<ApiResponse<{ job_dispatched: boolean; job_id: string }>>(
+  /**
+   * Dispatch (or, with `dry_run`, merely resolve) a bulk message.
+   *
+   * Omitting `target` messages every active customer. A `target` whose lists
+   * are all empty is rejected server-side with a 400 rather than being treated
+   * as "everyone", so callers must not send one.
+   */
+  async sendBulkMessage(params: {
+    subject: string;
+    message: string;
+    target?: AdminBulkMessageTarget;
+    dry_run?: boolean;
+  }) {
+    const result = await this.handleResponse<ApiResponse<AdminBulkMessageResult>>(
       await this.req("/api/admin/v1/users/bulk-message", "POST", params),
     );
     return result.data;

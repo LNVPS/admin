@@ -537,6 +537,10 @@ export interface AdminHostInfo {
     kind: DiskType;
     interface: DiskInterface;
     enabled: boolean;
+    /** Bytes consumed by VM disks placed on this disk (null if capacity was not calculated) */
+    usage: number | null;
+    /** usage as a fraction of the load-adjusted disk size, 0.0-1.0 (null if capacity was not calculated) */
+    load: number | null;
   }[];
   calculated_load: {
     overall_load: number; // Overall load percentage (0.0-1.0)
@@ -561,6 +565,15 @@ export interface AdminRegionInfo {
   total_cpu_cores: number;
   total_memory_bytes: number; // Total memory in bytes (not GB)
   total_ip_assignments: number; // IP assignments from active VMs only
+  ipv4_assignments: number; // Assignments whose IP range is an IPv4 CIDR
+  /**
+   * Unassigned usable IPv4 addresses across the region's *enabled* ranges.
+   * Disabled ranges, gateways and (unless the range is use_full_range)
+   * network/broadcast addresses are excluded.
+   */
+  ipv4_available: number;
+  /** Assignments whose IP range is an IPv6 CIDR. IPv6 has no "available" figure — it is effectively unbounded. */
+  ipv6_assignments: number;
 }
 
 export interface AdminHostDisk {
@@ -570,6 +583,10 @@ export interface AdminHostDisk {
   kind: string;
   interface: string;
   enabled: boolean;
+  /** Bytes consumed by VM disks on this disk. Null when no capacity calculation was done (disk CRUD endpoints). */
+  usage: number | null;
+  /** usage as a fraction of the load-adjusted disk size (0.0-1.0). Null as above. */
+  load: number | null;
 }
 
 /** A VM discovered on a host that is not tracked in the database (import candidate). */

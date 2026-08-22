@@ -1,4 +1,5 @@
 import { GlobeAltIcon, PencilIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import clsx from "clsx";
 import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
@@ -97,8 +98,15 @@ export function RegionsPage() {
           <div>
             <span className="font-medium text-white">{region.total_vms}</span> VMs
           </div>
-          <div>
-            <span className="font-medium text-purple-400">{region.total_ip_assignments}</span> IPs
+          <div title="Assigned IPv4 addresses, and unassigned usable addresses in this region's enabled ranges">
+            IPv4 <span className="font-medium text-purple-400">{region.ipv4_assignments}</span> used ·{" "}
+            <span className={clsx("font-medium", region.ipv4_available === 0 ? "text-red-400" : "text-green-400")}>
+              {region.ipv4_available}
+            </span>{" "}
+            free
+          </div>
+          <div title="Assigned IPv6 addresses. IPv6 range capacity is effectively unbounded, so there is no free count.">
+            IPv6 <span className="font-medium text-purple-400">{region.ipv6_assignments}</span> used
           </div>
         </div>
       </td>
@@ -141,6 +149,8 @@ export function RegionsPage() {
       totalHosts: regions.reduce((sum, region) => sum + region.host_count, 0),
       totalVMs: regions.reduce((sum, region) => sum + region.total_vms, 0),
       totalCPU: regions.reduce((sum, region) => sum + region.total_cpu_cores, 0),
+      // Free IPv4 is the figure that actually gates provisioning, so it is worth a headline slot
+      freeIPv4: regions.reduce((sum, region) => sum + region.ipv4_available, 0),
     };
 
     return (
@@ -153,6 +163,7 @@ export function RegionsPage() {
           { label: "Hosts", value: stats.totalHosts, tone: "purple" },
           { label: "VMs", value: stats.totalVMs, tone: "success" },
           { label: "CPU", value: stats.totalCPU, tone: "accent" },
+          { label: "IPv4 free", value: stats.freeIPv4, tone: stats.freeIPv4 === 0 ? "danger" : "success" },
         ]}
         actions={
           <Button onClick={() => setShowCreateModal(true)}>

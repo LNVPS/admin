@@ -1,4 +1,5 @@
 import { ArrowDownTrayIcon, CogIcon, PencilIcon, PlusIcon, UserIcon } from "@heroicons/react/24/outline";
+import clsx from "clsx";
 import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
 import { HostDiskEditor } from "../components/HostDiskEditor";
@@ -28,6 +29,14 @@ const usageColor = (load: number): string => {
   if (load >= 0.9) return "text-orange-400";
   if (load >= 0.75) return "text-yellow-400";
   return "text-slate-300";
+};
+
+/** Fill colour for a per-disk usage bar, matching the thresholds used by {@link usageColor}. */
+const usageBarColor = (load: number): string => {
+  if (load >= 1) return "bg-red-500";
+  if (load >= 0.9) return "bg-orange-500";
+  if (load >= 0.75) return "bg-yellow-500";
+  return "bg-blue-500";
 };
 
 export function HostsPage() {
@@ -145,38 +154,74 @@ export function HostsPage() {
           <div className="mt-0.5 text-xs text-slate-400">{formatBytes(host.memory)} RAM</div>
         </div>
       </td>
-      {/* Disks */}
+      {/* Disks — usage is reported per disk: a host is only as free as the disk a new VM
+          lands on. One aligned row per disk so several disks scan vertically. */}
       <td className="align-top text-gray-300">
-        <div className="min-w-0 max-w-[16rem] space-y-2">
-          <div className="space-y-0.5">
-            {host.disks.map((disk, idx) => (
-              <div key={idx} className="flex items-center gap-1 text-xs text-slate-400">
-                <span className="truncate font-mono text-purple-400" title={disk.name}>
-                  {disk.name}
-                </span>
-                <span className="text-slate-500">{formatBytes(disk.size)}</span>
-                <span className="text-slate-500">{disk.kind.toUpperCase()}</span>
-                <span className="text-slate-500">{disk.interface.toUpperCase()}</span>
-                {!disk.enabled && (
-                  <span className="inline-flex px-1 py-0.5 rounded text-red-300 bg-red-900">Disabled</span>
-                )}
-              </div>
-            ))}
+        <div className="min-w-0 max-w-[20rem] space-y-2">
+          <div className="space-y-1">
+            {host.disks.map((disk) => {
+              // Percentages are of the real disk size; the load factor (the ceiling
+              // provisioning may reach) is shown once per host below. Colour grades on
+              // `disk.load` — usage against that ceiling — since that is what blocks placement.
+              const realLoad = disk.usage != null ? disk.usage / disk.size : null;
+              const quotaLoad = disk.load;
+              return (
+                <div
+                  key={disk.id}
+                  className="grid grid-cols-[4.5rem_3rem_2.25rem_1fr] items-center gap-2 text-xs"
+                  title={
+                    disk.usage != null && quotaLoad != null
+                      ? `${disk.name} — ${disk.kind.toUpperCase()} ${disk.interface.toUpperCase()} — ${formatBytes(
+                          disk.usage,
+                        )} of ${formatBytes(disk.size)} allocated to VMs. Provisioning is allowed up to ${(
+                          host.load_disk * 100
+                        ).toFixed(0)}% of the disk, which is ${(quotaLoad * 100).toFixed(0)}% used.`
+                      : `${disk.name} — ${disk.kind.toUpperCase()} ${disk.interface.toUpperCase()} — usage unavailable`
+                  }
+                >
+                  <span className="truncate font-mono text-purple-400">{disk.name}</span>
+                  <div className="h-1.5 w-full overflow-hidden rounded bg-slate-700">
+                    {realLoad != null && (
+                      <div
+                        className={`h-full ${usageBarColor(quotaLoad ?? realLoad)}`}
+                        style={{ width: `${Math.min(realLoad, 1) * 100}%` }}
+                      />
+                    )}
+                  </div>
+                  <span className={clsx("text-right font-medium tabular-nums", usageColor(quotaLoad ?? 0))}>
+                    {realLoad != null ? `${(realLoad * 100).toFixed(0)}%` : "—"}
+                  </span>
+                  <span className="truncate text-slate-500 tabular-nums">
+                    {disk.usage != null ? formatBytes(disk.usage) : "—"} / {formatBytes(disk.size)}
+                    {!disk.enabled && <span className="ml-1 text-red-400">off</span>}
+                  </span>
+                </div>
+              );
+            })}
           </div>
-          <Button size="sm" variant="secondary" onClick={() => handleManageDisks(host)} className="px-3 py-1 text-xs">
-            <CogIcon className="h-3 w-3 mr-1" />
-            Manage Disks ({host.disks.length})
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="secondary" onClick={() => handleManageDisks(host)} className="px-3 py-1 text-xs">
+              <CogIcon className="h-3 w-3 mr-1" />
+              Manage Disks ({host.disks.length})
+            </Button>
+            <span
+              className="text-xs text-slate-500"
+              title="Disk load factor: provisioning may fill each disk to this share of its size"
+            >
+              max {(host.load_disk * 100).toFixed(0)}%
+            </span>
+          </div>
         </div>
       </td>
       {/* Load factors + active VMs */}
       <td className="align-top text-gray-300">
         <div className="text-xs space-y-0.5">
+          {/* Disk is deliberately absent: its per-disk usage is shown in the Disks column,
+              since the averaged figure hides a single full disk that already blocks placement */}
           {(
             [
               ["CPU", host.load_cpu, host.calculated_load.cpu_load],
               ["RAM", host.load_memory, host.calculated_load.memory_load],
-              ["Disk", host.load_disk, host.calculated_load.disk_load],
             ] as const
           ).map(([label, factor, used]) => (
             <div key={label}>
@@ -1158,8 +1203,8 @@ function ImportVmModal({
       <div className="space-y-4">
         <p className="text-sm text-gray-400">
           Discover VMs running on this host that are not tracked in the database and import one, assigning it to a user.
-          Billing uses the region's custom pricing (required). Discovery dispatches a worker job and may take up to ~30s.
-          Proxmox hosts only.
+          Billing uses the region's custom pricing (required). Discovery dispatches a worker job and may take up to
+          ~30s. Proxmox hosts only.
         </p>
 
         {!unmanaged && (

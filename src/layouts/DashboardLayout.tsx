@@ -81,7 +81,7 @@ const ACCENTS: Record<
     rail: "border-violet-400/25",
     node: "bg-violet-500/40 ring-slate-800",
     activeNode: "bg-violet-300 ring-violet-400/40",
-    activeLink: "bg-violet-500/10 text-violet-200 ring-1 ring-inset ring-violet-400/30",
+    activeLink: "nav-active-violet bg-violet-500/10 text-violet-200 ring-1 ring-inset ring-violet-400/30",
     sectionIcon: "text-violet-400",
   },
 };

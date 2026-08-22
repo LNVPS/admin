@@ -109,7 +109,7 @@ html.light {
   --color-slate-200: #1f2937;
   --color-slate-300: #334155; /* secondary text */
   --color-slate-400: #5b6776; /* muted text / icons */
-  --color-slate-500: #8a95a3; /* faint text / placeholders */
+  --color-slate-500: #636c7a; /* faint text / placeholders — AA on both the white card and the page bg */
   --color-slate-600: #cbd5e1; /* borders */
   --color-slate-700: #e2e8f0; /* dividers, secondary button bg */
   --color-slate-800: #ffffff; /* cards / panels / inputs / table head */
@@ -121,7 +121,7 @@ html.light {
   --color-gray-200: #1f2937;
   --color-gray-300: #334155;
   --color-gray-400: #5b6776;
-  --color-gray-500: #8a95a3;
+  --color-gray-500: #636c7a;
   --color-gray-600: #cbd5e1;
   --color-gray-700: #e2e8f0;
   --color-gray-800: #ffffff;
@@ -143,7 +143,7 @@ html.light {
 
   /* Status greens (not remapped by @theme) need light-mode values too. */
   --color-green-300: #15803d;
-  --color-green-400: #16a34a;
+  --color-green-400: #15803d; /* was #16a34a — 3.3:1 on white, under AA for text */
   --color-green-500: #16a34a;
   --color-green-600: #15803d;
   --color-green-900: #dcfce7;
@@ -159,6 +159,85 @@ html.light {
   --color-red-500: #e11d48;
   --color-red-600: #be123c;
   --color-red-900: #fee2e2;
+
+  /* ----------------------------------------------------------
+     Accent families the @theme block does not remap (amber,
+     orange, purple, emerald, teal, sky, violet, rose, indigo,
+     cyan, pink). Their stock 200-400 shades are tuned for a dark
+     background and measure 1.3-2.9:1 on white, so anything using
+     them as text was unreadable in light mode (e.g. the amber
+     "given away" figures on the discount screens).
+
+     Same shape as the ramps above: 200-400 become dark text
+     colours, 500 stays a mid tone for fills/borders/tints, and
+     900 flips to a LIGHT tint so the `bg-<f>-900 text-<f>-300`
+     chip pattern keeps dark-on-light rather than inverting.
+     ---------------------------------------------------------- */
+  --color-amber-200: #92400e;
+  --color-amber-300: #b45309;
+  --color-amber-400: #b45309;
+  --color-amber-500: #d97706;
+  --color-amber-900: #fef3c7;
+
+  --color-orange-200: #9a3412;
+  --color-orange-300: #c2410c;
+  --color-orange-400: #c2410c;
+  --color-orange-500: #ea580c;
+  --color-orange-900: #ffedd5;
+
+  --color-purple-200: #6b21a8;
+  --color-purple-300: #7e22ce;
+  --color-purple-400: #7e22ce;
+  --color-purple-500: #9333ea;
+  --color-purple-900: #f3e8ff;
+
+  --color-emerald-200: #065f46;
+  --color-emerald-300: #047857;
+  --color-emerald-400: #047857;
+  --color-emerald-500: #059669;
+  --color-emerald-900: #d1fae5;
+
+  --color-teal-200: #115e59;
+  --color-teal-300: #0f766e;
+  --color-teal-400: #0f766e;
+  --color-teal-500: #0d9488;
+  --color-teal-900: #ccfbf1;
+
+  --color-sky-200: #075985;
+  --color-sky-300: #0369a1;
+  --color-sky-400: #0369a1;
+  --color-sky-500: #0284c7;
+  --color-sky-900: #e0f2fe;
+
+  --color-violet-200: #5b21b6;
+  --color-violet-300: #6d28d9;
+  --color-violet-400: #6d28d9;
+  --color-violet-500: #7c3aed;
+  --color-violet-900: #ede9fe;
+
+  --color-rose-200: #9f1239;
+  --color-rose-300: #be123c;
+  --color-rose-400: #be123c;
+  --color-rose-500: #e11d48;
+  --color-rose-900: #ffe4e6;
+
+  --color-indigo-200: #3730a3;
+  --color-indigo-300: #4338ca;
+  --color-indigo-400: #4338ca;
+  --color-indigo-500: #4f46e5;
+  --color-indigo-900: #e0e7ff;
+
+  --color-cyan-200: #155e75;
+  --color-cyan-300: #0e7490;
+  --color-cyan-400: #0e7490;
+  --color-cyan-500: #0891b2;
+  --color-cyan-900: #cffafe;
+
+  --color-pink-200: #9d174d;
+  --color-pink-300: #be185d;
+  --color-pink-400: #be185d;
+  --color-pink-500: #db2777;
+  --color-pink-900: #fce7f3;
 }
 
 /* Softer, lighter accent glow for the light background. */
@@ -175,6 +254,10 @@ html.light .nav-active-blue {
 
 html.light .nav-active-teal {
   color: oklch(0.48 0.09 205);
+}
+
+html.light .nav-active-violet {
+  color: oklch(0.45 0.19 293);
 }
 
 /* Display font for headings */

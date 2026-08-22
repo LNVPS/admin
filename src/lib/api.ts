@@ -975,6 +975,12 @@ export interface AdminVmHistoryInfo {
   initiated_by_user_pubkey: string | null;
   initiated_by_user_email: string | null;
   description: string | null;
+  /** VM state before the action, as recorded by the API (null when not recorded). */
+  previous_state?: Record<string, unknown> | null;
+  /** VM state after the action (null when not recorded). */
+  new_state?: Record<string, unknown> | null;
+  /** Extra context for the action, e.g. reason/admin_action flags (null when not recorded). */
+  metadata?: Record<string, unknown> | null;
 }
 
 /**

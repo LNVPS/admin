@@ -22,6 +22,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/Button";
 import { ErrorState } from "../components/ErrorState";
+import { HoverTooltip } from "../components/HoverTooltip";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { PaymentDiscount } from "../components/PaymentDiscount";
 import { PermissionGuard } from "../components/PermissionGuard";
@@ -48,6 +49,7 @@ import { confirmDialog, promptDialog } from "../services/confirmService";
 import { toastService } from "../services/toastService";
 import { CURRENCIES, formatCurrency } from "../utils/currency";
 import { formatBytes } from "../utils/formatBytes";
+import { diffStates, formatDiffValue, metadataEntries } from "../utils/stateDiff";
 
 export function VMDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -332,6 +334,59 @@ export function VMDetailPage() {
     </>
   );
 
+  /**
+   * Hover affordance showing what a history entry actually changed.
+   *
+   * Renders nothing when the API recorded no state/metadata for the entry (older
+   * rows, or actions that don't capture state).
+   */
+  const renderHistoryDetails = (history: AdminVmHistoryInfo) => {
+    const changes = diffStates(history.previous_state, history.new_state);
+    const meta = metadataEntries(history.metadata);
+    if (changes.length === 0 && meta.length === 0) return null;
+
+    const label =
+      changes.length > 0 ? `${changes.length} change${changes.length === 1 ? "" : "s"}` : `${meta.length} metadata`;
+
+    return (
+      <HoverTooltip
+        className="mt-1 inline-flex cursor-help items-center gap-1 rounded border border-gray-600 px-1.5 py-0.5 text-[11px] text-gray-400 hover:border-gray-400 hover:text-gray-200"
+        content={
+          <div className="space-y-2 text-xs">
+            {changes.length > 0 && (
+              <div className="space-y-1">
+                <div className="font-semibold uppercase tracking-wider text-gray-400 text-[10px]">Changes</div>
+                {changes.map(({ key, from, to, type }) => (
+                  <div key={key}>
+                    <div className="font-medium text-gray-200">{key}</div>
+                    <div className="ml-2 font-mono break-all">
+                      {type !== "added" && <div className="text-red-400">- {formatDiffValue(from)}</div>}
+                      {type !== "removed" && <div className="text-green-400">+ {formatDiffValue(to)}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {meta.length > 0 && (
+              <div className="space-y-1">
+                <div className="font-semibold uppercase tracking-wider text-gray-400 text-[10px]">Metadata</div>
+                {meta.map(({ key, value }) => (
+                  <div key={key} className="flex gap-2">
+                    <span className="text-gray-400">{key}</span>
+                    <span className="font-mono break-all text-gray-200">{formatDiffValue(value)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        }
+      >
+        <DocumentTextIcon className="h-3 w-3" />
+        {label}
+      </HoverTooltip>
+    );
+  };
+
   const renderHistoryRow = (history: AdminVmHistoryInfo, index: number) => (
     <tr key={history.id || index}>
       <td className="align-top">
@@ -341,6 +396,7 @@ export function VMDetailPage() {
       </td>
       <td className="align-top text-gray-300 text-sm">
         <div className="min-w-0 max-w-[24rem] break-words">{history.description || "-"}</div>
+        {renderHistoryDetails(history)}
       </td>
       <td className="align-top">
         {history.initiated_by_user_pubkey ? (

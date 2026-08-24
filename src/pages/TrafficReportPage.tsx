@@ -3,9 +3,10 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/Button";
 import { PaginatedTable } from "../components/PaginatedTable";
+import { Profile } from "../components/Profile";
 import { StatsHeader } from "../components/StatsHeader";
 import { useAdminApi } from "../hooks/useAdminApi";
-import type { FleetTrafficRow } from "../lib/api";
+import type { AdminApi, AdminVmInfo, FleetTrafficRow } from "../lib/api";
 import { formatTransferBytes } from "../utils/formatBytes";
 
 /** Inclusive UTC date bound in the API's YYYY-MM-DD form. */
@@ -23,8 +24,39 @@ function currentMonth(): { start: string; end: string } {
 const MAX_RANGE_DAYS = 400;
 
 /**
+ * The report returns bare ids, so each row is enriched with the VM it belongs
+ * to. Cached for the life of the page: paging back and forth over a ranking
+ * that only moves once a day should not re-fetch the same VMs.
+ */
+const vmCache = new Map<number, AdminVmInfo | null>();
+
+/** Resolve `ids` through the cache, at most `concurrency` requests in flight. */
+async function loadVms(api: AdminApi, ids: number[], concurrency = 6): Promise<void> {
+  const missing = ids.filter((id) => !vmCache.has(id));
+  for (let i = 0; i < missing.length; i += concurrency) {
+    await Promise.all(
+      missing.slice(i, i + concurrency).map(async (id) => {
+        try {
+          vmCache.set(id, await api.getVM(id));
+        } catch {
+          // A VM the report can still attribute but the detail endpoint refuses
+          // (permission, race with a purge) must not blank the whole page.
+          vmCache.set(id, null);
+        }
+      }),
+    );
+  }
+}
+
+interface EnrichedRow extends FleetTrafficRow {
+  vm: AdminVmInfo | null;
+  /** 1-based position in the whole ranking, not just this page. */
+  rank: number;
+}
+
+/**
  * Fleet traffic ranking — which VMs moved the transit bill, heaviest outbound
- * sender first.
+ * sender first, defaulting to the current calendar month.
  *
  * Figures are the hypervisor's per-VM interface counters, so they cover all
  * egress from the guest, not only billable internet egress. VMs purged since
@@ -58,6 +90,22 @@ export function TrafficReportPage() {
     setApplied({ start, end });
   };
 
+  const loadPage = async (params: { limit: number; offset: number }) => {
+    const page = await adminApi.getTrafficReport({ ...params, ...applied });
+    await loadVms(
+      adminApi,
+      page.data.map((r) => r.vm_id),
+    );
+    return {
+      ...page,
+      data: page.data.map((row, i) => ({
+        ...row,
+        vm: vmCache.get(row.vm_id) ?? null,
+        rank: params.offset + i + 1,
+      })),
+    };
+  };
+
   const exportCSV = async () => {
     // Export the whole ranking, not just the visible page.
     const rows: FleetTrafficRow[] = [];
@@ -68,9 +116,25 @@ export function TrafficReportPage() {
       offset += page.data.length;
       if (page.data.length === 0 || offset >= page.total) break;
     }
+    // Name the rows that were never paged into view, so the export is not a
+    // column of bare ids.
+    await loadVms(
+      adminApi,
+      rows.map((r) => r.vm_id),
+    );
     const csv = [
-      ["VM ID", "User ID", "Bytes Out", "Bytes In"].join(","),
-      ...rows.map((r) => [r.vm_id, r.user_id, r.bytes_out, r.bytes_in].join(",")),
+      ["VM ID", "VM Name", "User ID", "User Pubkey", "Bytes Out", "Bytes In"].join(","),
+      ...rows.map((r) => {
+        const vm = vmCache.get(r.vm_id) ?? null;
+        return [
+          r.vm_id,
+          vm ? `"${vmLabel(vm).replace(/"/g, '""')}"` : "",
+          r.user_id,
+          vm?.user_pubkey ?? "",
+          r.bytes_out,
+          r.bytes_in,
+        ].join(",");
+      }),
     ].join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
     const a = document.createElement("a");
@@ -82,36 +146,60 @@ export function TrafficReportPage() {
 
   const renderHeader = () => (
     <tr>
+      <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">#</th>
       <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">VM</th>
-      <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">User</th>
+      <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Owner</th>
+      <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Location</th>
       <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase">Out</th>
       <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase">In</th>
     </tr>
   );
 
-  const renderRow = (row: FleetTrafficRow) => (
-    <tr key={row.vm_id} className="hover:bg-gray-700/40">
-      <td className="px-4 py-3">
-        <Link to={`/vms/${row.vm_id}`} className="text-blue-400 hover:underline">
-          VM #{row.vm_id}
-        </Link>
-      </td>
-      <td className="px-4 py-3">
-        <Link to={`/users/${row.user_id}`} className="text-blue-400 hover:underline">
-          User #{row.user_id}
-        </Link>
-      </td>
-      <td className="px-4 py-3 text-right text-white">{formatTransferBytes(row.bytes_out)}</td>
-      <td className="px-4 py-3 text-right text-gray-300">{formatTransferBytes(row.bytes_in)}</td>
-    </tr>
-  );
+  const renderRow = (row: EnrichedRow) => {
+    const vm = row.vm;
+    return (
+      <tr key={row.vm_id} className="hover:bg-gray-700/40">
+        <td className="px-4 py-3 text-sm text-gray-500">{row.rank}</td>
+        <td className="px-4 py-3">
+          <Link to={`/vms/${row.vm_id}`} className="text-blue-400 hover:underline">
+            {vm ? vmLabel(vm) : `VM ${row.vm_id}`}
+          </Link>
+          <div className="text-xs text-gray-500">
+            #{row.vm_id}
+            {vm?.deleted && <span className="ml-2 text-red-400">deleted</span>}
+          </div>
+        </td>
+        <td className="px-4 py-3">
+          <Link to={`/users/${row.user_id}`} className="text-blue-400 hover:text-blue-300">
+            {vm ? (
+              <Profile pubkey={vm.user_pubkey} avatarSize="sm" />
+            ) : (
+              <span className="hover:underline">Account</span>
+            )}
+          </Link>
+          {vm?.user_email && <div className="mt-1 text-xs text-gray-500">{vm.user_email}</div>}
+        </td>
+        <td className="px-4 py-3 text-sm text-gray-300">
+          {vm ? (
+            <>
+              <div>{vm.region_name}</div>
+              <div className="text-xs text-gray-500">{vm.host_name}</div>
+            </>
+          ) : (
+            <span className="text-gray-600">—</span>
+          )}
+        </td>
+        <td className="px-4 py-3 text-right text-white">{formatTransferBytes(row.bytes_out)}</td>
+        <td className="px-4 py-3 text-right text-gray-300">{formatTransferBytes(row.bytes_in)}</td>
+      </tr>
+    );
+  };
 
   return (
     <div className="space-y-6">
       <StatsHeader
         title="Fleet Traffic"
         subtitle="VMs ranked by outbound transfer over the selected UTC date range"
-        stats={[]}
         actions={
           <div className="flex flex-wrap items-end gap-2">
             <div>
@@ -151,8 +239,8 @@ export function TrafficReportPage() {
 
       {rangeError && <div className="text-sm text-red-400">{rangeError}</div>}
 
-      <PaginatedTable<FleetTrafficRow>
-        apiCall={(params) => adminApi.getTrafficReport({ ...params, ...applied })}
+      <PaginatedTable<EnrichedRow>
+        apiCall={loadPage}
         renderHeader={renderHeader}
         renderRow={renderRow}
         renderEmptyState={() => (
@@ -161,11 +249,11 @@ export function TrafficReportPage() {
             No traffic recorded in this range.
           </div>
         )}
-        itemsPerPage={50}
+        itemsPerPage={25}
         errorAction="load traffic report"
         loadingMessage="Loading traffic report..."
         dependencies={[applied]}
-        minWidth="600px"
+        minWidth="900px"
         calculateStats={(rows, total) => (
           <div className="flex flex-wrap gap-4 text-sm text-gray-400">
             <span>
@@ -182,4 +270,10 @@ export function TrafficReportPage() {
       />
     </div>
   );
+}
+
+/** Human label for a VM: the image and plan it runs, not its row id. */
+function vmLabel(vm: AdminVmInfo): string {
+  const parts = [vm.image_name, vm.template_name].filter(Boolean);
+  return parts.length > 0 ? parts.join(" · ") : `VM ${vm.id}`;
 }

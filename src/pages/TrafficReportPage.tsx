@@ -3,11 +3,11 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/Button";
 import { PaginatedTable } from "../components/PaginatedTable";
-import { Profile } from "../components/Profile";
 import { StatsHeader } from "../components/StatsHeader";
+import { VmListRow, vmListHeaderCells } from "../components/VmListRow";
 import { useAdminApi } from "../hooks/useAdminApi";
 import type { AdminApi, AdminVmInfo, FleetTrafficRow } from "../lib/api";
-import { formatTransferBytes } from "../utils/formatBytes";
+import { formatTransferBytes, TRANSFER_GB_BYTES } from "../utils/formatBytes";
 
 /** Inclusive UTC date bound in the API's YYYY-MM-DD form. */
 function utcDate(d: Date): string {
@@ -23,35 +23,28 @@ function currentMonth(): { start: string; end: string } {
 
 const MAX_RANGE_DAYS = 400;
 
+/** Ids per bulk-status request; the endpoint rejects more than 100. */
+const BULK_VM_STATUS_MAX_IDS = 100;
+
 /**
  * The report returns bare ids, so each row is enriched with the VM it belongs
- * to. Cached for the life of the page: paging back and forth over a ranking
- * that only moves once a day should not re-fetch the same VMs.
+ * to and rendered as the ordinary VM list row.
+ *
+ * Ids that no longer resolve are omitted from the response, so the result is
+ * keyed by `id` rather than matched by position.
  */
-const vmCache = new Map<number, AdminVmInfo | null>();
-
-/** Resolve `ids` through the cache, at most `concurrency` requests in flight. */
-async function loadVms(api: AdminApi, ids: number[], concurrency = 6): Promise<void> {
-  const missing = ids.filter((id) => !vmCache.has(id));
-  for (let i = 0; i < missing.length; i += concurrency) {
-    await Promise.all(
-      missing.slice(i, i + concurrency).map(async (id) => {
-        try {
-          vmCache.set(id, await api.getVM(id));
-        } catch {
-          // A VM the report can still attribute but the detail endpoint refuses
-          // (permission, race with a purge) must not blank the whole page.
-          vmCache.set(id, null);
-        }
-      }),
-    );
+async function loadVms(api: AdminApi, ids: number[]): Promise<Map<number, AdminVmInfo>> {
+  const unique = [...new Set(ids)];
+  const out = new Map<number, AdminVmInfo>();
+  for (let i = 0; i < unique.length; i += BULK_VM_STATUS_MAX_IDS) {
+    const vms = await api.getVmStatuses(unique.slice(i, i + BULK_VM_STATUS_MAX_IDS));
+    for (const vm of vms) out.set(vm.id, vm);
   }
+  return out;
 }
 
 interface EnrichedRow extends FleetTrafficRow {
   vm: AdminVmInfo | null;
-  /** 1-based position in the whole ranking, not just this page. */
-  rank: number;
 }
 
 /**
@@ -92,17 +85,13 @@ export function TrafficReportPage() {
 
   const loadPage = async (params: { limit: number; offset: number }) => {
     const page = await adminApi.getTrafficReport({ ...params, ...applied });
-    await loadVms(
+    const vms = await loadVms(
       adminApi,
       page.data.map((r) => r.vm_id),
     );
     return {
       ...page,
-      data: page.data.map((row, i) => ({
-        ...row,
-        vm: vmCache.get(row.vm_id) ?? null,
-        rank: params.offset + i + 1,
-      })),
+      data: page.data.map((row) => ({ ...row, vm: vms.get(row.vm_id) ?? null })),
     };
   };
 
@@ -118,17 +107,19 @@ export function TrafficReportPage() {
     }
     // Name the rows that were never paged into view, so the export is not a
     // column of bare ids.
-    await loadVms(
+    const vms = await loadVms(
       adminApi,
       rows.map((r) => r.vm_id),
     );
     const csv = [
-      ["VM ID", "VM Name", "User ID", "User Pubkey", "Bytes Out", "Bytes In"].join(","),
+      ["VM ID", "Host", "Region", "Plan", "User ID", "User Pubkey", "Bytes Out", "Bytes In"].join(","),
       ...rows.map((r) => {
-        const vm = vmCache.get(r.vm_id) ?? null;
+        const vm = vms.get(r.vm_id) ?? null;
         return [
           r.vm_id,
-          vm ? `"${vmLabel(vm).replace(/"/g, '""')}"` : "",
+          vm?.host_name ?? "",
+          vm?.region_name ?? "",
+          vm ? `"${(vm.template_name ?? "").replace(/"/g, '""')}"` : "",
           r.user_id,
           vm?.user_pubkey ?? "",
           r.bytes_out,
@@ -144,55 +135,57 @@ export function TrafficReportPage() {
     URL.revokeObjectURL(url);
   };
 
-  const renderHeader = () => (
-    <tr>
-      <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">#</th>
-      <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">VM</th>
-      <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Owner</th>
-      <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Location</th>
-      <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase">Out</th>
-      <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase">In</th>
-    </tr>
-  );
+  // PaginatedTable owns the <tr>, so the header is a bare list of <th> cells.
+  const renderHeader = () =>
+    vmListHeaderCells({
+      trailing: <th className="!text-right">Transfer</th>,
+      actions: false,
+    });
+
+  // The allowance is a calendar-month figure, so a percentage is only
+  // meaningful while the selected range is that month.
+  const month = currentMonth();
+  const showQuota = applied.start === month.start && applied.end === month.end;
+
+  const renderTransferCell = (row: EnrichedRow) => {
+    const quotaGb = showQuota ? row.vm?.traffic?.transfer_gb : null;
+    const quotaBytes = quotaGb != null ? quotaGb * TRANSFER_GB_BYTES : null;
+    const pct = quotaBytes && quotaBytes > 0 ? (row.bytes_out / quotaBytes) * 100 : null;
+    return (
+      <td className="whitespace-nowrap text-right align-top">
+        <div className="font-mono text-slate-100">↑ {formatTransferBytes(row.bytes_out)}</div>
+        <div className="font-mono text-xs text-slate-400">↓ {formatTransferBytes(row.bytes_in)}</div>
+        {pct != null && (
+          <div className={`text-xs ${pct >= 100 ? "text-red-400" : pct >= 80 ? "text-amber-400" : "text-slate-500"}`}>
+            {pct.toFixed(0)}% of {quotaGb} GB
+          </div>
+        )}
+      </td>
+    );
+  };
 
   const renderRow = (row: EnrichedRow) => {
-    const vm = row.vm;
-    return (
-      <tr key={row.vm_id} className="hover:bg-gray-700/40">
-        <td className="px-4 py-3 text-sm text-gray-500">{row.rank}</td>
-        <td className="px-4 py-3">
-          <Link to={`/vms/${row.vm_id}`} className="text-blue-400 hover:underline">
-            {vm ? vmLabel(vm) : `VM ${row.vm_id}`}
-          </Link>
-          <div className="text-xs text-gray-500">
-            #{row.vm_id}
-            {vm?.deleted && <span className="ml-2 text-red-400">deleted</span>}
-          </div>
-        </td>
-        <td className="px-4 py-3">
-          <Link to={`/users/${row.user_id}`} className="text-blue-400 hover:text-blue-300">
-            {vm ? (
-              <Profile pubkey={vm.user_pubkey} avatarSize="sm" />
-            ) : (
-              <span className="hover:underline">Account</span>
-            )}
-          </Link>
-          {vm?.user_email && <div className="mt-1 text-xs text-gray-500">{vm.user_email}</div>}
-        </td>
-        <td className="px-4 py-3 text-sm text-gray-300">
-          {vm ? (
-            <>
-              <div>{vm.region_name}</div>
-              <div className="text-xs text-gray-500">{vm.host_name}</div>
-            </>
-          ) : (
-            <span className="text-gray-600">—</span>
-          )}
-        </td>
-        <td className="px-4 py-3 text-right text-white">{formatTransferBytes(row.bytes_out)}</td>
-        <td className="px-4 py-3 text-right text-gray-300">{formatTransferBytes(row.bytes_in)}</td>
-      </tr>
-    );
+    if (!row.vm) {
+      // Unresolvable VM: keep the column count so the table stays aligned.
+      return (
+        <tr key={row.vm_id}>
+          <td className="whitespace-nowrap align-top">
+            <Link to={`/vms/${row.vm_id}`} className="font-semibold text-blue-400 hover:text-blue-300">
+              #{row.vm_id}
+            </Link>
+          </td>
+          <td className="align-top text-slate-500">Details unavailable</td>
+          <td className="align-top text-slate-500">—</td>
+          <td className="align-top">
+            <Link to={`/users/${row.user_id}`} className="text-blue-400 hover:text-blue-300">
+              Account
+            </Link>
+          </td>
+          {renderTransferCell(row)}
+        </tr>
+      );
+    }
+    return <VmListRow key={row.vm_id} vm={row.vm} trailing={renderTransferCell(row)} />;
   };
 
   return (
@@ -253,7 +246,7 @@ export function TrafficReportPage() {
         errorAction="load traffic report"
         loadingMessage="Loading traffic report..."
         dependencies={[applied]}
-        minWidth="900px"
+        minWidth="1000px"
         calculateStats={(rows, total) => (
           <div className="flex flex-wrap gap-4 text-sm text-gray-400">
             <span>
@@ -270,10 +263,4 @@ export function TrafficReportPage() {
       />
     </div>
   );
-}
-
-/** Human label for a VM: the image and plan it runs, not its row id. */
-function vmLabel(vm: AdminVmInfo): string {
-  const parts = [vm.image_name, vm.template_name].filter(Boolean);
-  return parts.length > 0 ? parts.join(" · ") : `VM ${vm.id}`;
 }

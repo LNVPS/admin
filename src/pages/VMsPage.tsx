@@ -1,4 +1,4 @@
-import { CalendarDaysIcon, DocumentTextIcon, EyeIcon, PlayIcon, PlusIcon, StopIcon } from "@heroicons/react/24/outline";
+import { CalendarDaysIcon, EyeIcon, PlayIcon, PlusIcon, StopIcon } from "@heroicons/react/24/outline";
 import { bech32ToHex } from "@snort/shared";
 import { tryParseNostrLink } from "@snort/system";
 import { useEffect, useState } from "react";
@@ -9,13 +9,11 @@ import { CreateVmModal } from "../components/CreateVmModal";
 import { countActiveFilters, FilterBar, FilterButton, type FilterField } from "../components/FilterBar";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { PermissionGuard } from "../components/PermissionGuard";
-import { Profile } from "../components/Profile";
 import { type StatItem, StatsHeader } from "../components/StatsHeader";
-import { StatusBadge } from "../components/StatusBadge";
-import { getVmStatus, VmStatusBadge } from "../components/VmStatusBadge";
+import { VmListRow, vmListHeaderCells } from "../components/VmListRow";
+import { getVmStatus } from "../components/VmStatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { type AdminHostInfo, type AdminRegionInfo, type AdminVmInfo, VmRunningStates } from "../lib/api";
-import { formatBytes } from "../utils/formatBytes";
 
 export function VMsPage() {
   const adminApi = useAdminApi();
@@ -186,91 +184,14 @@ export function VMsPage() {
     }
   };
 
-  const renderHeader = () => (
-    <>
-      <th className="w-14">ID</th>
-      <th>Host &amp; Network</th>
-      <th>Status</th>
-      <th>Owner</th>
-      <th className="text-right">Actions</th>
-    </>
-  );
+  const renderHeader = () => vmListHeaderCells();
 
   const renderRow = (vmInfo: AdminVmInfo, index: number) => (
-    <tr key={vmInfo.id || index} className={vmInfo.deleted ? "bg-gray-800/50 opacity-75" : ""}>
-      <td className="whitespace-nowrap align-top">
-        <Link to={`/vms/${vmInfo.id}`} className="text-blue-400 hover:text-blue-300 font-semibold">
-          #{vmInfo.id}
-        </Link>
-      </td>
-      {/* Host · region / IPs */}
-      <td className="align-top">
-        <div className="min-w-0 max-w-[22rem]">
-          <div className="truncate text-slate-100">
-            {vmInfo.host_name && <span className="font-medium">{vmInfo.host_name}</span>}
-            {vmInfo.host_name && <span className="text-slate-500"> · </span>}
-            <span className="text-slate-400">{vmInfo.region_name || "Unknown region"}</span>
-          </div>
-          <div className="mt-1 space-y-0.5">
-            {vmInfo.ip_addresses.length > 0 ? (
-              vmInfo.ip_addresses.map((ip, idx) => (
-                <div key={idx} className="truncate font-mono text-xs text-slate-300" title={ip.ip}>
-                  {ip.ip}
-                </div>
-              ))
-            ) : (
-              <span className="text-xs text-slate-500">No IPs</span>
-            )}
-          </div>
-        </div>
-      </td>
-      {/* Status + resources */}
-      <td className="align-top">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <VmStatusBadge vm={vmInfo} />
-          {(vmInfo as { disabled?: boolean }).disabled && <StatusBadge status="disabled" />}
-          {vmInfo.admin_notes && (
-            <span
-              title={`Admin notes: ${vmInfo.admin_notes}`}
-              className="text-slate-400"
-              role="img"
-              aria-label="Has admin notes"
-            >
-              <DocumentTextIcon className="h-4 w-4" />
-            </span>
-          )}
-        </div>
-        {vmInfo.cpu !== undefined && vmInfo.memory !== undefined && vmInfo.disk_size !== undefined ? (
-          <div className="mt-1.5 font-mono text-xs text-slate-300">
-            {vmInfo.cpu}C · {formatBytes(vmInfo.memory)} · {formatBytes(vmInfo.disk_size)}{" "}
-            <span className="uppercase text-slate-500">{vmInfo.disk_type}</span>
-          </div>
-        ) : (
-          <div className="mt-1.5 text-xs text-slate-500">No resource info</div>
-        )}
-      </td>
-      {/* Owner + dates */}
-      <td className="align-top">
-        {vmInfo.user_id ? (
-          <Link
-            to={`/users/${vmInfo.user_id}`}
-            className="text-blue-400 hover:text-blue-300"
-            state={{ user: undefined }}
-          >
-            <Profile pubkey={vmInfo.user_pubkey || ""} avatarSize="sm" />
-          </Link>
-        ) : (
-          <span className="text-slate-400">N/A</span>
-        )}
-        <div className="mt-1 text-xs text-slate-400">
-          Created {new Date(vmInfo.created).toLocaleDateString()}
-          {vmInfo.expires && new Date(vmInfo.expires) < new Date() && (
-            <span className="ml-2 font-semibold text-red-400">Expired</span>
-          )}
-        </div>
-      </td>
-      <td className="text-right align-top">
-        <div className="flex justify-end space-x-2">
+    <VmListRow
+      key={vmInfo.id || index}
+      vm={vmInfo}
+      actions={
+        <>
           <Link to={`/vms/${vmInfo.id}`}>
             <Button size="sm" variant="secondary" className="p-1 text-blue-400 hover:text-blue-300">
               <EyeIcon className="h-4 w-4" />
@@ -296,9 +217,9 @@ export function VMsPage() {
               <StopIcon className="h-4 w-4" />
             </Button>
           )}
-        </div>
-      </td>
-    </tr>
+        </>
+      }
+    />
   );
 
   const calculateStats = (vms: AdminVmInfo[], totalItems: number) => {

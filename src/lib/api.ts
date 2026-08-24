@@ -2528,6 +2528,22 @@ export class AdminApi {
   }
 
   /**
+   * Load specific VMs by id in one call, returning the same `AdminVmInfo`
+   * objects as `getVM`.
+   *
+   * Max 100 ids per request; duplicates are collapsed and ids that no longer
+   * resolve are omitted, so the result may be shorter than `ids` and callers
+   * must match on `id` rather than position.
+   */
+  async getVmStatuses(ids: number[]) {
+    if (ids.length === 0) return [];
+    const result = await this.handleResponse<ApiResponse<AdminVmInfo[]>>(
+      await this.req("/api/admin/v1/vms/status", "POST", { ids }),
+    );
+    return result.data;
+  }
+
+  /**
    * Daily traffic for one VM over an inclusive UTC date range (max 400 days).
    * Defaults to the current calendar month when the bounds are omitted.
    */

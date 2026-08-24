@@ -47,6 +47,7 @@ interface FormData {
   disk_pricing: DiskPricingFormData[];
   cpu_limit: string;
   network_mbps: string;
+  transfer_gb: string;
   disk_iops_read: string;
   disk_iops_write: string;
   disk_mbps_read: string;
@@ -81,6 +82,7 @@ const getDefaultFormData = (): FormData => ({
   disk_pricing: [...DEFAULT_DISK_PRICING],
   cpu_limit: "",
   network_mbps: "",
+  transfer_gb: "",
   disk_iops_read: "",
   disk_iops_write: "",
   disk_mbps_read: "",
@@ -116,6 +118,7 @@ const getFormDataFromPricing = (pricing: AdminCustomPricingInfo): FormData => ({
   })),
   cpu_limit: pricing.cpu_limit != null ? pricing.cpu_limit.toString() : "",
   network_mbps: pricing.network_mbps != null ? pricing.network_mbps.toString() : "",
+  transfer_gb: pricing.transfer_gb != null ? pricing.transfer_gb.toString() : "",
   disk_iops_read: pricing.disk_iops_read != null ? pricing.disk_iops_read.toString() : "",
   disk_iops_write: pricing.disk_iops_write != null ? pricing.disk_iops_write.toString() : "",
   disk_mbps_read: pricing.disk_mbps_read != null ? pricing.disk_mbps_read.toString() : "",
@@ -181,6 +184,7 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
 
       submitData.cpu_limit = formData.cpu_limit !== "" ? parseFloat(formData.cpu_limit) : null;
       submitData.network_mbps = formData.network_mbps !== "" ? parseFloat(formData.network_mbps) : null;
+      submitData.transfer_gb = formData.transfer_gb !== "" ? parseInt(formData.transfer_gb) : null;
       submitData.disk_iops_read = formData.disk_iops_read !== "" ? parseInt(formData.disk_iops_read) : null;
       submitData.disk_iops_write = formData.disk_iops_write !== "" ? parseInt(formData.disk_iops_write) : null;
       submitData.disk_mbps_read = formData.disk_mbps_read !== "" ? parseFloat(formData.disk_mbps_read) : null;
@@ -482,6 +486,17 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
                 value={formData.network_mbps}
                 onChange={(e) => setFormData({ ...formData, network_mbps: e.target.value })}
                 placeholder="Uncapped"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Monthly Transfer (GB out)</label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={formData.transfer_gb}
+                onChange={(e) => setFormData({ ...formData, transfer_gb: e.target.value })}
+                placeholder="Unmetered"
               />
             </div>
           </div>

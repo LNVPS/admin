@@ -22,6 +22,7 @@ import {
   ScaleIcon,
   ServerIcon,
   ServerStackIcon,
+  SignalIcon,
   Squares2X2Icon,
   SunIcon,
   TagIcon,
@@ -234,6 +235,7 @@ const navigation: NavSection[] = [
       { name: "Referral Usage", to: "/referrals-report", icon: ChartBarIcon, requiredPermissions: ["analytics::view"] },
       { name: "Profit & Loss", to: "/profit-loss", icon: ScaleIcon, requiredPermissions: ["analytics::view"] },
       { name: "OSS VAT", to: "/oss-report", icon: GlobeEuropeAfricaIcon, requiredPermissions: ["analytics::view"] },
+      { name: "Fleet Traffic", to: "/traffic-report", icon: SignalIcon, requiredPermissions: ["analytics::view"] },
     ],
   },
 ];

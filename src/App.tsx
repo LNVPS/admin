@@ -44,6 +44,7 @@ import { SalesReportPage } from "./pages/SalesReportPage";
 import { SubscriptionDetailPage } from "./pages/SubscriptionDetailPage";
 import { SubscriptionsPage } from "./pages/SubscriptionsPage";
 import { SystemPage } from "./pages/SystemPage";
+import { TrafficReportPage } from "./pages/TrafficReportPage";
 import { TunnelPoolsPage } from "./pages/TunnelPoolsPage";
 import { UserDetailsPage } from "./pages/UserDetailsPage";
 import { UsersPage } from "./pages/UsersPage";
@@ -360,6 +361,14 @@ function AppContent() {
               element={
                 <PermissionGuard requiredPermissions={["analytics::view"]}>
                   <ReferralsReportPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="traffic-report"
+              element={
+                <PermissionGuard requiredPermissions={["analytics::view"]}>
+                  <TrafficReportPage />
                 </PermissionGuard>
               }
             />

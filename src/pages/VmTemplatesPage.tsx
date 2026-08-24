@@ -188,10 +188,12 @@ export function VmTemplatesPage() {
           template.disk_mbps_read != null ||
           template.disk_mbps_write != null ||
           template.network_mbps != null ||
+          template.transfer_gb != null ||
           template.cpu_limit != null ? (
             <div className="space-y-0.5 text-xs">
               {template.cpu_limit != null && <div>CPU: {template.cpu_limit * 100}%</div>}
               {template.network_mbps != null && <div>Net: {template.network_mbps} Mbps</div>}
+              {template.transfer_gb != null && <div>Transfer: {template.transfer_gb} GB/mo out</div>}
               {(template.disk_iops_read != null || template.disk_iops_write != null) && (
                 <div>
                   IOPS: {template.disk_iops_read ?? "∞"}r / {template.disk_iops_write ?? "∞"}w
@@ -352,6 +354,7 @@ const emptyForm = {
   // Resource limits (empty string = uncapped)
   cpu_limit: "",
   network_mbps: "",
+  transfer_gb: "",
   disk_iops_read: "",
   disk_iops_write: "",
   disk_mbps_read: "",
@@ -392,6 +395,7 @@ function VmTemplateModal({ isOpen, onClose, onSuccess, template, regions, costPl
         cost_plan_name: template.cost_plan_name || "",
         cpu_limit: template.cpu_limit != null ? template.cpu_limit.toString() : "",
         network_mbps: template.network_mbps != null ? template.network_mbps.toString() : "",
+        transfer_gb: template.transfer_gb != null ? template.transfer_gb.toString() : "",
         disk_iops_read: template.disk_iops_read != null ? template.disk_iops_read.toString() : "",
         disk_iops_write: template.disk_iops_write != null ? template.disk_iops_write.toString() : "",
         disk_mbps_read: template.disk_mbps_read != null ? template.disk_mbps_read.toString() : "",
@@ -437,6 +441,7 @@ function VmTemplateModal({ isOpen, onClose, onSuccess, template, regions, costPl
       const resourceLimits = {
         cpu_limit: formData.cpu_limit !== "" ? parseFloat(formData.cpu_limit) : null,
         network_mbps: formData.network_mbps !== "" ? parseInt(formData.network_mbps) : null,
+        transfer_gb: formData.transfer_gb !== "" ? parseInt(formData.transfer_gb) : null,
         disk_iops_read: formData.disk_iops_read !== "" ? parseInt(formData.disk_iops_read) : null,
         disk_iops_write: formData.disk_iops_write !== "" ? parseInt(formData.disk_iops_write) : null,
         disk_mbps_read: formData.disk_mbps_read !== "" ? parseInt(formData.disk_mbps_read) : null,
@@ -825,6 +830,18 @@ function VmTemplateModal({ isOpen, onClose, onSuccess, template, regions, costPl
                 onChange={(e) => setFormData({ ...formData, network_mbps: e.target.value })}
                 className={inputCls}
                 placeholder="Uncapped"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Monthly Transfer (GB out)</label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={formData.transfer_gb}
+                onChange={(e) => setFormData({ ...formData, transfer_gb: e.target.value })}
+                className={inputCls}
+                placeholder="Unmetered"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">

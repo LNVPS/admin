@@ -442,6 +442,50 @@ export interface AdminVmInfo {
    */
   admin_notes?: string | null;
   subscription: AdminSubscriptionInfo | null;
+  /**
+   * Outbound/inbound transfer for the *current* calendar month plus the plan's
+   * allowance. Omitted by older API builds, so treat `undefined` as unknown.
+   */
+  traffic?: VmTrafficSummary;
+}
+
+/**
+ * Transfer usage for the current calendar month. `transfer_gb` is the plan's
+ * monthly OUTBOUND allowance and is omitted when the plan is unmetered.
+ * Exceeding the allowance has no automatic effect today — display only.
+ */
+export interface VmTrafficSummary {
+  transfer_gb?: number | null;
+  /** Inclusive UTC date, YYYY-MM-DD. */
+  period_start: string;
+  /** Inclusive UTC date, YYYY-MM-DD. */
+  period_end: string;
+  bytes_out: number;
+  bytes_in: number;
+}
+
+export interface VmTrafficDay {
+  /** UTC date, YYYY-MM-DD. */
+  day: string;
+  bytes_in: number;
+  bytes_out: number;
+}
+
+export interface AdminVmTraffic {
+  vm_id: number;
+  user_id: number;
+  /** Always the current calendar month, whatever range was requested. */
+  summary: VmTrafficSummary;
+  /** Days with no traffic are omitted. */
+  days: VmTrafficDay[];
+}
+
+/** One row of the fleet traffic report, ordered by `bytes_out` descending. */
+export interface FleetTrafficRow {
+  vm_id: number;
+  user_id: number;
+  bytes_in: number;
+  bytes_out: number;
 }
 
 export interface CalculatedHostLoad {
@@ -662,6 +706,8 @@ export interface AdminVmTemplateInfo {
   disk_mbps_write: number | null;
   network_mbps: number | null;
   cpu_limit: number | null;
+  /** Monthly outbound transfer allowance in GB; null = unmetered. */
+  transfer_gb: number | null;
 }
 
 export interface AdminCustomPricingInfo {
@@ -705,6 +751,8 @@ export interface AdminCustomPricingInfo {
   disk_mbps_write: number | null;
   network_mbps: number | null;
   cpu_limit: number | null;
+  /** Monthly outbound transfer allowance in GB; null = unmetered. */
+  transfer_gb: number | null;
 }
 
 export interface AdminCostPlanInfo {
@@ -2479,6 +2527,17 @@ export class AdminApi {
     return result.data;
   }
 
+  /**
+   * Daily traffic for one VM over an inclusive UTC date range (max 400 days).
+   * Defaults to the current calendar month when the bounds are omitted.
+   */
+  async getVmTraffic(id: number, params?: { start?: string; end?: string }) {
+    const result = await this.handleResponse<ApiResponse<AdminVmTraffic>>(
+      await this.req(`/api/admin/v1/vms/${id}/traffic`, "GET", undefined, params),
+    );
+    return result.data;
+  }
+
   async createVM(data: {
     user_id: number;
     template_id: number;
@@ -3076,6 +3135,8 @@ export class AdminApi {
     disk_mbps_write?: number | null;
     network_mbps?: number | null;
     cpu_limit?: number | null;
+    /** Monthly outbound transfer allowance in GB; omit/null = unmetered. */
+    transfer_gb?: number | null;
   }) {
     const result = await this.handleResponse<ApiResponse<AdminVmTemplateInfo>>(
       await this.req("/api/admin/v1/vm_templates", "POST", data),
@@ -3113,6 +3174,8 @@ export class AdminApi {
       disk_mbps_write: number | null;
       network_mbps: number | null;
       cpu_limit: number | null;
+      /** Monthly outbound transfer allowance in GB; null = unmetered. */
+      transfer_gb: number | null;
     }>,
   ) {
     const result = await this.handleResponse<ApiResponse<AdminVmTemplateInfo>>(
@@ -3183,6 +3246,8 @@ export class AdminApi {
     disk_mbps_write?: number | null;
     network_mbps?: number | null;
     cpu_limit?: number | null;
+    /** Monthly outbound transfer allowance in GB; omit/null = unmetered. */
+    transfer_gb?: number | null;
   }) {
     const result = await this.handleResponse<ApiResponse<AdminCustomPricingInfo>>(
       await this.req("/api/admin/v1/custom_pricing", "POST", data),
@@ -3226,6 +3291,8 @@ export class AdminApi {
       disk_mbps_write: number | null;
       network_mbps: number | null;
       cpu_limit: number | null;
+      /** Monthly outbound transfer allowance in GB; null = unmetered. */
+      transfer_gb: number | null;
     }>,
   ) {
     const result = await this.handleResponse<ApiResponse<AdminCustomPricingInfo>>(
@@ -4797,6 +4864,16 @@ export class AdminApi {
       await this.req("/api/admin/v1/reports/oss", "GET", undefined, params),
     );
     return result.data;
+  }
+
+  /**
+   * Fleet traffic ranking, heaviest outbound sender first. `total` counts VMs
+   * with traffic in range, not daily rows. Range may span at most 400 days.
+   */
+  async getTrafficReport(params?: { start?: string; end?: string; limit?: number; offset?: number }) {
+    return await this.handleResponse<PaginatedApiResponse<FleetTrafficRow>>(
+      await this.req("/api/admin/v1/reports/traffic", "GET", undefined, params as any),
+    );
   }
 }
 

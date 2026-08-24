@@ -33,6 +33,7 @@ import { VmIpAssignmentModal } from "../components/VmIpAssignmentModal";
 import { VmMigrateModal } from "../components/VmMigrateModal";
 import { VmRefundModal } from "../components/VmRefundModal";
 import { getVmStatus, VmStatusBadge } from "../components/VmStatusBadge";
+import { VmTrafficPanel } from "../components/VmTrafficPanel";
 import { VmTransferModal } from "../components/VmTransferModal";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { useUserRoles } from "../hooks/useUserRoles";
@@ -1044,6 +1045,9 @@ export function VMDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Monthly transfer usage + daily breakdown */}
+      <VmTrafficPanel vmId={vm.id} summary={vm.traffic} />
 
       {vm.deleted && (
         <div className="bg-red-900/20 border border-red-500/20 rounded-lg p-3">

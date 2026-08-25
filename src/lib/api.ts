@@ -2120,7 +2120,12 @@ export interface AdminDiscountRedemptionInfo {
   /** Magnitude of the discount in the payment's own currency, minor units. */
   amount_off: number;
   currency: string;
-  redeemed_at: string;
+  /** False while the discounted invoice is unpaid. Unsettled rows consume no limit. */
+  settled: boolean;
+  /** ISO 8601. When the discounted invoice was created. */
+  created: string;
+  /** ISO 8601. When the payment settled, if it has. */
+  settled_at: string | null;
 }
 
 /**

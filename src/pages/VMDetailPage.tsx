@@ -735,7 +735,6 @@ export function VMDetailPage() {
             <h1 className="text-2xl font-bold text-white">VM #{vm.id}</h1>
             <VmStatusBadge vm={vm} />
             {vm.disabled && <StatusBadge status="disabled" />}
-            {vm.deleted && <StatusBadge status="stopped">DELETED</StatusBadge>}
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-400">
             <span>{vm.image_name}</span>
@@ -743,7 +742,8 @@ export function VMDetailPage() {
             <span>{vm.template_name}</span>
             <span className="text-slate-600">•</span>
             <span className="font-mono text-xs">
-              {vm.cpu}C • {formatBytes(vm.memory)} • {formatBytes(vm.disk_size)}
+              {vm.cpu}C • {formatBytes(vm.memory)} • {formatBytes(vm.disk_size)} {vm.disk_type.toUpperCase()}
+              {vm.disk_interface ? ` (${vm.disk_interface.toUpperCase()})` : ""}
             </span>
             {vm.region_name && (
               <>

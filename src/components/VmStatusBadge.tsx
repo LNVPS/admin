@@ -46,9 +46,9 @@ export function VmStatusBadge({ vm, className = "" }: VmStatusBadgeProps) {
   };
 
   return (
-    <div className={className}>
-      <StatusBadge status={getVmStatusBadgeColor(vm)}>{getVmStatusText(vm)}</StatusBadge>
-    </div>
+    <StatusBadge status={getVmStatusBadgeColor(vm)} className={className}>
+      {getVmStatusText(vm)}
+    </StatusBadge>
   );
 }
 

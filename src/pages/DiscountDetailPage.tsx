@@ -13,6 +13,7 @@ import { Card, DetailList, DetailRow } from "../components/Card";
 import { minorUnitsHuman, RulePreviewPanel } from "../components/DiscountRulePreview";
 import { ErrorState } from "../components/ErrorState";
 import { PaginatedTable } from "../components/PaginatedTable";
+import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { useApiCall } from "../hooks/useApiCall";
 import { useUserRoles } from "../hooks/useUserRoles";
@@ -267,6 +268,7 @@ function RedemptionsTable({ discountId, discountCode }: { discountId: number; di
       <th>User</th>
       <th>Payment</th>
       <th>Amount Off</th>
+      <th>Status</th>
       <th>Redeemed At</th>
     </>
   );
@@ -285,7 +287,12 @@ function RedemptionsTable({ discountId, discountCode }: { discountId: number; di
       <td className="align-top whitespace-nowrap font-mono text-amber-300">
         {minorUnitsHuman(r.amount_off, r.currency)} {r.currency}
       </td>
-      <td className="align-top whitespace-nowrap text-slate-300">{new Date(r.redeemed_at).toLocaleString()}</td>
+      <td className="align-top whitespace-nowrap">
+        <StatusBadge status={r.settled ? "active" : "unknown"}>{r.settled ? "SETTLED" : "PENDING"}</StatusBadge>
+      </td>
+      <td className="align-top whitespace-nowrap text-slate-300">
+        {new Date(r.settled_at ?? r.created).toLocaleString()}
+      </td>
     </tr>
   );
 

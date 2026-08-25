@@ -16,14 +16,19 @@ import {
   XCircleIcon,
   EyeIcon,
   PencilIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
+import { useToast } from "../hooks/useToast";
+import { confirmDialog } from "../services/confirmService";
 
 export function IpAddressDetailsPage() {
   const { ip } = useParams<{ ip: string }>();
   const navigate = useNavigate();
   const adminApi = useAdminApi();
+  const { success, error: toastError } = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [ipRange, setIpRange] = useState<AdminIpRangeInfo | null>(null);
   const [currentAssignment, setCurrentAssignment] =
     useState<AdminVmIpAssignmentInfo | null>(null);
@@ -39,7 +44,25 @@ export function IpAddressDetailsPage() {
   };
 
   const refreshData = () => {
+    setRefreshTrigger((prev) => prev + 1);
     loadIpDetails();
+  };
+
+  const handleDeleteAssignment = async (assignment: AdminVmIpAssignmentInfo) => {
+    const confirmed = await confirmDialog({
+      title: "Un-assign IP Address",
+      message: `De-provision ${assignment.ip} from VM-${assignment.vm_id}? This removes ARP/DNS entries and releases the IP.`,
+    });
+    if (!confirmed) return;
+
+    try {
+      await adminApi.deleteVmIpAssignment(assignment.id);
+      success(`Un-assignment job queued for ${assignment.ip}`);
+      refreshData();
+    } catch (err) {
+      console.error("Failed to delete IP assignment:", err);
+      toastError(err instanceof Error ? err.message : "Failed to un-assign IP address");
+    }
   };
 
   useEffect(() => {
@@ -156,14 +179,26 @@ export function IpAddressDetailsPage() {
       <td className="text-right align-top">
         <div className="flex justify-end space-x-2">
           {!assignment.deleted && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => handleEditAssignment(assignment)}
-              className="p-1"
-            >
-              <PencilIcon className="h-3 w-3" />
-            </Button>
+            <>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => handleEditAssignment(assignment)}
+                className="p-1"
+                title="Edit assignment"
+              >
+                <PencilIcon className="h-3 w-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                onClick={() => handleDeleteAssignment(assignment)}
+                className="p-1"
+                title="Un-assign IP address"
+              >
+                <TrashIcon className="h-3 w-3" />
+              </Button>
+            </>
           )}
           <Link
             to={`/vms/${assignment.vm_id}`}
@@ -335,7 +370,7 @@ export function IpAddressDetailsPage() {
           itemsPerPage={20}
           errorAction="load assignment history"
           loadingMessage="Loading assignment history..."
-          dependencies={[decodedIp]}
+          dependencies={[decodedIp, refreshTrigger]}
           calculateStats={(assignments, total) => (
             <div className="flex gap-4 text-sm text-gray-400">
               <span>

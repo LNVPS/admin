@@ -2962,6 +2962,20 @@ export class AdminApi {
     return result.data;
   }
 
+  /**
+   * Force a resource sync ("patch") for a single host. The periodic PatchHosts
+   * job only runs on worker startup, so a newly added host keeps its manually
+   * entered cpu/memory and has no disks until this is dispatched. Work is
+   * performed asynchronously; follow the returned `job_id` on the job feedback
+   * WebSocket.
+   */
+  async patchHost(hostId: number) {
+    const result = await this.handleResponse<ApiResponse<{ job_id: string }>>(
+      await this.req(`/api/admin/v1/hosts/${hostId}/patch`, "POST"),
+    );
+    return result.data;
+  }
+
   async createHost(data: {
     name: string;
     ip: string;

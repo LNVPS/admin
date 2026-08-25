@@ -1,4 +1,4 @@
-import { ArrowDownTrayIcon, CogIcon, PencilIcon, PlusIcon, UserIcon } from "@heroicons/react/24/outline";
+import { ArrowDownTrayIcon, ArrowPathIcon, CogIcon, PencilIcon, PlusIcon, UserIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
@@ -46,7 +46,9 @@ export function HostsPage() {
   const [showDiskEditor, setShowDiskEditor] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [selectedHost, setSelectedHost] = useState<AdminHostInfo | null>(null);
+  const [patchingHostId, setPatchingHostId] = useState<number | null>(null);
   const [regions, setRegions] = useState<AdminRegionInfo[]>([]);
+  const { success, error: toastError } = useToast();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const refreshData = () => {
@@ -80,6 +82,23 @@ export function HostsPage() {
   const handleImport = (host: AdminHostInfo) => {
     setSelectedHost(host);
     setShowImportModal(true);
+  };
+
+  /**
+   * Queue a resource sync for one host. The worker rewrites cpu/memory and
+   * disks from the hypervisor, so refresh the table once the job is queued.
+   */
+  const handlePatch = async (host: AdminHostInfo) => {
+    setPatchingHostId(host.id);
+    try {
+      const res = await adminApi.patchHost(host.id);
+      success(`Host sync job dispatched for ${host.name} (Job ID: ${res.job_id})`);
+    } catch (err) {
+      console.error("Failed to dispatch host patch job:", err);
+      toastError(err instanceof Error ? err.message : "Failed to dispatch host sync job");
+    } finally {
+      setPatchingHostId(null);
+    }
   };
 
   const renderHeader = () => (
@@ -265,6 +284,16 @@ export function HostsPage() {
               <ArrowDownTrayIcon className="h-4 w-4" />
             </Button>
           )}
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => handlePatch(host)}
+            className="p-1"
+            disabled={patchingHostId === host.id}
+            title="Sync host resources (cpu/memory/disks) from the hypervisor"
+          >
+            <ArrowPathIcon className={clsx("h-4 w-4", patchingHostId === host.id && "animate-spin")} />
+          </Button>
           <Button size="sm" variant="secondary" onClick={() => handleEdit(host)} className="p-1" title="Edit host">
             <PencilIcon className="h-4 w-4" />
           </Button>

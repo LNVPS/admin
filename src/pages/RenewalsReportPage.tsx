@@ -76,6 +76,9 @@ export function RenewalsReportPage() {
   }, [companyId]);
 
   const periods = reportData?.periods ?? [];
+  const cohorts = reportData?.cohorts ?? [];
+  // Widest curve in the set decides the column count; older cohorts have more.
+  const maxOffset = cohorts.reduce((m, c) => Math.max(m, c.retained_pct.length - 1), 0);
   // `complete` comes from the server, which owns the notion of "this month".
   const upcoming = periods.filter((p) => !p.complete);
   const complete = periods.filter((p) => p.complete);
@@ -405,6 +408,71 @@ export function RenewalsReportPage() {
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
+          </Card>
+
+          <Card title="Cohort retention">
+            {cohorts.length === 0 ? (
+              <p className="text-sm text-slate-400">No cohorts in range.</p>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs uppercase text-slate-400">
+                        <th className="py-2 pr-4 font-medium">Cohort</th>
+                        <th className="py-2 pr-4 font-medium">Signups</th>
+                        {Array.from({ length: maxOffset + 1 }, (_, i) => (
+                          <th key={i} className="py-2 px-2 text-center font-medium">
+                            M{i}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cohorts.map((c) => (
+                        <tr key={c.cohort} className="border-t border-slate-800">
+                          <td className="py-1.5 pr-4 whitespace-nowrap text-white">{c.cohort}</td>
+                          <td className="py-1.5 pr-4 text-gray-300">{c.size}</td>
+                          {Array.from({ length: maxOffset + 1 }, (_, i) => {
+                            const pct = c.retained_pct[i];
+                            // A cohort younger than this offset simply has not
+                            // got here yet; leaving the cell empty says that,
+                            // where a 0% would read as total churn.
+                            if (pct === undefined) {
+                              return <td key={i} className="py-1.5 px-2" />;
+                            }
+                            return (
+                              <td
+                                key={i}
+                                className="py-1.5 px-2 text-center tabular-nums"
+                                style={{ backgroundColor: `rgba(34, 197, 94, ${(pct / 100) * 0.35})` }}
+                                title={`${c.retained[i]} of ${c.size} still paid up`}
+                              >
+                                <span
+                                  className={
+                                    pct >= 50 ? "text-green-300" : pct >= 25 ? "text-yellow-300" : "text-red-300"
+                                  }
+                                >
+                                  {pct.toFixed(0)}%
+                                </span>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="mt-3 text-xs text-slate-400">
+                  Each row is the subscriptions that started that month; M<span className="align-baseline">n</span> is
+                  how many are still paid through the end of their nth month. Read down a column to see whether newer
+                  cohorts survive better than older ones — the monthly churn figures above cannot show that, because
+                  every cohort&apos;s losses are mixed together in them. Measured from paid-through dates, so an annual
+                  subscription stays retained between renewals instead of looking churned for eleven months of twelve.
+                  Blank cells are months a cohort has not reached yet.
+                </p>
+              </>
+            )}
           </Card>
 
           <Card title="Monthly breakdown">

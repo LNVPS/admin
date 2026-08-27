@@ -1635,12 +1635,24 @@ export interface RenewalsPeriod {
   renewed_unknown: number;
 }
 
+/** One signup cohort and how much of it is still paid up over time. */
+export interface RetentionCohort {
+  /** Month the cohort started paying, "2026-02". */
+  cohort: string;
+  size: number;
+  /** retained[n] = still paid through the end of month cohort+n. Truncated at today. */
+  retained: number[];
+  retained_pct: number[];
+}
+
 export interface RenewalsReportData {
   start_date: string;
   end_date: string;
   /** Date renewal_source began being recorded; the split is unavailable before it. */
   source_tracking_since: string | null;
   periods: RenewalsPeriod[];
+  /** Signup cohorts, oldest first. */
+  cohorts: RetentionCohort[];
 }
 
 export type OssReportPeriod = "quarter" | "bimonthly";

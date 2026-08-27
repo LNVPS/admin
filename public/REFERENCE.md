@@ -449,10 +449,43 @@ DeleteAppDeployment { purge?: false }   // purge = super_admin only, removes bil
 ```json
 { "data": { "start_date": "2026-01-01", "end_date": "2026-12-31", "group_by": "month", "currency": "EUR",
   "periods": [ { "period": "2026-01", "revenue_net": 480000, "revenue_tax": 96000, "cost_recurring": 8000,
-                 "cost_one_time": 250000, "cost_total": 258000, "profit": 222000 } ] } }
+                 "cost_depreciation": 6944, "cost_one_time": 250000, "cost_total": 14944,
+                 "profit": 465056, "cash_flow": 222000 } ] } }
 ```
 
-Revenue uses each payment's stored historical `rate`; costs use current rates. `profit = revenue_net - cost_total` and may be negative. Revenue is **net of refunds** recorded in the period (signed).
+**Accrual basis.** A one-time cost with a `depreciation_months` useful life is capitalised and expensed straight-line over that life, and it is the depreciation — not the cash outlay — that enters `cost_total` (`= cost_recurring + cost_depreciation`) and `profit`. The outlay stays visible as `cost_one_time` and feeds `cash_flow` (`= revenue_net - cost_recurring - cost_one_time`); adding it to `cost_total` would double-count the same money. A one-time cost with no useful life set is expensed in full in its purchase period.
+
+Revenue uses each payment's stored historical `rate`; costs use current rates. `profit` may be negative. Revenue is **net of refunds** recorded in the period (signed). Depreciation is charged per calendar month from the purchase month, and assets bought before `start_date` still charge their remaining months into the window.
+
+### Renewals, churn & retention
+
+`GET /api/admin/v1/reports/renewals?start_date=&end_date=&company_id=&region_id=` — `analytics::view`
+
+`company_id` is **required**; `end_date` may be in the future, since half the report is an outlook. Counted **per subscription**, not per VM.
+
+```json
+{ "data": { "start_date": "2026-05-01", "end_date": "2026-11-30", "source_tracking_since": "2026-08-26",
+  "periods": [ { "period": "2026-09", "complete": false, "due": 119, "due_auto_capable": 31,
+                 "due_auto_without_method": 29, "due_manual": 59, "lapsed": 0, "pending": 2,
+                 "lapsed_never_paid": 0, "renewed_subscriptions": 0, "churn_rate": null,
+                 "renewed": 0, "renewed_auto": 0, "renewed_manual": 0, "renewed_unknown": 0 } ],
+  "cohorts": [ { "cohort": "2026-06", "size": 51, "retained": [49, 26, 19],
+                 "retained_pct": [96.1, 51.0, 37.3] } ] } }
+```
+
+**Outlook.** `due_auto_capable` is the only bucket the worker will actually charge: auto-renewal requires the flag **and** an enabled saved payment method. `due_auto_without_method` looks safe on the subscription record and is not — it falls through to a manual expiry warning. Since new VM subscriptions default to auto-renew (July 2026), this bucket grows whenever checkout fails to capture a payment method.
+
+**Churn.** `subscription.expires` advances on renewal, so a subscription still carrying a past expiry never came back. Churn is dated by that expiry against *now*, **not** by whether the month has ended — otherwise the current month reports zero for losses that already happened. `lapsed` = expired more than 7 days ago; `pending` = expired inside that window, where the grace period (1–14 days by subscription age) may still collect. `churn_rate = lapsed / (lapsed + renewed_subscriptions)` — payment counts are deliberately not the denominator, since a subscription can renew twice in a month.
+
+**Auto vs manual.** `renewal_source` is only recorded from `source_tracking_since`; earlier renewals are `renewed_unknown` and are never folded into either bucket, because an NWC auto-renewal settles a Lightning invoice indistinguishably from a customer paying one by hand.
+
+**Cohorts.** `retained[n]` is how many of that signup month are still paid through the end of month `cohort + n`. Measured from paid-through dates, so an annual subscription stays retained between renewals instead of looking churned for eleven months of twelve. Curves are truncated at the present month — a two-month-old cohort has three entries, not twelve zeroes. Cohorts look back 12 months further than `start_date`.
+
+### Fleet traffic
+
+`GET /api/admin/v1/reports/traffic?start=&end=&limit=&offset=` — `analytics::view`
+
+Fleet-wide traffic ranking, heaviest outbound sender first. `total` counts VMs with traffic in range, not daily rows. The range may span at most 400 days.
 
 ### OSS VAT report
 
@@ -467,7 +500,7 @@ Aggregates cross-border EU B2C sales (`tax_treatment = oss_b2c`) by filing perio
 ```
 AdminResourceCostDetail { id, resource_type: "vm_host"|"ip_range"|"generic", resource_id, label?,
   cost_type: "recurring"|"one_time", amount, currency, interval_amount?, interval_type?, billing_start?,
-  billing_end?, created, updated }
+  billing_end?, depreciation_months?, created, updated }
 ```
 
 - `ip_range` costs are **per single IP** (multiplied by the range's current assigned-IP count in reports)

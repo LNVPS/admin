@@ -6,7 +6,7 @@
       "type": "skill-md",
       "description": "Admin API for managing LNVPS infrastructure including users, VMs, hosts, regions, templates, IP ranges, DNS, routers, subscriptions, payments, refunds, referrals, managed apps and reporting. Use when performing administrative operations on the LNVPS platform.",
       "url": "https://admin.lnvps.net/SKILL.md",
-      "digest": "sha256:3d563333529778917b8ee02a71829cbb3d0f0c950921a1df97450e275cbba0a5"
+      "digest": "sha256:f851ea13fb1b590acc43dfd5f22a94431b0d6fdb7880063889938ac73804d43d"
     }
   ]
 }

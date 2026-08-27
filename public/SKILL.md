@@ -287,8 +287,10 @@ Full request/response schemas: [REFERENCE.md](REFERENCE.md).
 |--------|----------|-------------|
 | GET | `/api/admin/v1/reports/time-series` | Payment time series (`start_date`, `end_date`, `company_id`) |
 | GET | `/api/admin/v1/reports/referral-usage/time-series` | Referral usage report |
-| GET | `/api/admin/v1/reports/profit-loss` | Revenue vs tracked costs per period (`analytics::view`) |
+| GET | `/api/admin/v1/reports/profit-loss` | Accrual P&L: revenue vs opex + depreciation, with capex/cash flow below the line (`analytics::view`) |
+| GET | `/api/admin/v1/reports/renewals` | Renewal outlook, churn and cohort retention (`analytics::view`) |
 | GET | `/api/admin/v1/reports/oss` | EU OSS VAT report by period + destination country (`analytics::view`) |
+| GET | `/api/admin/v1/reports/traffic` | Fleet traffic ranking, heaviest sender first (`analytics::view`) |
 
 ### Resource Cost Tracking
 
@@ -297,7 +299,9 @@ Full request/response schemas: [REFERENCE.md](REFERENCE.md).
 | GET/POST | `/api/admin/v1/resource_costs` | List (filter: resource_type, resource_id) / create |
 | GET/PATCH/DELETE | `/api/admin/v1/resource_costs/{id}` | Get / update / delete |
 
-Costs feed the profit-loss report. `resource_type` is `vm_host`, `ip_range` (amount = cost per single IP) or `generic` (free-form `label`, no linked resource). Cost data is never exposed to end users.
+Costs feed the profit-loss report. `resource_type` is `vm_host`, `ip_range` (amount = cost of the whole block) or `generic` (free-form `label`, no linked resource). Cost data is never exposed to end users.
+
+A `one_time` cost may carry `depreciation_months`: the useful life over which the P&L expenses it straight-line from `billing_start`. Omit it to expense the whole amount in the purchase period. It is rejected on `recurring` costs and must be greater than zero.
 
 ### Jobs & WebSocket
 

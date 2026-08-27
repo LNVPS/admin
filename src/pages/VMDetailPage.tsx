@@ -6,6 +6,7 @@ import {
   CheckIcon,
   ClipboardIcon,
   ClockIcon,
+  CpuChipIcon,
   CreditCardIcon,
   DocumentTextIcon,
   FireIcon,
@@ -22,6 +23,7 @@ import {
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/Button";
+import { EditCustomTemplateModal } from "../components/EditCustomTemplateModal";
 import { ErrorState } from "../components/ErrorState";
 import { HoverTooltip } from "../components/HoverTooltip";
 import { PaginatedTable } from "../components/PaginatedTable";
@@ -69,6 +71,7 @@ export function VMDetailPage() {
   const [refundPayment, setRefundPayment] = useState<AdminVmPaymentInfo | null>(null);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showMigrateModal, setShowMigrateModal] = useState(false);
+  const [showEditSpecModal, setShowEditSpecModal] = useState(false);
   const { isSuperAdmin } = useUserRoles();
   const [copiedPaymentId, setCopiedPaymentId] = useState<string | null>(null);
   const [copiedExternalId, setCopiedExternalId] = useState<string | null>(null);
@@ -879,6 +882,22 @@ export function VMDetailPage() {
               <ServerStackIcon className="h-4 w-4" />
             </Button>
           </PermissionGuard>
+          {/* Only a custom-template VM has a spec of its own to edit; a standard
+              VM's specs belong to a shared template, editing which would
+              silently re-spec every VM on it. */}
+          {vm.custom_template_id !== null && (
+            <PermissionGuard requiredPermissions={["vm_custom_pricing::update"]} fallback={null}>
+              <Button
+                variant="secondary"
+                onClick={() => setShowEditSpecModal(true)}
+                disabled={!!actionLoading}
+                className="text-slate-400 hover:text-white p-2"
+                title="Edit this VM's custom spec"
+              >
+                <CpuChipIcon className="h-4 w-4" />
+              </Button>
+            </PermissionGuard>
+          )}
           <Button
             variant="secondary"
             onClick={handleDeleteVM}
@@ -1239,6 +1258,20 @@ export function VMDetailPage() {
           setHistoryRefreshKey((prev) => prev + 1);
         }}
       />
+
+      {/* Custom spec editor — the VM's hardware and its renewal price */}
+      {vm.custom_template_id !== null && (
+        <EditCustomTemplateModal
+          isOpen={showEditSpecModal}
+          onClose={() => setShowEditSpecModal(false)}
+          templateId={vm.custom_template_id}
+          vmId={vm.id}
+          onUpdated={() => {
+            loadVM(true);
+            setHistoryRefreshKey((prev) => prev + 1);
+          }}
+        />
+      )}
 
       <VmRefundModal isOpen={showRefundModal} onClose={() => setShowRefundModal(false)} vm={vm} />
 

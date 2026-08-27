@@ -755,6 +755,88 @@ export interface AdminCustomPricingInfo {
   transfer_gb: number | null;
 }
 
+/**
+ * A single VM's custom spec. One of these exists per custom VM, so editing it
+ * edits that VM's hardware and its renewal price.
+ */
+export interface AdminCustomTemplateInfo {
+  id: number;
+  cpu: number;
+  /** Memory in bytes. */
+  memory: number;
+  /** Disk size in bytes. */
+  disk_size: number;
+  disk_type: DiskType;
+  disk_interface: DiskInterface;
+  pricing_id: number;
+  pricing_name: string;
+  region_id: number;
+  region_name: string | null;
+  currency: string;
+  /**
+   * Monthly renewal cost in smallest currency units. `0` when the current plan
+   * cannot price this spec (a grandfathered VM).
+   */
+  price: number;
+  ip4_count: number;
+  ip6_count: number;
+  cpu_mfg?: string;
+  cpu_arch?: string;
+  cpu_features?: string[];
+  disk_iops_read: number | null;
+  disk_iops_write: number | null;
+  disk_mbps_read: number | null;
+  disk_mbps_write: number | null;
+  network_mbps: number | null;
+  cpu_limit: number | null;
+  /** Maximum user firewall rules for this VM; null = global default. */
+  firewall_rule_limit: number | null;
+  /** Monthly outbound transfer allowance in GB; null = unmetered. */
+  transfer_gb: number | null;
+  /**
+   * VMs using this template — normally exactly one. Empty means the template is
+   * orphaned and editing it changes nothing that is running.
+   */
+  vm_ids: number[];
+}
+
+/**
+ * Patch a custom template. Omitted keys are unchanged; an explicit `null`
+ * clears the field (uncapped / any / global default).
+ *
+ * `cpu`, `memory` and `disk_size` may only increase — the server rejects a
+ * downgrade with 400.
+ */
+export interface UpdateCustomTemplateRequest {
+  cpu?: number;
+  memory?: number;
+  disk_size?: number;
+  disk_type?: DiskType;
+  disk_interface?: DiskInterface;
+  pricing_id?: number;
+  ip4_count?: number;
+  ip6_count?: number;
+  cpu_mfg?: string | null;
+  cpu_arch?: string | null;
+  cpu_features?: string[] | null;
+  disk_iops_read?: number | null;
+  disk_iops_write?: number | null;
+  disk_mbps_read?: number | null;
+  disk_mbps_write?: number | null;
+  network_mbps?: number | null;
+  cpu_limit?: number | null;
+  firewall_rule_limit?: number | null;
+  transfer_gb?: number | null;
+}
+
+export interface AdminCustomTemplateUpdateResult {
+  template: AdminCustomTemplateInfo;
+  /** New monthly renewal amount written to each VM's line item. */
+  renewal_amount: number;
+  /** One job per VM that needed host work; empty when nothing had to be applied. */
+  job_ids: string[];
+}
+
 export interface AdminCostPlanInfo {
   id: number;
   name: string;
@@ -3438,11 +3520,28 @@ export class AdminApi {
     return result.data;
   }
 
-  // NOTE: the custom-template CRUD and the `custom_pricing/{id}/calculate`
-  // helper are still documented in ADMIN_API_ENDPOINTS.md but no longer exist
-  // in the admin router (only /custom_pricing, /custom_pricing/{id} and
-  // /custom_pricing/{id}/copy are mounted). The client methods were removed
-  // rather than left to 404.
+  // Custom Templates — one VM's spec, created by the custom-VM order and
+  // upgrade paths. There is deliberately no create/delete: a template a VM
+  // references cannot be removed without orphaning that VM's billing.
+  async getCustomTemplate(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminCustomTemplateInfo>>(
+      await this.req(`/api/admin/v1/custom_templates/${id}`, "GET"),
+    );
+    return result.data;
+  }
+
+  /**
+   * Patch a VM's spec. The server also rewrites the subscription line item to
+   * the returned `renewal_amount` and queues host work, so `job_ids` may hold a
+   * full upgrade job (stop, resize, reconfigure, start) when CPU, memory or
+   * disk grew.
+   */
+  async updateCustomTemplate(id: number, updates: UpdateCustomTemplateRequest) {
+    const result = await this.handleResponse<ApiResponse<AdminCustomTemplateUpdateResult>>(
+      await this.req(`/api/admin/v1/custom_templates/${id}`, "PATCH", updates),
+    );
+    return result.data;
+  }
 
   // Company Management
   async getCompanies(params?: { limit?: number; offset?: number }) {

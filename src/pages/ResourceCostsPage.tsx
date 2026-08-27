@@ -118,7 +118,13 @@ export function ResourceCostsPage() {
       </td>
       <td className="align-top text-gray-300">
         <div>{formatInterval(cost)}</div>
-        <div className="mt-0.5 text-xs text-slate-400">{cost.cost_type === "one_time" ? "Capital" : "Operating"}</div>
+        <div className="mt-0.5 text-xs text-slate-400">
+          {cost.cost_type === "one_time"
+            ? cost.depreciation_months
+              ? `Capital · ${cost.depreciation_months}mo`
+              : "Capital"
+            : "Operating"}
+        </div>
       </td>
       <td className="align-top text-gray-300 text-sm">
         <div>{cost.billing_start ? new Date(cost.billing_start).toLocaleDateString() : "—"}</div>
@@ -230,6 +236,8 @@ interface ResourceCostFormState {
   interval_type: ResourceCostIntervalType;
   billing_start: string;
   billing_end: string;
+  /** Empty string = expense immediately (no depreciation). */
+  depreciation_months: string;
 }
 
 function ResourceCostModal({
@@ -255,6 +263,7 @@ function ResourceCostModal({
     interval_type: cost?.interval_type ?? "month",
     billing_start: toDateInput(cost?.billing_start ?? null),
     billing_end: toDateInput(cost?.billing_end ?? null),
+    depreciation_months: cost?.depreciation_months ? String(cost.depreciation_months) : "",
   }));
 
   const { data: hosts } = useApiCall(async () => (await adminApi.getHosts({ limit: 100 })).data, []);
@@ -294,6 +303,8 @@ function ResourceCostModal({
         interval_type: isRecurring ? formData.interval_type : null,
         billing_start: toApiDate(formData.billing_start),
         billing_end: toApiDate(formData.billing_end),
+        depreciation_months:
+          !isRecurring && formData.depreciation_months ? Number.parseInt(formData.depreciation_months, 10) : null,
       };
       if (cost) {
         const { resource_type: _resourceType, ...updates } = payload;
@@ -443,6 +454,23 @@ function ResourceCostModal({
             </div>
           )}
         </div>
+
+        {/* Full width: the hint is too long for a half-width column. */}
+        {!isRecurring && (
+          <div>
+            <label className="block text-xs font-medium text-white mb-2">Depreciate Over (months)</label>
+            <input
+              type="number"
+              min={1}
+              placeholder="Blank = expense the whole amount at purchase"
+              value={formData.depreciation_months}
+              onChange={(e) => setFormData({ ...formData, depreciation_months: e.target.value })}
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              Useful life. The P/L report charges the cost straight-line over this many months instead of all at once.
+            </p>
+          </div>
+        )}
 
         <div className="flex justify-end space-x-3 pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>

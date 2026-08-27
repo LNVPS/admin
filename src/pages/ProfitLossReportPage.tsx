@@ -4,10 +4,12 @@ import {
   ArrowTrendingDownIcon,
   ArrowTrendingUpIcon,
   BanknotesIcon,
+  BuildingOffice2Icon,
   ExclamationTriangleIcon,
   ScaleIcon,
 } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Bar,
   CartesianGrid,
@@ -92,10 +94,14 @@ export function ProfitLossReportPage() {
   const totals = reportData?.periods.reduce(
     (acc, p) => ({
       revenue: acc.revenue + p.revenue_net,
+      opex: acc.opex + p.cost_recurring,
+      depreciation: acc.depreciation + p.cost_depreciation,
+      capex: acc.capex + p.cost_one_time,
       cost: acc.cost + p.cost_total,
       profit: acc.profit + p.profit,
+      cashFlow: acc.cashFlow + p.cash_flow,
     }),
-    { revenue: 0, cost: 0, profit: 0 },
+    { revenue: 0, opex: 0, depreciation: 0, capex: 0, cost: 0, profit: 0, cashFlow: 0 },
   );
 
   const reportCurrency = reportData?.currency ?? "USD";
@@ -104,14 +110,15 @@ export function ProfitLossReportPage() {
     reportData?.periods.map((p) => ({
       period: p.period,
       revenue: p.revenue_net,
-      cost: -p.cost_total,
+      opex: -p.cost_recurring,
+      depreciation: -p.cost_depreciation,
       profit: p.profit,
     })) ?? [];
 
   // Recharts defaults the Y domain to [0, 'auto'], clipping loss periods
   // (negative cost bars / profit) at zero. Compute an explicit domain padded
   // symmetrically around zero so negative values are visible.
-  const chartValues = chartData.flatMap((d) => [d.revenue, d.cost, d.profit]);
+  const chartValues = chartData.flatMap((d) => [d.revenue, d.opex + d.depreciation, d.profit]);
   const rawMin = Math.min(0, ...chartValues);
   const rawMax = Math.max(0, ...chartValues);
   const chartPad = Math.max(Math.abs(rawMin), Math.abs(rawMax)) * 0.1 || 1;
@@ -119,7 +126,17 @@ export function ProfitLossReportPage() {
 
   const exportCSV = () => {
     if (!reportData) return;
-    const headers = ["Period", "Revenue Net", "Revenue Tax", "Cost Recurring", "Cost One-time", "Cost Total", "Profit"];
+    const headers = [
+      "Period",
+      "Revenue Net",
+      "Revenue Tax",
+      "Operating Costs",
+      "Depreciation",
+      "Total Expenses",
+      "Profit",
+      "CapEx Paid",
+      "Cash Flow",
+    ];
     const divisor = reportCurrency === "BTC" ? 1e11 : 100;
     const digits = reportCurrency === "BTC" ? 8 : 2;
     const rows = reportData.periods.map((p) => [
@@ -127,9 +144,11 @@ export function ProfitLossReportPage() {
       (p.revenue_net / divisor).toFixed(digits),
       (p.revenue_tax / divisor).toFixed(digits),
       (p.cost_recurring / divisor).toFixed(digits),
-      (p.cost_one_time / divisor).toFixed(digits),
+      (p.cost_depreciation / divisor).toFixed(digits),
       (p.cost_total / divisor).toFixed(digits),
       (p.profit / divisor).toFixed(digits),
+      (p.cost_one_time / divisor).toFixed(digits),
+      (p.cash_flow / divisor).toFixed(digits),
     ]);
     const csv = [headers, ...rows].map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -162,21 +181,21 @@ export function ProfitLossReportPage() {
       ),
     },
     {
-      header: "Recurring Costs",
+      header: "Operating Costs",
       key: "cost_recurring",
       render: (item: ProfitLossPeriod) => (
         <span className="text-orange-400">{formatCurrency(item.cost_recurring, reportCurrency)}</span>
       ),
     },
     {
-      header: "One-time Costs",
-      key: "cost_one_time",
+      header: "Depreciation",
+      key: "cost_depreciation",
       render: (item: ProfitLossPeriod) => (
-        <span className="text-orange-400">{formatCurrency(item.cost_one_time, reportCurrency)}</span>
+        <span className="text-purple-400">{formatCurrency(item.cost_depreciation, reportCurrency)}</span>
       ),
     },
     {
-      header: "Total Costs",
+      header: "Total Expenses",
       key: "cost_total",
       render: (item: ProfitLossPeriod) => (
         <span className="text-red-400">{formatCurrency(item.cost_total, reportCurrency)}</span>
@@ -188,6 +207,23 @@ export function ProfitLossReportPage() {
       render: (item: ProfitLossPeriod) => (
         <span className={item.profit >= 0 ? "text-green-400 font-semibold" : "text-red-400 font-semibold"}>
           {formatCurrency(item.profit, reportCurrency)}
+        </span>
+      ),
+    },
+    {
+      // Below the line: cash figures, shown dimmer so they don't read as P&L rows.
+      header: "CapEx Paid",
+      key: "cost_one_time",
+      render: (item: ProfitLossPeriod) => (
+        <span className="text-slate-400">{formatCurrency(item.cost_one_time, reportCurrency)}</span>
+      ),
+    },
+    {
+      header: "Cash Flow",
+      key: "cash_flow",
+      render: (item: ProfitLossPeriod) => (
+        <span className={signedAmountClass(item.cash_flow, "text-slate-300")}>
+          {formatCurrency(item.cash_flow, reportCurrency)}
         </span>
       ),
     },
@@ -313,7 +349,7 @@ export function ProfitLossReportPage() {
       {/* Data Display */}
       {reportData && !loading && !error && totals && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             <Card>
               <div className="flex items-center justify-between">
                 <div>
@@ -329,9 +365,9 @@ export function ProfitLossReportPage() {
             <Card>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-400 text-sm">Total Costs</p>
-                  <p className="text-white font-semibold">{formatCurrency(totals.cost, reportCurrency)}</p>
-                  <p className="text-blue-400 text-sm">recurring + one-time</p>
+                  <p className="text-gray-400 text-sm">Operating Costs</p>
+                  <p className="text-white font-semibold">{formatCurrency(totals.opex, reportCurrency)}</p>
+                  <p className="text-blue-400 text-sm">recurring</p>
                 </div>
                 <BanknotesIcon className="h-8 w-8 text-orange-500" />
               </div>
@@ -339,11 +375,21 @@ export function ProfitLossReportPage() {
             <Card>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-400 text-sm">Total Profit</p>
+                  <p className="text-gray-400 text-sm">Depreciation</p>
+                  <p className="text-white font-semibold">{formatCurrency(totals.depreciation, reportCurrency)}</p>
+                  <p className="text-blue-400 text-sm">{formatCurrency(totals.capex, reportCurrency)} capex paid</p>
+                </div>
+                <BuildingOffice2Icon className="h-8 w-8 text-purple-500" />
+              </div>
+            </Card>
+            <Card>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-400 text-sm">Profit</p>
                   <p className={`font-semibold ${totals.profit >= 0 ? "text-green-400" : "text-red-400"}`}>
                     {formatCurrency(totals.profit, reportCurrency)}
                   </p>
-                  <p className="text-blue-400 text-sm">{reportCurrency}</p>
+                  <p className="text-blue-400 text-sm">{formatCurrency(totals.cashFlow, reportCurrency)} cash flow</p>
                 </div>
                 {totals.profit >= 0 ? (
                   <ArrowTrendingUpIcon className="h-8 w-8 text-green-500" />
@@ -379,7 +425,8 @@ export function ProfitLossReportPage() {
                   <Legend />
                   <ReferenceLine y={0} stroke="#6B7280" />
                   <Bar dataKey="revenue" name="Revenue" stackId="pl" fill="#22C55E" />
-                  <Bar dataKey="cost" name="Costs" stackId="pl" fill="#EF4444" />
+                  <Bar dataKey="opex" name="Operating Costs" stackId="pl" fill="#EF4444" />
+                  <Bar dataKey="depreciation" name="Depreciation" stackId="pl" fill="#A855F7" />
                   <Line
                     type="monotone"
                     dataKey="profit"
@@ -396,6 +443,15 @@ export function ProfitLossReportPage() {
           {/* Period Table */}
           <Card title={`Period Breakdown (${reportCurrency})`}>
             <Table columns={columns} data={reportData.periods.map((p) => ({ ...p, id: p.period }))} />
+            <p className="mt-3 text-xs text-slate-400">
+              Profit is accrual-based: capital purchases are expensed as depreciation over their useful life, not in the
+              period they were paid for. The last two columns are the cash view — &ldquo;CapEx Paid&rdquo; is the actual
+              outlay, and cash flow is revenue less operating costs and capex. Set a useful life per cost on the{" "}
+              <Link to="/resource-costs" className="text-blue-400 hover:underline">
+                Resource Costs
+              </Link>{" "}
+              page; costs without one are still expensed immediately.
+            </p>
           </Card>
         </>
       )}

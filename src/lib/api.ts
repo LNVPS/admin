@@ -1547,6 +1547,8 @@ export interface AdminResourceCostDetail {
   interval_type: ResourceCostIntervalType | null;
   billing_start: string | null;
   billing_end: string | null;
+  /** Useful life in months for a one-time cost (straight-line depreciation in the P/L report). */
+  depreciation_months: number | null;
   created: string;
   updated: string;
 }
@@ -1562,16 +1564,26 @@ export interface CreateResourceCostRequest {
   interval_type?: ResourceCostIntervalType | null;
   billing_start?: string | null;
   billing_end?: string | null;
+  /** One-time costs only; null/omitted expenses the purchase immediately. */
+  depreciation_months?: number | null;
 }
 
 export interface ProfitLossPeriod {
   period: string;
   revenue_net: number;
   revenue_tax: number;
+  /** Recurring operating costs (opex). */
   cost_recurring: number;
+  /** Accrual charge for capital assets: straight-line depreciation, plus any one-time cost with no useful life set. */
+  cost_depreciation: number;
+  /** Capex cash paid out this period. Below the line — not part of cost_total or profit. */
   cost_one_time: number;
+  /** cost_recurring + cost_depreciation (accrual expense total). */
   cost_total: number;
+  /** Accrual profit: revenue_net - cost_total. */
   profit: number;
+  /** revenue_net - cost_recurring - cost_one_time (money that actually moved). */
+  cash_flow: number;
 }
 
 export interface ProfitLossReportData {

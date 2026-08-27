@@ -1594,6 +1594,50 @@ export interface ProfitLossReportData {
   periods: ProfitLossPeriod[];
 }
 
+/**
+ * One month of renewal activity: what is due, what renewed, and what churned.
+ *
+ * `subscription.expires` advances on renewal, so a subscription still sitting
+ * in a finished month never came back — that is the churn event. The same count
+ * in the current or a future month is just the outlook.
+ */
+export interface RenewalsPeriod {
+  /** "2026-09" */
+  period: string;
+  /** True once the month is over, i.e. its counts are final. */
+  complete: boolean;
+  /** Subscriptions expiring in this period (per subscription, not per VM). */
+  due: number;
+  /** Auto-renewal on AND a saved payment method — the worker will charge these. */
+  due_auto_capable: number;
+  /** Auto-renewal on but no saved method: looks safe, will not auto-charge. */
+  due_auto_without_method: number;
+  /** Auto-renewal off; renews only if the customer acts. */
+  due_manual: number;
+  /** Expired in this month and never renewed. 0 for incomplete months. */
+  lapsed: number;
+  /** Expired without ever paying: abandoned signup, excluded from churn. */
+  lapsed_never_paid: number;
+  /** Distinct subscriptions that renewed in this month. */
+  renewed_subscriptions: number;
+  /** lapsed / (lapsed + renewed_subscriptions) as a %. Null unless complete. */
+  churn_rate: number | null;
+  /** Paid renewal payments created in this period (payments, not subscriptions). */
+  renewed: number;
+  renewed_auto: number;
+  renewed_manual: number;
+  /** Created before renewal_source was recorded; not attributable either way. */
+  renewed_unknown: number;
+}
+
+export interface RenewalsReportData {
+  start_date: string;
+  end_date: string;
+  /** Date renewal_source began being recorded; the split is unavailable before it. */
+  source_tracking_since: string | null;
+  periods: RenewalsPeriod[];
+}
+
 export type OssReportPeriod = "quarter" | "bimonthly";
 
 export interface OssReportRow {
@@ -4912,6 +4956,21 @@ export class AdminApi {
   }) {
     const result = await this.handleResponse<ApiResponse<ProfitLossReportData>>(
       await this.req("/api/admin/v1/reports/profit-loss", "GET", undefined, params),
+    );
+    return result.data;
+  }
+
+  /**
+   * Renewal outlook and churn per month.
+   *
+   * Two independent halves: `due_*` comes from subscription expiry dates
+   * (forward looking), `renewed_*` from paid renewal payments (backward
+   * looking). Only `due_auto_capable` will actually be charged automatically —
+   * `due_auto_without_method` has the flag set but nothing to charge.
+   */
+  async getRenewalsReport(params: { start_date: string; end_date: string; company_id: number; region_id?: number }) {
+    const result = await this.handleResponse<ApiResponse<RenewalsReportData>>(
+      await this.req("/api/admin/v1/reports/renewals", "GET", undefined, params),
     );
     return result.data;
   }

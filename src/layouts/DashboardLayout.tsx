@@ -1,4 +1,5 @@
 import {
+  ArrowPathIcon,
   ArrowRightStartOnRectangleIcon,
   BanknotesIcon,
   BuildingOfficeIcon,
@@ -234,6 +235,12 @@ const navigation: NavSection[] = [
       { name: "Sales", to: "/sales-report", icon: ChartBarIcon, requiredPermissions: ["analytics::view"] },
       { name: "Referral Usage", to: "/referrals-report", icon: ChartBarIcon, requiredPermissions: ["analytics::view"] },
       { name: "Profit & Loss", to: "/profit-loss", icon: ScaleIcon, requiredPermissions: ["analytics::view"] },
+      {
+        name: "Renewals & Churn",
+        to: "/renewals-report",
+        icon: ArrowPathIcon,
+        requiredPermissions: ["analytics::view"],
+      },
       { name: "OSS VAT", to: "/oss-report", icon: GlobeEuropeAfricaIcon, requiredPermissions: ["analytics::view"] },
       { name: "Fleet Traffic", to: "/traffic-report", icon: SignalIcon, requiredPermissions: ["analytics::view"] },
     ],

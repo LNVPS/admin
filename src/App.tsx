@@ -36,6 +36,7 @@ import { ReferralProgramDetailPage } from "./pages/ReferralProgramDetailPage";
 import { ReferralProgramPage } from "./pages/ReferralProgramPage";
 import { ReferralsReportPage } from "./pages/ReferralsReportPage";
 import { RegionsPage } from "./pages/RegionsPage";
+import { RenewalsReportPage } from "./pages/RenewalsReportPage";
 import { ResourceCostsPage } from "./pages/ResourceCostsPage";
 import { RolesPage } from "./pages/RolesPage";
 import { RouterDetailPage } from "./pages/RouterDetailPage";
@@ -425,6 +426,14 @@ function AppContent() {
               element={
                 <PermissionGuard requiredPermissions={["analytics::view"]}>
                   <ProfitLossReportPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="renewals-report"
+              element={
+                <PermissionGuard requiredPermissions={["analytics::view"]}>
+                  <RenewalsReportPage />
                 </PermissionGuard>
               }
             />

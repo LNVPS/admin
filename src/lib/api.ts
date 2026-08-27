@@ -1614,13 +1614,18 @@ export interface RenewalsPeriod {
   due_auto_without_method: number;
   /** Auto-renewal off; renews only if the customer acts. */
   due_manual: number;
-  /** Expired in this month and never renewed. 0 for incomplete months. */
+  /** Expired more than 7 days ago and never renewed: a settled loss. */
   lapsed: number;
+  /** Expired within the last 7 days, decision still in flight (grace period). */
+  pending: number;
   /** Expired without ever paying: abandoned signup, excluded from churn. */
   lapsed_never_paid: number;
   /** Distinct subscriptions that renewed in this month. */
   renewed_subscriptions: number;
-  /** lapsed / (lapsed + renewed_subscriptions) as a %. Null unless complete. */
+  /**
+   * lapsed / (lapsed + renewed_subscriptions) as a %. Null when nothing has
+   * settled. Running rather than final while `complete` is false.
+   */
   churn_rate: number | null;
   /** Paid renewal payments created in this period (payments, not subscriptions). */
   renewed: number;

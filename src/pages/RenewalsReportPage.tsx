@@ -86,8 +86,10 @@ export function RenewalsReportPage() {
     // The dangerous bucket: the subscription says auto-renew, but there is no
     // saved payment method for the worker to charge.
     atRisk: upcoming.reduce((a, p) => a + p.due_auto_without_method + p.due_manual, 0),
-    lapsed: complete.reduce((a, p) => a + p.lapsed, 0),
-    renewedSubs: complete.reduce((a, p) => a + p.renewed_subscriptions, 0),
+    // Includes the running month: its losses have already happened.
+    lapsed: periods.reduce((a, p) => a + p.lapsed, 0),
+    pending: periods.reduce((a, p) => a + p.pending, 0),
+    renewedSubs: periods.reduce((a, p) => a + p.renewed_subscriptions, 0),
   };
   // Blended churn over the completed months, on the same basis as the per-month
   // rate: subscriptions that faced a renewal decision, and the share lost.
@@ -199,15 +201,22 @@ export function RenewalsReportPage() {
     {
       header: "Churned",
       key: "lapsed",
-      render: (p: RenewalsPeriod) =>
-        p.complete ? (
-          <span className={p.lapsed > 0 ? "text-red-400 font-semibold" : "text-gray-500"}>{p.lapsed}</span>
-        ) : (
-          // An expiry that has not arrived is not a loss.
-          <span className="text-gray-600" title="Month not finished">
-            —
-          </span>
-        ),
+      render: (p: RenewalsPeriod) => (
+        <span className={p.lapsed > 0 ? "text-red-400 font-semibold" : "text-gray-500"}>{p.lapsed}</span>
+      ),
+    },
+    {
+      // Expired but still inside the grace window: not yet lost, not retained.
+      header: "Pending",
+      key: "pending",
+      render: (p: RenewalsPeriod) => (
+        <span
+          className={p.pending > 0 ? "text-yellow-400" : "text-gray-500"}
+          title="Expired, grace period still running"
+        >
+          {p.pending}
+        </span>
+      ),
     },
     {
       header: "Churn %",
@@ -217,7 +226,8 @@ export function RenewalsReportPage() {
           <span className="text-gray-600">—</span>
         ) : (
           <span className={p.churn_rate >= 20 ? "text-red-400 font-semibold" : "text-green-400"}>
-            {p.churn_rate.toFixed(1)}%
+            {p.churn_rate.toFixed(1)}%{/* A running month's rate will move; say so rather than implying it is final. */}
+            {!p.complete && <span className="ml-1 text-slate-500">so far</span>}
           </span>
         ),
     },
@@ -351,7 +361,7 @@ export function RenewalsReportPage() {
                   <p className="text-gray-400 text-sm">Churned</p>
                   <p className="text-red-400 font-semibold text-xl">{totals.lapsed}</p>
                   <p className="text-blue-400 text-sm">
-                    {churnRate === null ? "completed periods" : `${churnRate.toFixed(1)}% of renewal decisions`}
+                    {churnRate === null ? "no settled decisions" : `${churnRate.toFixed(1)}% of settled decisions`}
                   </p>
                 </div>
                 <ExclamationTriangleIcon className="h-8 w-8 text-red-500" />
@@ -407,11 +417,11 @@ export function RenewalsReportPage() {
                 but falls through to a manual expiry warning.
               </p>
               <p>
-                A subscription&apos;s expiry moves forward when it renews, so one still sitting in a finished month
-                never came back — that is the churn. The current and future months show{" "}
-                <span className="text-gray-300">—</span>: an expiry that has not arrived yet is not a loss. Churn % is
-                lapsed ÷ (lapsed + subscriptions renewed) for that month; abandoned signups that never paid are excluded
-                from both.
+                A subscription&apos;s expiry moves forward when it renews, so one still sitting on a past expiry never
+                came back — that is the churn, dated by that expiry rather than by whether the month has ended. An
+                expiry in the last 7 days counts as <span className="text-yellow-400">Pending</span>, not lost: the
+                grace period may still collect. The current month therefore shows the churn that has already settled
+                within it, marked <span className="text-slate-400">so far</span> because it will still move.
               </p>
               {trackingSince && (
                 <p>

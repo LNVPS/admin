@@ -2,12 +2,14 @@ import {
   ArrowLeftIcon,
   ArrowPathIcon,
   ChatBubbleLeftRightIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
   ExclamationTriangleIcon,
   GlobeAltIcon,
   LockClosedIcon,
   WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Button } from "../components/Button";
 import { ErrorState } from "../components/ErrorState";
@@ -50,6 +52,74 @@ function formatDateTime(value: string | null): string {
   return new Date(value).toLocaleString();
 }
 
+/** Roughly a screenful-free preview: enough to recognise a payload, not enough to bury the prose around it. */
+const PREVIEW_CHARS = 200;
+const PREVIEW_LINES = 3;
+
+/** Pretty-print JSON payloads so an expanded blob is readable; leave anything else untouched. */
+function formatMaybeJson(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return value;
+  try {
+    return JSON.stringify(JSON.parse(trimmed), null, 2);
+  } catch {
+    return value;
+  }
+}
+
+function previewOf(text: string): string {
+  const firstLines = text.split("\n").slice(0, PREVIEW_LINES).join("\n");
+  return firstLines.length > PREVIEW_CHARS ? `${firstLines.slice(0, PREVIEW_CHARS)}…` : firstLines;
+}
+
+/**
+ * Machine payloads (tool arguments, tool results) collapsed to a preview.
+ *
+ * A single tool result can be thousands of lines of JSON, which makes the
+ * transcript unskimmable. The payload is still one click away.
+ */
+function CollapsiblePayload({ text, defaultOpen }: { text: string; defaultOpen: boolean }) {
+  const formatted = useMemo(() => formatMaybeJson(text), [text]);
+  const isLong = formatted.length > PREVIEW_CHARS || formatted.split("\n").length > PREVIEW_LINES;
+  const [open, setOpen] = useState(defaultOpen);
+
+  // Follow the page-level toggle, but keep per-row overrides after it settles.
+  useEffect(() => setOpen(defaultOpen), [defaultOpen]);
+
+  if (!isLong) {
+    return (
+      <pre className="overflow-x-auto whitespace-pre-wrap break-words font-mono text-[11px] text-slate-400">
+        {formatted}
+      </pre>
+    );
+  }
+
+  const lineCount = formatted.split("\n").length;
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-slate-500 hover:text-slate-300"
+      >
+        {open ? <ChevronDownIcon className="h-3 w-3" /> : <ChevronRightIcon className="h-3 w-3" />}
+        {open ? "Hide" : "Show"} payload · {lineCount} line{lineCount === 1 ? "" : "s"},{" "}
+        {formatted.length.toLocaleString()} chars
+      </button>
+      {open ? (
+        <pre className="mt-1 max-h-96 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] text-slate-400">
+          {formatted}
+        </pre>
+      ) : (
+        <pre className="mt-1 overflow-hidden whitespace-pre-wrap break-words font-mono text-[11px] text-slate-600">
+          {previewOf(formatted)}
+        </pre>
+      )}
+    </div>
+  );
+}
+
 export function AgentConversationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const conversationId = id ? Number.parseInt(id, 10) : Number.NaN;
@@ -58,6 +128,9 @@ export function AgentConversationDetailPage() {
   const { hasPermission } = useUserRoles();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [editingMemory, setEditingMemory] = useState(false);
+  // Tool machinery is collapsed by default: the point of this page is the conversation.
+  const [expandPayloads, setExpandPayloads] = useState(false);
+  const [showToolTurns, setShowToolTurns] = useState(true);
 
   const canUpdate = hasPermission("support_agent::update");
 
@@ -94,56 +167,64 @@ export function AgentConversationDetailPage() {
     </>
   );
 
-  const renderRow = (message: AdminAgentMessageInfo, index: number) => (
-    <tr key={message.id || index} className={message.compacted ? "opacity-60" : ""}>
-      <td className="whitespace-nowrap align-top text-gray-500">{message.id}</td>
-      <td className="align-top">
-        <div
-          className={`inline-flex flex-col gap-1 rounded-lg border px-2 py-1 ${ROLE_CLASS[message.role] ?? ROLE_CLASS.tool}`}
-        >
-          <span className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-wider text-white">
-            {ROLE_LABEL[message.role] ?? message.role}
-          </span>
-          <span className="whitespace-nowrap text-[10px] text-slate-400">{CHANNEL_LABEL[message.channel]}</span>
-        </div>
-        {message.compacted && (
+  const renderRow = (message: AdminAgentMessageInfo, index: number) => {
+    if (!showToolTurns && message.role === "tool") return null;
+    return (
+      <tr key={message.id || index} className={message.compacted ? "opacity-60" : ""}>
+        <td className="whitespace-nowrap align-top text-gray-500">{message.id}</td>
+        <td className="align-top">
           <div
-            className="mt-1 whitespace-nowrap text-[10px] uppercase tracking-wider text-slate-500"
-            title="At or below the watermark: the agent replays a summary of this, not the message itself"
+            className={`inline-flex flex-col gap-1 rounded-lg border px-2 py-1 ${ROLE_CLASS[message.role] ?? ROLE_CLASS.tool}`}
           >
-            summarised
+            <span className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-wider text-white">
+              {ROLE_LABEL[message.role] ?? message.role}
+            </span>
+            <span className="whitespace-nowrap text-[10px] text-slate-400">{CHANNEL_LABEL[message.channel]}</span>
           </div>
-        )}
-      </td>
-      <td className="align-top">
-        <div className="max-w-[52rem] space-y-2">
-          {message.content !== null ? (
-            <div className="whitespace-pre-wrap break-words text-sm text-gray-200">{message.content}</div>
-          ) : (
-            // Distinct from an empty reply: this turn produced no prose at all.
-            <div className="text-xs italic text-gray-500">no prose — this turn only requested tools</div>
-          )}
-
-          {message.tool_calls?.map((call) => (
-            <div key={call.id} className="rounded-md border border-slate-700 bg-slate-900/60 p-2">
-              <div className="flex items-center gap-1.5 text-xs text-slate-300">
-                <WrenchScrewdriverIcon className="h-3.5 w-3.5 shrink-0 text-slate-500" />
-                <span className="font-mono">{call.name}</span>
-              </div>
-              <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-words font-mono text-[11px] text-slate-400">
-                {call.arguments}
-              </pre>
+          {message.compacted && (
+            <div
+              className="mt-1 whitespace-nowrap text-[10px] uppercase tracking-wider text-slate-500"
+              title="At or below the watermark: the agent replays a summary of this, not the message itself"
+            >
+              summarised
             </div>
-          ))}
-
-          {message.tool_call_id && (
-            <div className="font-mono text-[11px] text-slate-500">answers call {message.tool_call_id}</div>
           )}
-        </div>
-      </td>
-      <td className="align-top whitespace-nowrap text-xs text-gray-500">{formatDateTime(message.created)}</td>
-    </tr>
-  );
+        </td>
+        <td className="align-top">
+          <div className="max-w-[52rem] space-y-2">
+            {message.content !== null ? (
+              message.role === "tool" ? (
+                // A tool result is a machine payload, not prose: same collapsing as the call itself.
+                <CollapsiblePayload text={message.content} defaultOpen={expandPayloads} />
+              ) : (
+                <div className="whitespace-pre-wrap break-words text-sm text-gray-200">{message.content}</div>
+              )
+            ) : (
+              // Distinct from an empty reply: this turn produced no prose at all.
+              <div className="text-xs italic text-gray-500">no prose — this turn only requested tools</div>
+            )}
+
+            {message.tool_calls?.map((call) => (
+              <div key={call.id} className="rounded-md border border-slate-700 bg-slate-900/60 p-2">
+                <div className="flex items-center gap-1.5 text-xs text-slate-300">
+                  <WrenchScrewdriverIcon className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                  <span className="font-mono">{call.name}</span>
+                </div>
+                <div className="mt-1">
+                  <CollapsiblePayload text={call.arguments} defaultOpen={expandPayloads} />
+                </div>
+              </div>
+            ))}
+
+            {message.tool_call_id && (
+              <div className="font-mono text-[11px] text-slate-500">answers call {message.tool_call_id}</div>
+            )}
+          </div>
+        </td>
+        <td className="align-top whitespace-nowrap text-xs text-gray-500">{formatDateTime(message.created)}</td>
+      </tr>
+    );
+  };
 
   const renderEmptyState = () => (
     <div className="text-center py-12">
@@ -181,10 +262,18 @@ export function AgentConversationDetailPage() {
             · last message {formatDateTime(conversation.last_message_at)}
           </div>
         </div>
-        <Button variant="secondary" onClick={refreshData}>
-          <ArrowPathIcon className="mr-2 h-4 w-4" />
-          Refresh
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button variant="secondary" onClick={() => setShowToolTurns((prev) => !prev)}>
+            {showToolTurns ? "Hide tool turns" : "Show tool turns"}
+          </Button>
+          <Button variant="secondary" onClick={() => setExpandPayloads((prev) => !prev)}>
+            {expandPayloads ? "Collapse payloads" : "Expand payloads"}
+          </Button>
+          <Button variant="secondary" onClick={refreshData}>
+            <ArrowPathIcon className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* A kind-1 thread is readable by the whole relay network. An admin acting

@@ -2622,12 +2622,23 @@ export class AdminApi {
    * clears them, and omitting the key leaves them unchanged. A notes-only
    * change is persisted without reconfiguring the VM on its host, so the
    * returned `job_id` is empty in that case.
+   *
+   * `mac_address` accepts colon-, dash- or dot-separated or bare hex and is
+   * stored normalised as lowercase colon-separated. The server rejects
+   * multicast/broadcast and all-zero addresses with 400 and a MAC held by
+   * another live VM with 409. An explicit `null` unsets it back to the
+   * `ff:ff:ff:ff:ff:ff` sentinel and is only allowed on a deleted VM.
+   * Changing it dispatches an `UpdateVmIp` job per IPv4 assignment (so
+   * static-ARP routers follow the new address) plus the `ConfigureVm` job
+   * whose id is returned. **IPv6 assignments are not recalculated** — an
+   * address derived from the old MAC by SLAAC EUI-64 keeps its value.
    */
   async updateVM(
     id: number,
     updates: {
       disabled?: boolean;
       admin_notes?: string | null;
+      mac_address?: string | null;
     },
   ) {
     const result = await this.handleResponse<ApiResponse<{ job_id: string }>>(

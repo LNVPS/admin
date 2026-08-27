@@ -11,6 +11,7 @@ import {
   FireIcon,
   GlobeAltIcon,
   NoSymbolIcon,
+  PencilIcon,
   PlayIcon,
   PlusIcon,
   ServerStackIcon,
@@ -75,6 +76,8 @@ export function VMDetailPage() {
   // reloads itself every 30s, which would otherwise wipe half-typed text.
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesDraft, setNotesDraft] = useState("");
+  const [editingMac, setEditingMac] = useState(false);
+  const [macDraft, setMacDraft] = useState("");
 
   const vmId = id ? parseInt(id, 10) : null;
 
@@ -283,6 +286,35 @@ export function VMDetailPage() {
     } catch (err) {
       console.error("Failed to save VM notes:", err);
       toastService.error(err instanceof Error ? err.message : "Failed to save notes");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleEditMac = () => {
+    setMacDraft(vm?.mac_address ?? "");
+    setEditingMac(true);
+  };
+
+  const handleSaveMac = async () => {
+    if (!vm) return;
+    const mac = macDraft.trim();
+    if (!mac) {
+      toastService.error("Enter a MAC address");
+      return;
+    }
+    try {
+      setActionLoading("mac");
+      // The server normalises the format and enforces validity/uniqueness, so
+      // surface its message rather than duplicating those rules here.
+      const result = await adminApi.updateVM(vm.id, { mac_address: mac });
+      setEditingMac(false);
+      toastService.success(result.job_id ? "MAC address updated, reconfiguring VM on host" : "MAC address updated");
+      await loadVM(true);
+      setHistoryRefreshKey((prev) => prev + 1);
+    } catch (err) {
+      console.error("Failed to update VM MAC address:", err);
+      toastService.error(err instanceof Error ? err.message : "Failed to update MAC address");
     } finally {
       setActionLoading(null);
     }
@@ -901,9 +933,51 @@ export function VMDetailPage() {
               {vm.host_name || `#${vm.host_id}`}
             </div>
             <div className="mt-1 space-y-1">
-              <div className="truncate font-mono text-gray-400 text-xs" title={vm.mac_address}>
-                {vm.mac_address}
-              </div>
+              {editingMac ? (
+                <div className="space-y-1">
+                  <input
+                    type="text"
+                    value={macDraft}
+                    onChange={(e) => setMacDraft(e.target.value)}
+                    placeholder="aa:bb:cc:dd:ee:ff"
+                    className="w-full font-mono text-xs"
+                  />
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" onClick={handleSaveMac} disabled={actionLoading === "mac"}>
+                      {actionLoading === "mac" ? "Saving..." : "Save"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => setEditingMac(false)}
+                      disabled={actionLoading === "mac"}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Re-points static-ARP routers and reconfigures the NIC on the host. Existing IPv6 assignments keep
+                    their current addresses.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <span className="truncate font-mono text-gray-400 text-xs" title={vm.mac_address}>
+                    {vm.mac_address}
+                  </span>
+                  <PermissionGuard requiredPermissions={["virtual_machines::update"]} fallback={null}>
+                    <button
+                      type="button"
+                      onClick={handleEditMac}
+                      disabled={!!actionLoading}
+                      title="Edit MAC address"
+                      className="text-gray-500 hover:text-gray-300 disabled:opacity-50"
+                    >
+                      <PencilIcon className="h-3 w-3" />
+                    </button>
+                  </PermissionGuard>
+                </div>
+              )}
               {vm.ip_addresses.length > 0 ? (
                 vm.ip_addresses.map((ip, idx) => (
                   <Link

@@ -11,6 +11,7 @@ import {
   CreditCardIcon,
   CubeIcon,
   CurrencyDollarIcon,
+  DevicePhoneMobileIcon,
   DocumentDuplicateIcon,
   DocumentTextIcon,
   GiftIcon,
@@ -23,6 +24,7 @@ import {
   ScaleIcon,
   ServerIcon,
   ServerStackIcon,
+  ShieldCheckIcon,
   SignalIcon,
   Squares2X2Icon,
   SunIcon,
@@ -41,7 +43,7 @@ import { useToast } from "../hooks/useToast";
 import { useUserRoles } from "../hooks/useUserRoles";
 import { LoginState } from "../lib/login";
 
-type NavAccent = "blue" | "teal" | "violet";
+type NavAccent = "blue" | "teal" | "violet" | "emerald" | "amber";
 
 interface NavItem {
   name: string;
@@ -59,8 +61,9 @@ interface NavSection {
 }
 
 // Accent tokens. Blue is the default product accent; teal is reserved for the
-// network fabric (IP ranges, assignments, routers, IP space) so those screens
+// network fabric (routers, tunnels, DNS, IP space) so those screens
 // read as one distinct system rather than blending into the rest of the admin.
+// Violet is the marketplace, amber managed apps, emerald the VPN product.
 const ACCENTS: Record<
   NavAccent,
   { rail: string; node: string; activeNode: string; activeLink: string; sectionIcon: string }
@@ -86,25 +89,47 @@ const ACCENTS: Record<
     activeLink: "nav-active-violet bg-violet-500/10 text-violet-200 ring-1 ring-inset ring-violet-400/30",
     sectionIcon: "text-violet-400",
   },
+  emerald: {
+    rail: "border-emerald-400/25",
+    node: "bg-emerald-500/40 ring-slate-800",
+    activeNode: "bg-emerald-300 ring-emerald-400/40",
+    activeLink: "nav-active-emerald bg-emerald-500/10 text-emerald-200 ring-1 ring-inset ring-emerald-400/30",
+    sectionIcon: "text-emerald-400",
+  },
+  amber: {
+    rail: "border-amber-400/25",
+    node: "bg-amber-500/40 ring-slate-800",
+    activeNode: "bg-amber-300 ring-amber-400/40",
+    activeLink: "nav-active-amber bg-amber-500/10 text-amber-200 ring-1 ring-inset ring-amber-400/30",
+    sectionIcon: "text-amber-400",
+  },
 };
 
-// Organised by operator domain: running infra (Compute), the priced catalogue
-// (Catalog), the network fabric (Network), people (Customers), commerce
+// Organised by operator domain: the machines and what they are built from
+// (Compute), managed apps (Apps), the network fabric (Network), the VPN product
+// (VPN), people (Customers), the selling entities and what they charge
 // (Business), and consolidated reporting (Reports).
+//
+// Apps and VPN are products sold on top of the fabric rather than parts of it,
+// so each carries its own accent: a deployment is not a VM template, and a VPN
+// plan is not a router.
 const navigation: NavSection[] = [
   {
     label: "Compute",
     icon: CpuChipIcon,
     items: [
       { name: "Virtual Machines", to: "/vms", icon: ServerIcon, requiredPermissions: ["virtual_machines::view"] },
+      // The ranges VMs are addressed from, and what currently holds those
+      // addresses. Both are about the guests rather than about the fabric that
+      // carries them, so they read with the machines.
+      { name: "IP Ranges", to: "/ip-ranges", icon: ListBulletIcon, requiredPermissions: ["ip_range::view"] },
+      {
+        name: "IP Assignments",
+        to: "/vm-ip-assignments",
+        icon: GlobeAltIcon,
+        requiredPermissions: ["ip_range::view"],
+      },
       { name: "Hosts", to: "/hosts", icon: ComputerDesktopIcon, requiredPermissions: ["hosts::view"] },
-      { name: "Regions", to: "/regions", icon: GlobeAltIcon, requiredPermissions: ["host_region::view"] },
-    ],
-  },
-  {
-    label: "Catalog",
-    icon: DocumentDuplicateIcon,
-    items: [
       {
         name: "Templates",
         to: "/vm-templates",
@@ -118,10 +143,17 @@ const navigation: NavSection[] = [
         icon: CurrencyDollarIcon,
         requiredPermissions: ["vm_custom_pricing::view"],
       },
-      { name: "Apps", to: "/apps", icon: CubeIcon, requiredPermissions: ["app::view"] },
-      { name: "App Clusters", to: "/app-clusters", icon: Squares2X2Icon, requiredPermissions: ["app::view"] },
+    ],
+  },
+  {
+    label: "Apps",
+    icon: CubeIcon,
+    accent: "amber",
+    items: [
+      { name: "Catalogue", to: "/apps", icon: CubeIcon, requiredPermissions: ["app::view"] },
+      { name: "Clusters", to: "/app-clusters", icon: Squares2X2Icon, requiredPermissions: ["app::view"] },
       {
-        name: "App Deployments",
+        name: "Deployments",
         to: "/app-deployments",
         icon: RocketLaunchIcon,
         requiredPermissions: ["app_deployment::view"],
@@ -133,13 +165,6 @@ const navigation: NavSection[] = [
     icon: WifiIcon,
     accent: "teal",
     items: [
-      { name: "IP Ranges", to: "/ip-ranges", icon: ListBulletIcon, requiredPermissions: ["ip_range::view"] },
-      {
-        name: "IP Assignments",
-        to: "/vm-ip-assignments",
-        icon: GlobeAltIcon,
-        requiredPermissions: ["ip_range::view"],
-      },
       {
         name: "Access Policies",
         to: "/access-policies",
@@ -150,6 +175,20 @@ const navigation: NavSection[] = [
       { name: "Tunnel Pools", to: "/tunnel-pools", icon: GlobeAltIcon, requiredPermissions: ["router::view"] },
       { name: "DNS Servers", to: "/dns-servers", icon: ServerStackIcon, requiredPermissions: ["dns_server::view"] },
       { name: "IP Space", to: "/ip-spaces", icon: GlobeAltIcon, requiredPermissions: ["ip_space::view"] },
+    ],
+  },
+  {
+    label: "VPN",
+    icon: ShieldCheckIcon,
+    accent: "emerald",
+    items: [
+      { name: "Services", to: "/vpn-services", icon: ShieldCheckIcon, requiredPermissions: ["vpn_service::view"] },
+      {
+        name: "Subscriptions",
+        to: "/vpn-subscriptions",
+        icon: DevicePhoneMobileIcon,
+        requiredPermissions: ["vpn_subscription::view"],
+      },
     ],
   },
   {
@@ -202,6 +241,10 @@ const navigation: NavSection[] = [
         requiredPermissions: ["subscriptions::view"],
       },
       { name: "Companies", to: "/companies", icon: BuildingOfficeIcon, requiredPermissions: ["company::view"] },
+      // A region belongs to the company that bills for it and carries the country
+      // that decides the VAT, so it sits with the selling entity rather than with
+      // the machines that happen to run there.
+      { name: "Regions", to: "/regions", icon: GlobeAltIcon, requiredPermissions: ["host_region::view"] },
       {
         name: "Payment Methods",
         to: "/payment-methods",

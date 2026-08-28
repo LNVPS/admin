@@ -137,7 +137,9 @@ export function RolesPage() {
       return;
     }
 
-    if (await confirmDialog({ title: "Delete Role", message: `Are you sure you want to delete role "${role.name}"?` })) {
+    if (
+      await confirmDialog({ title: "Delete Role", message: `Are you sure you want to delete role "${role.name}"?` })
+    ) {
       try {
         await adminApi.deleteRole(role.id);
         refreshData();
@@ -425,6 +427,12 @@ const AVAILABLE_PERMISSIONS = [
   "app_deployment::view",
   "app_deployment::update",
   "app_deployment::delete",
+  "vpn_service::view",
+  "vpn_service::create",
+  "vpn_service::update",
+  "vpn_service::delete",
+  "vpn_subscription::view",
+  "vpn_subscription::delete",
 ];
 
 /**
@@ -491,7 +499,6 @@ function PermissionPicker({
     </div>
   );
 }
-
 
 // Create Role Modal Component
 function CreateRoleModal({

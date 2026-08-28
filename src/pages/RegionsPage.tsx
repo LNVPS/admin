@@ -1,13 +1,15 @@
 import { GlobeAltIcon, PencilIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "../components/Button";
+import { CountrySelect } from "../components/CountrySelect";
 import { Modal } from "../components/Modal";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
-import type { AdminCompanyInfo, AdminRegionInfo } from "../lib/api";
+import { type AdminCompanyInfo, type AdminRegionInfo, countryFlagEmoji, getCountryNameAlpha2 } from "../lib/api";
 import { confirmDialog } from "../services/confirmService";
 
 export function RegionsPage() {
@@ -65,9 +67,11 @@ export function RegionsPage() {
     <>
       <th className="w-12">ID</th>
       <th>Region</th>
+      <th>Country</th>
       <th>Status</th>
       <th>Counts</th>
       <th>Resources</th>
+      <th>Related</th>
       <th className="text-right">Actions</th>
     </>
   );
@@ -86,6 +90,16 @@ export function RegionsPage() {
             </div>
           )}
         </div>
+      </td>
+      <td className="whitespace-nowrap align-top text-gray-300">
+        {region.country_code ? (
+          <span title={getCountryNameAlpha2(region.country_code)}>
+            <span className="mr-1">{countryFlagEmoji(region.country_code)}</span>
+            {region.country_code}
+          </span>
+        ) : (
+          <span className="text-slate-500">Not set</span>
+        )}
       </td>
       <td className="whitespace-nowrap align-top">
         <StatusBadge status={region.enabled ? "enabled" : "disabled"} />
@@ -115,6 +129,9 @@ export function RegionsPage() {
           <div className="text-blue-400">{region.total_cpu_cores} cores</div>
           <div className="text-blue-300">{Math.round(region.total_memory_bytes / (1024 * 1024 * 1024))} GB</div>
         </div>
+      </td>
+      <td className="align-top">
+        <RelatedResources region={region} />
       </td>
       <td className="whitespace-nowrap text-right align-top">
         <div className="flex justify-end space-x-1">
@@ -187,7 +204,7 @@ export function RegionsPage() {
         errorAction="view regions"
         loadingMessage="Loading regions..."
         dependencies={[refreshTrigger]}
-        minWidth="800px"
+        minWidth="1100px"
       />
 
       {/* Create Region Modal */}
@@ -215,6 +232,54 @@ export function RegionsPage() {
   );
 }
 
+/**
+ * What else is configured in a region, so an operator can see what a region
+ * holds before touching it.
+ *
+ * Zero counts stay visible rather than being dropped: "this region has no
+ * tunnel pools" is the thing worth reading before linking a VPN service to it,
+ * and a row whose entries move around by region is hard to scan.
+ */
+function RelatedResources({ region }: { region: AdminRegionInfo }) {
+  // Defaulted, because an API that predates these fields sends none of them and
+  // a blank cell reads as "none configured" rather than "not reported".
+  const items: Array<{ label: string; value: number; to: string; title: string }> = [
+    { label: "Ranges", value: region.ip_ranges ?? 0, to: "/ip-ranges", title: "IP ranges, enabled or not" },
+    { label: "Templates", value: region.vm_templates ?? 0, to: "/vm-templates", title: "VM templates sold here" },
+    { label: "Clusters", value: region.app_clusters ?? 0, to: "/app-clusters", title: "App clusters" },
+    {
+      label: "Deployments",
+      value: region.app_deployments ?? 0,
+      to: "/app-deployments",
+      title: "Live app deployments on those clusters",
+    },
+    { label: "Routers", value: region.routers ?? 0, to: "/routers", title: "Routers serving this region" },
+    {
+      label: "Pools",
+      value: region.tunnel_pools ?? 0,
+      to: "/tunnel-pools",
+      title: "Tunnel pools terminating here",
+    },
+    { label: "VPN", value: region.vpn_services ?? 0, to: "/vpn-services", title: "VPN services sold here" },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs">
+      {items.map((item) => (
+        <Link
+          key={item.label}
+          to={item.to}
+          title={item.title}
+          className={clsx("hover:underline", item.value === 0 ? "text-slate-600" : "text-slate-300")}
+        >
+          <span className={clsx("font-medium", item.value === 0 ? "text-slate-600" : "text-white")}>{item.value}</span>{" "}
+          {item.label}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 // Create Region Modal Component
 function CreateRegionModal({
   isOpen,
@@ -233,6 +298,7 @@ function CreateRegionModal({
     name: "",
     enabled: true,
     company_id: "",
+    country_code: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -244,10 +310,11 @@ function CreateRegionModal({
         name: formData.name,
         enabled: formData.enabled,
         company_id: formData.company_id ? parseInt(formData.company_id) : null,
+        country_code: formData.country_code || undefined,
       });
       onSuccess();
       onClose();
-      setFormData({ name: "", enabled: true, company_id: "" });
+      setFormData({ name: "", enabled: true, company_id: "", country_code: "" });
     } catch (error) {
       console.error("Failed to create region:", error);
     } finally {
@@ -284,6 +351,20 @@ function CreateRegionModal({
               </option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-white mb-2" htmlFor="create-region-country">
+            Country
+          </label>
+          <CountrySelect
+            id="create-region-country"
+            value={formData.country_code}
+            onChange={(country_code) => setFormData({ ...formData, country_code })}
+          />
+          <p className="text-xs text-slate-400 mt-1">
+            Where the region physically is. Used for the flag customers see.
+          </p>
         </div>
 
         <div className="flex items-center">
@@ -332,6 +413,7 @@ function EditRegionModal({
     name: region.name,
     enabled: region.enabled,
     company_id: region.company_id?.toString() || "",
+    country_code: region.country_code ?? "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -343,6 +425,8 @@ function EditRegionModal({
         name: formData.name,
         enabled: formData.enabled,
         company_id: formData.company_id ? parseInt(formData.company_id) : null,
+        // Always sent: an empty string is how the API clears the country.
+        country_code: formData.country_code,
       });
       onSuccess();
       onClose();
@@ -381,6 +465,18 @@ function EditRegionModal({
               </option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-white mb-2" htmlFor="edit-region-country">
+            Country
+          </label>
+          <CountrySelect
+            id="edit-region-country"
+            value={formData.country_code}
+            onChange={(country_code) => setFormData({ ...formData, country_code })}
+          />
+          <p className="text-xs text-slate-400 mt-1">Choosing "No country" clears it.</p>
         </div>
 
         <div className="flex items-center">

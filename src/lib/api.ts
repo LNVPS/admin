@@ -270,6 +270,39 @@ export function getAllCountries(): Array<{ code: string; name: string }> {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/**
+ * Countries keyed by alpha-2.
+ *
+ * Regions carry alpha-2 (what flag rendering needs), while users carry alpha-3.
+ * The two are not interchangeable, so they get separate helpers rather than one
+ * that silently returns the wrong width of code.
+ */
+export function getAllCountriesAlpha2(): Array<{ code: string; name: string }> {
+  return ISO3166.all()
+    .map((country) => ({
+      code: country.alpha2,
+      name: country.country,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Country name for an alpha-2 code, falling back to the code itself. */
+export function getCountryNameAlpha2(countryCode: string): string {
+  return ISO3166.whereAlpha2(countryCode)?.country ?? countryCode;
+}
+
+/**
+ * The flag emoji for an alpha-2 code, built from regional indicator symbols.
+ *
+ * Returns an empty string for anything that is not two ASCII letters, so a
+ * stored value the library does not know cannot render as stray glyphs.
+ */
+export function countryFlagEmoji(countryCode: string): string {
+  const code = countryCode.trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(code)) return "";
+  return String.fromCodePoint(...[...code].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));
+}
+
 export interface ApiResponseBase {
   error?: string;
 }
@@ -604,6 +637,8 @@ export interface AdminRegionInfo {
   name: string;
   enabled: boolean;
   company_id: number | null;
+  /** ISO 3166-1 alpha-2 country code of the region's location, if known. */
+  country_code: string | null;
   host_count: number;
   total_vms: number; // Count of active (non-deleted) VMs only
   total_cpu_cores: number;
@@ -618,6 +653,24 @@ export interface AdminRegionInfo {
   ipv4_available: number;
   /** Assignments whose IP range is an IPv6 CIDR. IPv6 has no "available" figure — it is effectively unbounded. */
   ipv6_assignments: number;
+  /** IP ranges configured here, enabled or not. */
+  ip_ranges: number;
+  /** VM templates sold here, enabled or not. */
+  vm_templates: number;
+  /** App clusters here. */
+  app_clusters: number;
+  /** Live app deployments on those clusters; soft-deleted ones are excluded. */
+  app_deployments: number;
+  /** Tunnel pools terminating here. */
+  tunnel_pools: number;
+  /** VPN services sold here, counted once each however many interfaces they use. */
+  vpn_services: number;
+  /**
+   * Routers serving the region. Derived, not stored: a router has no region, so
+   * this counts those reached through the region's tunnel pools and the access
+   * policies its IP ranges use.
+   */
+  routers: number;
 }
 
 export interface AdminHostDisk {
@@ -2225,6 +2278,117 @@ export interface UpdateTunnelPoolRequest {
   enabled?: boolean;
 }
 
+// VPN Services
+
+/**
+ * One region a VPN service is sold in, which is one interface a device may
+ * dial. A device holds the same key and address in every region, so the region
+ * a customer connects to is only a choice of endpoint.
+ */
+export interface AdminVpnServiceRegion {
+  tunnel_pool_id: number;
+  region_id: number;
+  region_name: string;
+  /** What a client dials for this region. */
+  endpoint: string;
+  /** The interface's public key, hex. */
+  public_key: string;
+  /** False while the interface is administratively down: devices keep their addresses. */
+  enabled: boolean;
+}
+
+/** A VPN product: one price, one device allowance, and a set of regions. */
+export interface AdminVpnServiceInfo {
+  id: number;
+  company_id: number;
+  name: string;
+  currency: string;
+  /** Recurring price, in the currency's smallest unit. */
+  amount: number;
+  interval_amount: number;
+  interval_type: "day" | "month" | "year";
+  /** One-off charge on the first payment, in the same unit as `amount`. */
+  setup_amount: number;
+  /** Resolvers handed to clients, comma-separated. */
+  dns: string | null;
+  /** Devices a plan may register. Lowering it does not disconnect anyone already over it. */
+  default_device_limit: number;
+  /** False takes the service off sale without touching plans already paid for. */
+  enabled: boolean;
+  regions: AdminVpnServiceRegion[];
+  /** Plans sold against it. Deleting the service is refused while this is non-zero. */
+  subscriptions: number;
+  created: string;
+}
+
+/** Body for creating a VPN service. Created off sale unless `enabled` is passed. */
+export interface CreateVpnServiceRequest {
+  company_id: number;
+  name: string;
+  currency: string;
+  amount: number;
+  /** Defaults to 1 month. */
+  interval_amount?: number;
+  interval_type?: "day" | "month" | "year";
+  /** Defaults to 0. */
+  setup_amount?: number;
+  dns?: string;
+  /** Defaults to 5. */
+  default_device_limit?: number;
+  enabled?: boolean;
+}
+
+/** Body for updating a VPN service. `company_id` is deliberately absent. */
+export interface UpdateVpnServiceRequest {
+  name?: string;
+  currency?: string;
+  amount?: number;
+  interval_amount?: number;
+  interval_type?: "day" | "month" | "year";
+  setup_amount?: number;
+  dns?: string | null;
+  default_device_limit?: number;
+  enabled?: boolean;
+}
+
+// VPN Subscriptions
+
+/** A device registered against a plan. The private key never leaves the customer. */
+export interface AdminVpnDeviceInfo {
+  id: number;
+  /** Which of the plan's slots it occupies, counted from zero. */
+  slot: number;
+  /** The customer's label for it. Not an identifier. */
+  name: string;
+  tunnel_id: number;
+  /** The device's public key, hex. */
+  public_key: string | null;
+  /** The address it holds in every region. */
+  address4: string | null;
+  address6: string | null;
+  /** False while the peer is administratively down: it keeps its address. */
+  enabled: boolean;
+  created: string;
+}
+
+/** A customer VPN plan. Read and revoke only; plans exist because a line item was paid for. */
+export interface AdminVpnSubscriptionInfo {
+  id: number;
+  user_id: number;
+  vpn_service_id: number;
+  vpn_service_name: string;
+  /** The line item billing for it, stable for the plan's life. */
+  subscription_line_item_id: number;
+  /** Whether the plan is currently paid for. Devices on an unpaid plan stay allocated. */
+  active: boolean;
+  /** When the billing period ends, if the subscription has an expiry. */
+  expires: string | null;
+  /** Devices this plan may register, from the service. */
+  device_limit: number;
+  devices: AdminVpnDeviceInfo[];
+  created: string;
+}
+
 // Discount Management
 
 /**
@@ -3197,19 +3361,22 @@ export class AdminApi {
     return result.data;
   }
 
-  async createRegion(data: { name: string; enabled?: boolean; company_id?: number | null }) {
+  /** `country_code` is ISO 3166-1 alpha-2 and case-insensitive; omit it for an unknown location. */
+  async createRegion(data: { name: string; enabled?: boolean; company_id?: number | null; country_code?: string }) {
     const result = await this.handleResponse<ApiResponse<AdminRegionInfo>>(
       await this.req("/api/admin/v1/regions", "POST", data),
     );
     return result.data;
   }
 
+  /** Send `country_code: ""` to clear the country. */
   async updateRegion(
     id: number,
     updates: {
       name?: string;
       enabled?: boolean;
       company_id?: number | null;
+      country_code?: string;
     },
   ) {
     const result = await this.handleResponse<ApiResponse<AdminRegionInfo>>(
@@ -5059,6 +5226,87 @@ export class AdminApi {
       await this.req(`/api/admin/v1/tunnel_pools/${id}/sync`, "POST"),
     );
     return result.data;
+  }
+
+  // VPN Services
+
+  /** `include_disabled` defaults to true: an admin listing shows what a customer cannot see. */
+  async getVpnServices(params?: { limit?: number; offset?: number; include_disabled?: boolean }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminVpnServiceInfo>>(
+      await this.req("/api/admin/v1/vpn_services", "GET", undefined, params),
+    );
+  }
+
+  async getVpnService(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminVpnServiceInfo>>(
+      await this.req(`/api/admin/v1/vpn_services/${id}`, "GET"),
+    );
+    return result.data;
+  }
+
+  async createVpnService(data: CreateVpnServiceRequest) {
+    const result = await this.handleResponse<ApiResponse<AdminVpnServiceInfo>>(
+      await this.req("/api/admin/v1/vpn_services", "POST", data),
+    );
+    return result.data;
+  }
+
+  async updateVpnService(id: number, updates: UpdateVpnServiceRequest) {
+    const result = await this.handleResponse<ApiResponse<AdminVpnServiceInfo>>(
+      await this.req(`/api/admin/v1/vpn_services/${id}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
+  /** Refused while the service has subscribers. Retiring one is `enabled: false`. */
+  async deleteVpnService(id: number) {
+    await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/vpn_services/${id}`, "DELETE"));
+  }
+
+  /**
+   * Make a tunnel pool's region available to every device on the service.
+   *
+   * The pool must carry the same address block as the service's others, and one
+   * already terminating another service is refused rather than repointed.
+   */
+  async linkVpnServicePool(id: number, poolId: number) {
+    const result = await this.handleResponse<ApiResponse<AdminVpnServiceInfo>>(
+      await this.req(`/api/admin/v1/vpn_services/${id}/pools/${poolId}`, "POST"),
+    );
+    return result.data;
+  }
+
+  /** Withdraw a region. Devices keep their addresses and every other region. */
+  async unlinkVpnServicePool(id: number, poolId: number) {
+    const result = await this.handleResponse<ApiResponse<AdminVpnServiceInfo>>(
+      await this.req(`/api/admin/v1/vpn_services/${id}/pools/${poolId}`, "DELETE"),
+    );
+    return result.data;
+  }
+
+  // VPN Subscriptions
+
+  async getVpnSubscriptions(params?: { limit?: number; offset?: number; user_id?: number; vpn_service_id?: number }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminVpnSubscriptionInfo>>(
+      await this.req("/api/admin/v1/vpn_subscriptions", "GET", undefined, params),
+    );
+  }
+
+  async getVpnSubscription(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminVpnSubscriptionInfo>>(
+      await this.req(`/api/admin/v1/vpn_subscriptions/${id}`, "GET"),
+    );
+    return result.data;
+  }
+
+  /**
+   * Revoke a device: its keypair is deleted and its slot freed, and every
+   * interface on the service is re-pushed so the key stops working everywhere.
+   */
+  async revokeVpnDevice(id: number, deviceId: number, reason?: string) {
+    await this.handleResponse<ApiResponse<void>>(
+      await this.req(`/api/admin/v1/vpn_subscriptions/${id}/devices/${deviceId}`, "DELETE", { reason }),
+    );
   }
 
   // Profit/Loss report

@@ -260,6 +260,14 @@ html.light .nav-active-violet {
   color: oklch(0.45 0.19 293);
 }
 
+html.light .nav-active-emerald {
+  color: oklch(0.46 0.11 163);
+}
+
+html.light .nav-active-amber {
+  color: oklch(0.47 0.11 75);
+}
+
 /* Display font for headings */
 h1,
 h2,

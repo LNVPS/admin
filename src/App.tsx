@@ -53,6 +53,8 @@ import { VMDetailPage } from "./pages/VMDetailPage";
 import { VMsPage } from "./pages/VMsPage";
 import { VmIpAssignmentsPage } from "./pages/VmIpAssignmentsPage";
 import { VmTemplatesPage } from "./pages/VmTemplatesPage";
+import { VpnServicesPage } from "./pages/VpnServicesPage";
+import { VpnSubscriptionsPage } from "./pages/VpnSubscriptionsPage";
 import { jobHistoryService } from "./services/jobHistoryService";
 import { jobNotificationService } from "./services/jobNotificationService";
 
@@ -328,6 +330,22 @@ function AppContent() {
               element={
                 <PermissionGuard requiredPermissions={["router::view"]}>
                   <TunnelPoolsPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="vpn-services"
+              element={
+                <PermissionGuard requiredPermissions={["vpn_service::view"]}>
+                  <VpnServicesPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="vpn-subscriptions"
+              element={
+                <PermissionGuard requiredPermissions={["vpn_subscription::view"]}>
+                  <VpnSubscriptionsPage />
                 </PermissionGuard>
               }
             />

@@ -21,6 +21,59 @@ import { type AdminRouterDetail, RouterKind } from "../lib/api";
 import { confirmDialog } from "../services/confirmService";
 import { toastService } from "../services/toastService";
 
+/** What the URL field means, which differs per backend. */
+function urlLabel(kind: RouterKind): string {
+  switch (kind) {
+    case RouterKind.LINUX_SSH:
+      return "SSH URL *";
+    case RouterKind.LVD:
+      return "Address (reference only) *";
+    default:
+      return "Router API URL *";
+  }
+}
+
+function urlPlaceholder(kind: RouterKind): string | undefined {
+  switch (kind) {
+    case RouterKind.LINUX_SSH:
+      return "ssh://root@host:22/eth0";
+    case RouterKind.LVD:
+      return "rs1.example.com";
+    default:
+      return "https://router.example.com/api";
+  }
+}
+
+/** Display name for a backend. `lvd` is not a word, so it is not left to `capitalize`. */
+export function routerKindLabel(kind: string): string {
+  switch (kind) {
+    case RouterKind.MIKROTIK:
+      return "MikroTik";
+    case RouterKind.OVH_ADDITIONAL_IP:
+      return "OVH Additional IP";
+    case RouterKind.LINUX_SSH:
+      return "Linux (SSH)";
+    case RouterKind.LVD:
+      return "Route server (lvd)";
+    default:
+      return kind.replace(/_/g, " ");
+  }
+}
+
+/** What the credential is, which is not the same thing on every backend. */
+function tokenLabel(kind: RouterKind): string {
+  switch (kind) {
+    case RouterKind.OVH_ADDITIONAL_IP:
+      return "OVH Credentials";
+    case RouterKind.LINUX_SSH:
+      return "SSH Private Key (PEM)";
+    case RouterKind.LVD:
+      return "Route server secret";
+    default:
+      return "Authentication Token";
+  }
+}
+
 export function RoutersPage() {
   const adminApi = useAdminApi();
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -46,7 +99,12 @@ export function RoutersPage() {
       return;
     }
 
-    if (await confirmDialog({ title: "Delete Router", message: `Are you sure you want to delete router "${router.name}"?` })) {
+    if (
+      await confirmDialog({
+        title: "Delete Router",
+        message: `Are you sure you want to delete router "${router.name}"?`,
+      })
+    ) {
       try {
         await adminApi.deleteRouter(router.id);
         refreshData();
@@ -80,8 +138,8 @@ export function RoutersPage() {
             {router.name}
           </Link>
           <div className="mt-1">
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-900 text-purple-200 capitalize">
-              {router.kind.replace("_", " ")}
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-900 text-purple-200">
+              {routerKindLabel(router.kind)}
             </span>
           </div>
         </div>
@@ -273,21 +331,26 @@ function CreateRouterModal({
             <option value={RouterKind.MIKROTIK}>MikroTik</option>
             <option value={RouterKind.OVH_ADDITIONAL_IP}>OVH Additional IP</option>
             <option value={RouterKind.LINUX_SSH}>Linux (SSH)</option>
+            <option value={RouterKind.LVD}>Route server (lvd)</option>
           </select>
+          {formData.kind === RouterKind.LVD && (
+            <p className="mt-1 text-xs text-gray-400">
+              A route server running lvd fetches its own configuration, so LNVPS never connects to it. That is what lets
+              it sit behind NAT.
+            </p>
+          )}
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-white mb-2">
-            {formData.kind === RouterKind.LINUX_SSH ? "SSH URL *" : "Router API URL *"}
-          </label>
+          <label className="block text-xs font-medium text-white mb-2">{urlLabel(formData.kind)}</label>
           <input
-            type={formData.kind === RouterKind.LINUX_SSH ? "text" : "url"}
+            type={
+              formData.kind === RouterKind.MIKROTIK || formData.kind === RouterKind.OVH_ADDITIONAL_IP ? "url" : "text"
+            }
             value={formData.url}
             onChange={(e) => setFormData({ ...formData, url: e.target.value })}
             className="font-mono"
-            placeholder={
-              formData.kind === RouterKind.LINUX_SSH ? "ssh://root@host:22/eth0" : "https://router.example.com/api"
-            }
+            placeholder={urlPlaceholder(formData.kind)}
             required
           />
           {formData.kind === RouterKind.LINUX_SSH && (
@@ -296,16 +359,22 @@ function CreateRouterModal({
               ssh://root@10.0.0.1/eth0)
             </p>
           )}
+          {formData.kind === RouterKind.LVD && (
+            <p className="mt-1 text-xs text-gray-400">
+              Not dialled, and required only because the field is. Record how you reach the machine yourself.
+            </p>
+          )}
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-white mb-2">
-            {formData.kind === RouterKind.OVH_ADDITIONAL_IP
-              ? "OVH Credentials *"
-              : formData.kind === RouterKind.LINUX_SSH
-                ? "SSH Private Key (PEM) *"
-                : "Authentication Token *"}
-          </label>
+          <label className="block text-xs font-medium text-white mb-2">{tokenLabel(formData.kind)} *</label>
+          {formData.kind === RouterKind.LVD && (
+            <p className="mb-2 text-xs text-gray-400">
+              The secret the route server presents back, as{" "}
+              <span className="font-mono">&lt;router id&gt;.&lt;secret&gt;</span>. It is a credential for reading this
+              router's data plane, not one for reaching it.
+            </p>
+          )}
           {formData.kind === RouterKind.OVH_ADDITIONAL_IP ? (
             <OvhCredentialsInput
               value={formData.token}
@@ -442,19 +511,20 @@ function EditRouterModal({
             <option value={RouterKind.MIKROTIK}>MikroTik</option>
             <option value={RouterKind.OVH_ADDITIONAL_IP}>OVH Additional IP</option>
             <option value={RouterKind.LINUX_SSH}>Linux (SSH)</option>
+            <option value={RouterKind.LVD}>Route server (lvd)</option>
           </select>
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-white mb-2">
-            {formData.kind === RouterKind.LINUX_SSH ? "SSH URL *" : "Router API URL *"}
-          </label>
+          <label className="block text-xs font-medium text-white mb-2">{urlLabel(formData.kind)}</label>
           <input
-            type={formData.kind === RouterKind.LINUX_SSH ? "text" : "url"}
+            type={
+              formData.kind === RouterKind.MIKROTIK || formData.kind === RouterKind.OVH_ADDITIONAL_IP ? "url" : "text"
+            }
             value={formData.url}
             onChange={(e) => setFormData({ ...formData, url: e.target.value })}
             className="font-mono"
-            placeholder={formData.kind === RouterKind.LINUX_SSH ? "ssh://root@host:22/eth0" : undefined}
+            placeholder={urlPlaceholder(formData.kind)}
             required
           />
           {formData.kind === RouterKind.LINUX_SSH && (
@@ -466,13 +536,7 @@ function EditRouterModal({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-white mb-2">
-            {formData.kind === RouterKind.OVH_ADDITIONAL_IP
-              ? "OVH Credentials"
-              : formData.kind === RouterKind.LINUX_SSH
-                ? "SSH Private Key (PEM)"
-                : "Authentication Token"}
-          </label>
+          <label className="block text-xs font-medium text-white mb-2">{tokenLabel(formData.kind)}</label>
           {formData.kind === RouterKind.OVH_ADDITIONAL_IP ? (
             <>
               <OvhCredentialsInput value={formData.token} onChange={(token) => setFormData({ ...formData, token })} />

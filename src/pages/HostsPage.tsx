@@ -1,4 +1,12 @@
-import { ArrowDownTrayIcon, ArrowPathIcon, CogIcon, PencilIcon, PlusIcon, UserIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowDownTrayIcon,
+  ArrowPathIcon,
+  CogIcon,
+  PencilIcon,
+  PlusIcon,
+  TrashIcon,
+  UserIcon,
+} from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { useEffect, useState } from "react";
 import { Button } from "../components/Button";
@@ -14,6 +22,7 @@ import { useAdminApi } from "../hooks/useAdminApi";
 import { useToast } from "../hooks/useToast";
 import type { AdminHostInfo, AdminRegionInfo, AdminUnmanagedVm, AdminUserInfo, VmHostKind } from "../lib/api";
 import { CpuArch, CpuFeature, CpuMfg } from "../lib/api";
+import { confirmDialog } from "../services/confirmService";
 import { formatBytes } from "../utils/formatBytes";
 
 /**
@@ -82,6 +91,32 @@ export function HostsPage() {
   const handleImport = (host: AdminHostInfo) => {
     setSelectedHost(host);
     setShowImportModal(true);
+  };
+
+  /**
+   * Delete a host.
+   *
+   * The API refuses this while the host has active VMs, and a host that ever
+   * ran one keeps its row flagged deleted rather than going away, because those
+   * VMs are billing history pointing at it. The dialog says so, because "delete"
+   * that sometimes means "retire" is worth spelling out before it is clicked.
+   */
+  const handleDelete = async (host: AdminHostInfo) => {
+    if (
+      !(await confirmDialog({
+        title: "Delete Host",
+        message: `Delete "${host.name}"? This is refused while the host has active VMs, so move or delete those first. A host that never ran a VM is removed with its disk records; one that did keeps its row, hidden from this list and forced disabled, so its VMs still resolve the host they ran on.`,
+      }))
+    ) {
+      return;
+    }
+    try {
+      const result = await adminApi.deleteHost(host.id);
+      success(result.message);
+      refreshData();
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Failed to delete host");
+    }
   };
 
   /**
@@ -269,7 +304,13 @@ export function HostsPage() {
         </div>
       </td>
       <td className="whitespace-nowrap align-top">
-        <StatusBadge status={host.enabled ? "enabled" : "disabled"} />
+        {host.deleted ? (
+          <StatusBadge status="inactive" colorOverride="bg-red-500/10 text-red-300 ring-1 ring-inset ring-red-500/30">
+            Deleted
+          </StatusBadge>
+        ) : (
+          <StatusBadge status={host.enabled ? "enabled" : "disabled"} />
+        )}
       </td>
       <td className="text-right align-top">
         <div className="flex justify-end gap-1">
@@ -296,6 +337,15 @@ export function HostsPage() {
           </Button>
           <Button size="sm" variant="secondary" onClick={() => handleEdit(host)} className="p-1" title="Edit host">
             <PencilIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => handleDelete(host)}
+            className="text-red-400 hover:text-red-300 p-1"
+            title="Delete host"
+          >
+            <TrashIcon className="h-4 w-4" />
           </Button>
         </div>
       </td>

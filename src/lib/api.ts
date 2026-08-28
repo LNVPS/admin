@@ -73,6 +73,14 @@ export enum RouterKind {
   MIKROTIK = "mikrotik",
   OVH_ADDITIONAL_IP = "ovh_additional_ip",
   LINUX_SSH = "linux_ssh",
+  /**
+   * A route server running `lvd`, the LNVPS VPN daemon.
+   *
+   * The one kind LNVPS never dials: it fetches its own configuration, so it
+   * works behind NAT and needs no reachable management URL. The token is the
+   * credential it authenticates with, not one used to reach it.
+   */
+  LVD = "lvd",
 }
 
 export enum AdminUserRole {
@@ -607,6 +615,12 @@ export interface AdminHostInfo {
    * while existing VMs keep running and can be renewed only up to this date. Omitted when not sunsetting.
    */
   sunset_date?: string | null;
+  /**
+   * The host has been deleted. It is gone from host listings and region counts,
+   * but is still returned by id so views built from historical VMs resolve the
+   * host those VMs ran on.
+   */
+  deleted?: boolean;
   disks: {
     id: number;
     name: string;
@@ -706,6 +720,11 @@ export interface AdminUnmanagedVm {
 }
 
 export interface RegionDeleteResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface HostDeleteResponse {
   success: boolean;
   message: string;
 }
@@ -3220,6 +3239,20 @@ export class AdminApi {
   ) {
     const result = await this.handleResponse<ApiResponse<AdminHostInfo>>(
       await this.req(`/api/admin/v1/hosts/${id}`, "PATCH", updates),
+    );
+    return result.data;
+  }
+
+  /**
+   * Delete a host. Refused while it has active VMs.
+   *
+   * A host that never ran a VM is removed outright with its disk records. One
+   * that did keeps its row, flagged `deleted` and forced disabled, because its
+   * VMs are billing history that still has to resolve the host they ran on.
+   */
+  async deleteHost(id: number) {
+    const result = await this.handleResponse<ApiResponse<HostDeleteResponse>>(
+      await this.req(`/api/admin/v1/hosts/${id}`, "DELETE"),
     );
     return result.data;
   }

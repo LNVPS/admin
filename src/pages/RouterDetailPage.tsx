@@ -18,6 +18,7 @@ import { useAdminApi } from "../hooks/useAdminApi";
 import { useApiCall } from "../hooks/useApiCall";
 import { useToast } from "../hooks/useToast";
 import type { AdminBgpSessionInfo, AdminRouterTunnelInfo } from "../lib/api";
+import { routerKindLabel } from "./RoutersPage";
 
 export function RouterDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -236,8 +237,8 @@ export function RouterDetailPage() {
                 {router.name}
               </h1>
               <StatusBadge status={router.enabled ? "active" : "inactive"} />
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-900 text-purple-200 capitalize">
-                {router.kind.replace(/_/g, " ")}
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-900 text-purple-200">
+                {routerKindLabel(router.kind)}
               </span>
             </div>
             <div className="mt-1 font-mono text-xs text-gray-400 truncate" title={router.url}>

@@ -20,7 +20,7 @@ import { StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { useToast } from "../hooks/useToast";
-import type { AdminHostInfo, AdminRegionInfo, AdminUnmanagedVm, AdminUserInfo, VmHostKind } from "../lib/api";
+import type { AdminHostInfo, AdminRegionInfo, AdminUnmanagedVm, AdminUserInfo } from "../lib/api";
 import { CpuArch, CpuFeature, CpuMfg } from "../lib/api";
 import { confirmDialog } from "../services/confirmService";
 import { formatBytes } from "../utils/formatBytes";
@@ -735,7 +735,9 @@ function CreateHostModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        )}
+
+        <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${isNode ? "hidden" : ""}`}>
           <div>
             <label className="block text-xs font-medium text-white mb-2">SSH User</label>
             <input
@@ -870,6 +872,11 @@ function EditHostModal({
 }) {
   const adminApi = useAdminApi();
   const [loading, setLoading] = useState(false);
+  // A marketplace node runs on hardware LNVPS does not own: its address comes
+  // from the tunnel it was allocated, its hardware from its own report, and it
+  // has neither a Proxmox token nor an SSH account to give us. Editing any of
+  // those here writes a value the next patch overwrites, or breaks the host.
+  const isNode = host.kind === "marketplace_node";
   const [formData, setFormData] = useState({
     name: host.name || "",
     ip: host.ip || "",
@@ -897,11 +904,7 @@ function EditHostModal({
     try {
       const updates: any = {
         name: formData.name || undefined,
-        ip: formData.ip || undefined,
         region_id: parseInt(formData.region_id) || undefined,
-        kind: formData.kind || undefined,
-        vlan_id: formData.vlan_id ? parseInt(formData.vlan_id) : null,
-        mtu: formData.mtu ? parseInt(formData.mtu) : null,
         sunset_date: formData.sunset_date ? new Date(formData.sunset_date).toISOString() : null,
         enabled: formData.enabled,
         load_cpu: formData.load_cpu,
@@ -909,22 +912,31 @@ function EditHostModal({
         load_disk: formData.load_disk,
       };
 
-      // Only include API token if it was entered
-      if (formData.api_token) {
-        updates.api_token = formData.api_token;
-      }
-      if (formData.cpu_mfg) {
-        updates.cpu_mfg = formData.cpu_mfg;
-      }
-      if (formData.cpu_arch) {
-        updates.cpu_arch = formData.cpu_arch;
-      }
-      updates.cpu_features = formData.cpu_features.length > 0 ? formData.cpu_features : [];
-      if (formData.ssh_user) {
-        updates.ssh_user = formData.ssh_user;
-      }
-      if (formData.ssh_key) {
-        updates.ssh_key = formData.ssh_key;
+      // A host's kind is not editable. It selects which client drives the host,
+      // and this form used to send it unconditionally from a select that had no
+      // option for `marketplace_node` — so opening the dialog on a node and
+      // saving turned it into a Proxmox host with a tunnel address for a URL.
+      if (!isNode) {
+        updates.ip = formData.ip || undefined;
+        updates.vlan_id = formData.vlan_id ? parseInt(formData.vlan_id) : null;
+        updates.mtu = formData.mtu ? parseInt(formData.mtu) : null;
+        // Only include API token if it was entered
+        if (formData.api_token) {
+          updates.api_token = formData.api_token;
+        }
+        if (formData.cpu_mfg) {
+          updates.cpu_mfg = formData.cpu_mfg;
+        }
+        if (formData.cpu_arch) {
+          updates.cpu_arch = formData.cpu_arch;
+        }
+        updates.cpu_features = formData.cpu_features.length > 0 ? formData.cpu_features : [];
+        if (formData.ssh_user) {
+          updates.ssh_user = formData.ssh_user;
+        }
+        if (formData.ssh_key) {
+          updates.ssh_key = formData.ssh_key;
+        }
       }
 
       await adminApi.updateHost(host.id, updates);
@@ -953,15 +965,21 @@ function EditHostModal({
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-white mb-2">IP Address</label>
-            <input
-              type="text"
-              value={formData.ip}
-              onChange={(e) => setFormData({ ...formData, ip: e.target.value })}
-              className=""
-              placeholder="192.168.1.100"
-              required
-            />
+            <label className="block text-xs font-medium text-white mb-2">
+              {isNode ? "Tunnel Address" : "IP Address"}
+            </label>
+            {isNode ? (
+              <p className="text-sm text-gray-300 font-mono py-2">{host.ip || "not allocated yet"}</p>
+            ) : (
+              <input
+                type="text"
+                value={formData.ip}
+                onChange={(e) => setFormData({ ...formData, ip: e.target.value })}
+                className=""
+                placeholder="192.168.1.100"
+                required
+              />
+            )}
           </div>
         </div>
 
@@ -984,19 +1002,11 @@ function EditHostModal({
           </div>
           <div>
             <label className="block text-xs font-medium text-white mb-2">Host Type</label>
-            <select
-              value={formData.kind}
-              onChange={(e) => setFormData({ ...formData, kind: e.target.value as VmHostKind })}
-              className=""
-              required
-            >
-              <option value="proxmox">Proxmox</option>
-              <option value="libvirt">Libvirt</option>
-            </select>
+            <p className="text-sm text-gray-300 py-2">{host.kind}</p>
           </div>
         </div>
 
-        <div>
+        <div className={isNode ? "hidden" : undefined}>
           <label className="block text-xs font-medium text-white mb-2">API Token</label>
           {formData.kind === "proxmox" ? (
             <ProxmoxTokenInput
@@ -1015,7 +1025,7 @@ function EditHostModal({
           <p className="text-xs text-gray-400 mt-1">Leave empty to keep current token</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${isNode ? "hidden" : ""}`}>
           <div>
             <label className="block text-xs font-medium text-white mb-2">VLAN ID</label>
             <input
@@ -1038,6 +1048,20 @@ function EditHostModal({
           </div>
         </div>
 
+        {isNode ? (
+          <div>
+            <label className="block text-xs font-medium text-white mb-2">CPU</label>
+            <p className="text-sm text-gray-300">
+              {[host.cpu_mfg, host.cpu_arch].filter(Boolean).join(" ") || "not reported yet"}
+            </p>
+            {host.cpu_features && host.cpu_features.length > 0 && (
+              <p className="text-xs text-gray-400 mt-1 font-mono">{host.cpu_features.join(", ")}</p>
+            )}
+            <p className="text-xs text-gray-400 mt-1">
+              Reported by the node on every patch, so it is not editable here.
+            </p>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-medium text-white mb-2">CPU Manufacturer</label>

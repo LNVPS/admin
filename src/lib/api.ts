@@ -33,6 +33,10 @@ export enum VmRunningStates {
 export enum VmHostKind {
   PROXMOX = "proxmox",
   LIBVIRT = "libvirt",
+  // Libvirt reached over a marketplace tunnel, on hardware LNVPS does not own.
+  // Its own daemon does things no other host can, so it is a kind rather than a
+  // label: it fetches its own OS images, and it reports its own hardware.
+  MARKETPLACE_NODE = "marketplace_node",
 }
 
 export enum ApiOsDistribution {

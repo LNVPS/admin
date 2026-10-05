@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useUserRoles } from "../hooks/useUserRoles";
 
 const routePermissions = [
+  { path: "/activity", permissions: ["analytics::view"] },
   { path: "/users", permissions: ["users::view"] },
   { path: "/vms", permissions: ["virtual_machines::view"] },
   { path: "/hosts", permissions: ["hosts::view"] },

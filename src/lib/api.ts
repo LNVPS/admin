@@ -525,6 +525,47 @@ export interface AdminVmTraffic {
   days: VmTrafficDay[];
 }
 
+export interface ActivitySection<T> {
+  total: number;
+  items: T[];
+}
+
+export interface ActivityUser {
+  id: number;
+  pubkey: string;
+  created: string;
+}
+
+export interface ActivityDeletedVm extends AdminVmInfo {
+  deleted_at: string;
+  delete_reason: string | null;
+}
+
+export interface ActivityPayment extends AdminSubscriptionPaymentInfo {
+  subscription_name: string;
+}
+
+export interface ActivityPaymentTotal {
+  currency: string;
+  payment_type: SubscriptionPaymentType;
+  count: number;
+  amount: number;
+  tax: number;
+}
+
+export interface ActivityReport {
+  since: string;
+  expiring_until: string;
+  new_users: ActivitySection<ActivityUser>;
+  new_vms: ActivitySection<AdminVmInfo>;
+  deleted_vms: ActivitySection<ActivityDeletedVm>;
+  expiring_vms: ActivitySection<AdminVmInfo>;
+  new_vpn_subscriptions: ActivitySection<AdminVpnSubscriptionInfo>;
+  new_app_deployments: ActivitySection<AdminAppDeploymentInfo>;
+  payments: ActivitySection<ActivityPayment>;
+  payment_totals: ActivityPaymentTotal[];
+}
+
 /** One row of the fleet traffic report, ordered by `bytes_out` descending. */
 export interface FleetTrafficRow {
   vm_id: number;
@@ -5392,6 +5433,22 @@ export class AdminApi {
     return await this.handleResponse<PaginatedApiResponse<FleetTrafficRow>>(
       await this.req("/api/admin/v1/reports/traffic", "GET", undefined, params as any),
     );
+  }
+
+  async getActivityReport(params: { days: number; expiring_days: number; limit?: number }) {
+    const result = await this.handleResponse<ApiResponse<ActivityReport>>(
+      await this.req("/api/admin/v1/reports/activity", "GET", undefined, params),
+    );
+    const report = result.data;
+    const paymentType = (t: string) => t.toLowerCase() as SubscriptionPaymentType;
+    return {
+      ...report,
+      payments: {
+        ...report.payments,
+        items: report.payments.items.map((p) => ({ ...p, payment_type: paymentType(p.payment_type) })),
+      },
+      payment_totals: report.payment_totals.map((t) => ({ ...t, payment_type: paymentType(t.payment_type) })),
+    };
   }
 }
 

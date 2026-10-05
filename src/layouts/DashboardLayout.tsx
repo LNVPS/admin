@@ -2,6 +2,7 @@ import {
   ArrowPathIcon,
   ArrowRightStartOnRectangleIcon,
   BanknotesIcon,
+  BoltIcon,
   BuildingOfficeIcon,
   ChartBarIcon,
   ChatBubbleLeftRightIcon,
@@ -114,6 +115,11 @@ const ACCENTS: Record<
 // so each carries its own accent: a deployment is not a VM template, and a VPN
 // plan is not a router.
 const navigation: NavSection[] = [
+  {
+    label: "Overview",
+    icon: Squares2X2Icon,
+    items: [{ name: "Activity", to: "/activity", icon: BoltIcon, requiredPermissions: ["analytics::view"] }],
+  },
   {
     label: "Compute",
     icon: CpuChipIcon,

@@ -6,6 +6,7 @@ import { PermissionGuard } from "./components/PermissionGuard";
 import { SmartRedirect } from "./components/SmartRedirect";
 import { ProtectedLayout } from "./layouts/ProtectedLayout";
 import { AccessPoliciesPage } from "./pages/AccessPoliciesPage";
+import { ActivityPage } from "./pages/ActivityPage";
 import { AgentConversationDetailPage } from "./pages/AgentConversationDetailPage";
 import { AgentConversationsPage } from "./pages/AgentConversationsPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
@@ -101,6 +102,14 @@ function AppContent() {
 
           <Route path="/" element={<ProtectedLayout />}>
             <Route index element={<SmartRedirect />} />
+            <Route
+              path="activity"
+              element={
+                <PermissionGuard requiredPermissions={["analytics::view"]}>
+                  <ActivityPage />
+                </PermissionGuard>
+              }
+            />
             <Route
               path="users"
               element={

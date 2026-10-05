@@ -735,9 +735,7 @@ function CreateHostModal({
           </div>
         </div>
 
-        )}
-
-        <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${isNode ? "hidden" : ""}`}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-white mb-2">SSH User</label>
             <input
@@ -1103,8 +1101,9 @@ function EditHostModal({
             />
           </div>
         </div>
+        )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${isNode ? "hidden" : ""}`}>
           <div>
             <label className="block text-xs font-medium text-white mb-2">SSH User</label>
             <input

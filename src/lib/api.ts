@@ -436,6 +436,8 @@ export interface AdminCreateCustomVmRequest {
   ip4_count?: number;
   /** IPv6 addresses to assign (default 1); must sit within the plan's range. */
   ip6_count?: number;
+  transfer_gb?: number;
+  network_mbps?: number;
   image_id: number;
   /** Must belong to `user_id`. */
   ssh_key_id: number;
@@ -871,6 +873,12 @@ export interface AdminCustomPricingInfo {
   cpu_limit: number | null;
   /** Monthly outbound transfer allowance in GB; null = unmetered. */
   transfer_gb: number | null;
+  min_transfer_gb: number;
+  max_transfer_gb: number;
+  transfer_cost_per_tb: number;
+  min_network_mbps: number;
+  max_network_mbps: number;
+  network_cost_per_gbps: number;
 }
 
 /**
@@ -3713,6 +3721,12 @@ export class AdminApi {
     cpu_limit?: number | null;
     /** Monthly outbound transfer allowance in GB; omit/null = unmetered. */
     transfer_gb?: number | null;
+    min_transfer_gb?: number;
+    max_transfer_gb?: number;
+    transfer_cost_per_tb?: number;
+    min_network_mbps?: number;
+    max_network_mbps?: number;
+    network_cost_per_gbps?: number;
   }) {
     const result = await this.handleResponse<ApiResponse<AdminCustomPricingInfo>>(
       await this.req("/api/admin/v1/custom_pricing", "POST", data),
@@ -3758,6 +3772,12 @@ export class AdminApi {
       cpu_limit: number | null;
       /** Monthly outbound transfer allowance in GB; null = unmetered. */
       transfer_gb: number | null;
+      min_transfer_gb: number;
+      max_transfer_gb: number;
+      transfer_cost_per_tb: number;
+      min_network_mbps: number;
+      max_network_mbps: number;
+      network_cost_per_gbps: number;
     }>,
   ) {
     const result = await this.handleResponse<ApiResponse<AdminCustomPricingInfo>>(

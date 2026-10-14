@@ -128,6 +128,18 @@ export function CustomPricingPage() {
               IPv6: {formatCurrency(pricing.ip6_cost, pricing.currency, undefined, maxDigits)}
               /IP
             </div>
+            {pricing.transfer_gb != null && (
+              <div>
+                Transfer: {formatCurrency(pricing.transfer_cost_per_tb, pricing.currency, undefined, maxDigits)}
+                /TB
+              </div>
+            )}
+            {pricing.network_mbps != null && (
+              <div>
+                Speed: {formatCurrency(pricing.network_cost_per_gbps, pricing.currency, undefined, maxDigits)}
+                /Gbit/s
+              </div>
+            )}
           </div>
         </td>
         <td className="align-top text-gray-300">
@@ -140,6 +152,18 @@ export function CustomPricingPage() {
             </div>
             <div>
               IPs: {pricing.min_ip4 ?? 1}-{pricing.max_ip4 ?? 1} v4 / {pricing.min_ip6 ?? 1}-{pricing.max_ip6 ?? 1} v6
+            </div>
+            <div>
+              Transfer:{" "}
+              {pricing.transfer_gb == null
+                ? "unmetered"
+                : `${pricing.min_transfer_gb}-${pricing.max_transfer_gb} GB/mo (default ${pricing.transfer_gb})`}
+            </div>
+            <div>
+              Speed:{" "}
+              {pricing.network_mbps == null
+                ? "uncapped"
+                : `${pricing.min_network_mbps}-${pricing.max_network_mbps} Mbit/s (default ${pricing.network_mbps})`}
             </div>
             {(pricing.cpu_mfg || pricing.cpu_arch) && (
               <div className="truncate text-xs text-slate-400">

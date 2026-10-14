@@ -53,6 +53,8 @@ interface FormData {
   cpu_feature: string;
   ip4_count: string;
   ip6_count: string;
+  transfer_gb: string;
+  network_mbps: string;
 }
 
 const emptyForm = (preselectedUser?: AdminUserInfo): FormData => ({
@@ -73,6 +75,8 @@ const emptyForm = (preselectedUser?: AdminUserInfo): FormData => ({
   cpu_feature: "",
   ip4_count: "1",
   ip6_count: "1",
+  transfer_gb: "",
+  network_mbps: "",
 });
 
 const inputClass =
@@ -218,6 +222,8 @@ export function CreateVmModal({ isOpen, onClose, onSuccess, preselectedUser }: C
 
     const ip4Count = Number.parseInt(formData.ip4_count, 10);
     const ip6Count = Number.parseInt(formData.ip6_count, 10);
+    const transferGb = Number.parseInt(formData.transfer_gb, 10);
+    const networkMbps = Number.parseInt(formData.network_mbps, 10);
     const features = formData.cpu_feature
       .split(",")
       .map((f) => f.trim())
@@ -240,6 +246,8 @@ export function CreateVmModal({ isOpen, onClose, onSuccess, preselectedUser }: C
       ...(features.length > 0 && { cpu_feature: features }),
       ...(Number.isFinite(ip4Count) && { ip4_count: ip4Count }),
       ...(Number.isFinite(ip6Count) && { ip6_count: ip6Count }),
+      ...(Number.isFinite(transferGb) && { transfer_gb: transferGb }),
+      ...(Number.isFinite(networkMbps) && { network_mbps: networkMbps }),
       ...(formData.ref_code.trim() && { ref_code: formData.ref_code.trim() }),
       ...(formData.reason.trim() && { reason: formData.reason.trim() }),
     };
@@ -391,6 +399,14 @@ export function CreateVmModal({ isOpen, onClose, onSuccess, preselectedUser }: C
                       {Math.round(selectedPricing.min_memory / GIB)}–{Math.round(selectedPricing.max_memory / GIB)} GiB
                       {" • "}IPv4 {selectedPricing.min_ip4 ?? 1}–{selectedPricing.max_ip4 ?? 1} • IPv6{" "}
                       {selectedPricing.min_ip6 ?? 1}–{selectedPricing.max_ip6 ?? 1}
+                      {" • "}Transfer{" "}
+                      {selectedPricing.transfer_gb == null
+                        ? "unmetered"
+                        : `${selectedPricing.min_transfer_gb}-${selectedPricing.max_transfer_gb} GB`}
+                      {" • "}Speed{" "}
+                      {selectedPricing.network_mbps == null
+                        ? "uncapped"
+                        : `${selectedPricing.min_network_mbps}-${selectedPricing.max_network_mbps} Mbit/s`}
                     </div>
                   )}
                 </div>
@@ -483,6 +499,40 @@ export function CreateVmModal({ isOpen, onClose, onSuccess, preselectedUser }: C
                       max={selectedPricing?.max_ip6}
                       value={formData.ip6_count}
                       onChange={(e) => setField("ip6_count", e.target.value)}
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Monthly Transfer (GB)</label>
+                    <input
+                      type="number"
+                      min={selectedPricing?.min_transfer_gb ?? 0}
+                      max={selectedPricing?.max_transfer_gb}
+                      value={formData.transfer_gb}
+                      onChange={(e) => setField("transfer_gb", e.target.value)}
+                      placeholder={
+                        selectedPricing?.transfer_gb != null
+                          ? `Plan default (${selectedPricing.transfer_gb})`
+                          : "Unmetered"
+                      }
+                      disabled={selectedPricing?.transfer_gb == null}
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Network Speed (Mbit/s)</label>
+                    <input
+                      type="number"
+                      min={selectedPricing?.min_network_mbps ?? 0}
+                      max={selectedPricing?.max_network_mbps}
+                      value={formData.network_mbps}
+                      onChange={(e) => setField("network_mbps", e.target.value)}
+                      placeholder={
+                        selectedPricing?.network_mbps != null
+                          ? `Plan default (${selectedPricing.network_mbps})`
+                          : "Uncapped"
+                      }
+                      disabled={selectedPricing?.network_mbps == null}
                       className={inputClass}
                     />
                   </div>

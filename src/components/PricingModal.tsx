@@ -47,7 +47,13 @@ interface FormData {
   disk_pricing: DiskPricingFormData[];
   cpu_limit: string;
   network_mbps: string;
+  min_network_mbps: string;
+  max_network_mbps: string;
+  network_cost_per_gbps: number;
   transfer_gb: string;
+  min_transfer_gb: string;
+  max_transfer_gb: string;
+  transfer_cost_per_tb: number;
   disk_iops_read: string;
   disk_iops_write: string;
   disk_mbps_read: string;
@@ -82,7 +88,13 @@ const getDefaultFormData = (): FormData => ({
   disk_pricing: [...DEFAULT_DISK_PRICING],
   cpu_limit: "",
   network_mbps: "",
+  min_network_mbps: "",
+  max_network_mbps: "",
+  network_cost_per_gbps: 0,
   transfer_gb: "",
+  min_transfer_gb: "",
+  max_transfer_gb: "",
+  transfer_cost_per_tb: 0,
   disk_iops_read: "",
   disk_iops_write: "",
   disk_mbps_read: "",
@@ -118,12 +130,21 @@ const getFormDataFromPricing = (pricing: AdminCustomPricingInfo): FormData => ({
   })),
   cpu_limit: pricing.cpu_limit != null ? pricing.cpu_limit.toString() : "",
   network_mbps: pricing.network_mbps != null ? pricing.network_mbps.toString() : "",
+  min_network_mbps: (pricing.min_network_mbps ?? 0).toString(),
+  max_network_mbps: (pricing.max_network_mbps ?? 0).toString(),
+  network_cost_per_gbps: pricing.network_cost_per_gbps ?? 0,
   transfer_gb: pricing.transfer_gb != null ? pricing.transfer_gb.toString() : "",
+  min_transfer_gb: (pricing.min_transfer_gb ?? 0).toString(),
+  max_transfer_gb: (pricing.max_transfer_gb ?? 0).toString(),
+  transfer_cost_per_tb: pricing.transfer_cost_per_tb ?? 0,
   disk_iops_read: pricing.disk_iops_read != null ? pricing.disk_iops_read.toString() : "",
   disk_iops_write: pricing.disk_iops_write != null ? pricing.disk_iops_write.toString() : "",
   disk_mbps_read: pricing.disk_mbps_read != null ? pricing.disk_mbps_read.toString() : "",
   disk_mbps_write: pricing.disk_mbps_write != null ? pricing.disk_mbps_write.toString() : "",
 });
+
+const rangeBound = (value: string, planDefault: number | null): number =>
+  value !== "" ? parseInt(value) || 0 : (planDefault ?? 0);
 
 export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingModalProps) {
   const adminApi = useAdminApi();
@@ -183,8 +204,14 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
       }
 
       submitData.cpu_limit = formData.cpu_limit !== "" ? parseFloat(formData.cpu_limit) : null;
-      submitData.network_mbps = formData.network_mbps !== "" ? parseFloat(formData.network_mbps) : null;
+      submitData.network_mbps = formData.network_mbps !== "" ? parseInt(formData.network_mbps) : null;
+      submitData.min_network_mbps = rangeBound(formData.min_network_mbps, submitData.network_mbps);
+      submitData.max_network_mbps = rangeBound(formData.max_network_mbps, submitData.network_mbps);
+      submitData.network_cost_per_gbps = formData.network_cost_per_gbps;
       submitData.transfer_gb = formData.transfer_gb !== "" ? parseInt(formData.transfer_gb) : null;
+      submitData.min_transfer_gb = rangeBound(formData.min_transfer_gb, submitData.transfer_gb);
+      submitData.max_transfer_gb = rangeBound(formData.max_transfer_gb, submitData.transfer_gb);
+      submitData.transfer_cost_per_tb = formData.transfer_cost_per_tb;
       submitData.disk_iops_read = formData.disk_iops_read !== "" ? parseInt(formData.disk_iops_read) : null;
       submitData.disk_iops_write = formData.disk_iops_write !== "" ? parseInt(formData.disk_iops_write) : null;
       submitData.disk_mbps_read = formData.disk_mbps_read !== "" ? parseFloat(formData.disk_mbps_read) : null;
@@ -461,11 +488,107 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
           </div>
         </div>
 
+        <div>
+          <h4 className="text-lg font-medium text-white mb-1">Bandwidth</h4>
+          <p className="text-xs text-gray-400 mb-3">
+            The default is what an order gets when the customer doesn't choose. Customers can pick anything in the min
+            to max range, billed on the whole amount. Leave the default blank for unmetered transfer or an uncapped
+            port; nothing is sold then. Blank min or max means the default.
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Monthly Transfer (GB out)</label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={formData.transfer_gb}
+                onChange={(e) => setFormData({ ...formData, transfer_gb: e.target.value })}
+                placeholder="Unmetered"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Min Transfer (GB)</label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={formData.min_transfer_gb}
+                onChange={(e) => setFormData({ ...formData, min_transfer_gb: e.target.value })}
+                placeholder={formData.transfer_gb || "Default"}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Max Transfer (GB)</label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={formData.max_transfer_gb}
+                onChange={(e) => setFormData({ ...formData, max_transfer_gb: e.target.value })}
+                placeholder={formData.transfer_gb || "Default"}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Transfer ({formData.currency === "BTC" ? "sats" : formData.currency}/TB)
+              </label>
+              <MoneyAmountInput
+                value={formData.transfer_cost_per_tb}
+                currency={formData.currency}
+                onChange={(transfer_cost_per_tb) => setFormData({ ...formData, transfer_cost_per_tb })}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Network Speed (Mbit/s)</label>
+              <input
+                type="number"
+                min="0"
+                value={formData.network_mbps}
+                onChange={(e) => setFormData({ ...formData, network_mbps: e.target.value })}
+                placeholder="Uncapped"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Min Speed (Mbit/s)</label>
+              <input
+                type="number"
+                min="0"
+                value={formData.min_network_mbps}
+                onChange={(e) => setFormData({ ...formData, min_network_mbps: e.target.value })}
+                placeholder={formData.network_mbps || "Default"}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Max Speed (Mbit/s)</label>
+              <input
+                type="number"
+                min="0"
+                value={formData.max_network_mbps}
+                onChange={(e) => setFormData({ ...formData, max_network_mbps: e.target.value })}
+                placeholder={formData.network_mbps || "Default"}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Speed ({formData.currency === "BTC" ? "sats" : formData.currency}/Gbit/s)
+              </label>
+              <MoneyAmountInput
+                value={formData.network_cost_per_gbps}
+                currency={formData.currency}
+                onChange={(network_cost_per_gbps) => setFormData({ ...formData, network_cost_per_gbps })}
+              />
+            </div>
+          </div>
+        </div>
+
         {/* VM resource throttle limits */}
         <div>
           <h4 className="text-lg font-medium text-white mb-1">VM Resource Limits</h4>
           <p className="text-xs text-gray-400 mb-3">Leave blank for uncapped</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">CPU Limit (e.g. 0.5 = 50%)</label>
               <input
@@ -476,27 +599,6 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
                 value={formData.cpu_limit}
                 onChange={(e) => setFormData({ ...formData, cpu_limit: e.target.value })}
                 placeholder="Uncapped"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Network Bandwidth (Mbit/s)</label>
-              <input
-                type="number"
-                min="0"
-                value={formData.network_mbps}
-                onChange={(e) => setFormData({ ...formData, network_mbps: e.target.value })}
-                placeholder="Uncapped"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Monthly Transfer (GB out)</label>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                value={formData.transfer_gb}
-                onChange={(e) => setFormData({ ...formData, transfer_gb: e.target.value })}
-                placeholder="Unmetered"
               />
             </div>
           </div>

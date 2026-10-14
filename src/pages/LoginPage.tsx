@@ -2,10 +2,10 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "../components/Card";
 import { Button } from "../components/Button";
-import { LoginState } from "../lib/login";
+import { ExtensionSigner, LoginState } from "../lib/login";
 import { adminApi } from "../lib/api";
 import { bech32ToHex } from "@snort/shared";
-import { Nip46Signer, Nip7Signer } from "@snort/system";
+import { Nip46Signer } from "@snort/system";
 
 export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +31,7 @@ export function LoginPage() {
       setError(null);
 
       // Try to use NIP-7 signer, which will handle extension detection internally
-      const pk = await new Nip7Signer().getPubKey();
+      const pk = await new ExtensionSigner().getPubKey();
       LoginState.login(pk);
 
       // Fetch and cache user roles after successful login

@@ -3,9 +3,59 @@ import {
   EventPublisher,
   Nip46Signer,
   Nip7Signer,
+  type NostrEvent,
   PrivateKeySigner,
 } from "@snort/system";
 import type { UserRoleInfo } from "./api";
+
+const EXTENSION_WAIT_MS = 5_000;
+const EXTENSION_POLL_MS = 50;
+
+export function waitForNostrExtension(timeoutMs: number = EXTENSION_WAIT_MS): Promise<void> {
+  return new Promise((resolve) => {
+    const deadline = Date.now() + timeoutMs;
+    const check = () => {
+      if (window.nostr || Date.now() >= deadline) {
+        resolve();
+      } else {
+        setTimeout(check, EXTENSION_POLL_MS);
+      }
+    };
+    check();
+  });
+}
+
+export class ExtensionSigner extends Nip7Signer {
+  async getPubKey(): Promise<string> {
+    await waitForNostrExtension();
+    return super.getPubKey();
+  }
+
+  async sign(ev: NostrEvent): Promise<NostrEvent> {
+    await waitForNostrExtension();
+    return super.sign(ev);
+  }
+
+  async nip4Encrypt(content: string, key: string): Promise<string> {
+    await waitForNostrExtension();
+    return super.nip4Encrypt(content, key);
+  }
+
+  async nip4Decrypt(content: string, otherKey: string): Promise<string> {
+    await waitForNostrExtension();
+    return super.nip4Decrypt(content, otherKey);
+  }
+
+  async nip44Encrypt(content: string, key: string): Promise<string> {
+    await waitForNostrExtension();
+    return super.nip44Encrypt(content, key);
+  }
+
+  async nip44Decrypt(content: string, otherKey: string): Promise<string> {
+    await waitForNostrExtension();
+    return super.nip44Decrypt(content, otherKey);
+  }
+}
 
 export interface LoginSession {
   type: "nip7" | "nsec" | "nip46";
@@ -92,7 +142,7 @@ class LoginStore extends ExternalStore<LoginSession | undefined> {
           break;
         case "nip7":
           this.#signer = new EventPublisher(
-            new Nip7Signer(),
+            new ExtensionSigner(),
             this.#session.publicKey,
           );
           break;

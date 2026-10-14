@@ -7,6 +7,8 @@ import {
   PencilIcon,
   PlusIcon,
   ScaleIcon,
+  ServerIcon,
+  TrashIcon,
   XCircleIcon,
 } from "@heroicons/react/24/outline";
 import { useState } from "react";
@@ -16,12 +18,20 @@ import { Card, DetailList, DetailRow } from "../components/Card";
 import { ErrorState } from "../components/ErrorState";
 import { Modal } from "../components/Modal";
 import { MoneyAmountInput } from "../components/MoneyInput";
+import { PaginatedTable } from "../components/PaginatedTable";
 import { Profile } from "../components/Profile";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { useApiCall } from "../hooks/useApiCall";
 import { useToast } from "../hooks/useToast";
 import { useUserRoles } from "../hooks/useUserRoles";
-import type { AdminReferralBalance, AdminReferralDetail, AdminReferralPayoutInfo, ReferralMode } from "../lib/api";
+import type {
+  AdminReferralBalance,
+  AdminReferralDetail,
+  AdminReferralPayoutInfo,
+  AdminReferralUsageInfo,
+  ReferralMode,
+} from "../lib/api";
+import { confirmDialog } from "../services/confirmService";
 import { formatCurrency } from "../utils/currency";
 
 const MODE_LABELS: Record<ReferralMode, string> = {
@@ -51,6 +61,7 @@ export function ReferralProgramDetailPage() {
 
   const canUpdate = hasPermission("referral::update");
   const canCreate = hasPermission("referral::create");
+  const canDelete = hasPermission("referral::delete");
 
   if (error) {
     return <ErrorState error={error} onRetry={retry} action="load referral" />;
@@ -154,6 +165,10 @@ export function ReferralProgramDetailPage() {
                 )
               }
             />
+            <DetailRow
+              label="Auto-Payout"
+              value={<AutoPayoutControl referral={referral} canUpdate={canUpdate} onChanged={refresh} />}
+            />
             <DetailRow label="Created" value={new Date(referral.created).toLocaleString()} />
           </DetailList>
         </Card>
@@ -193,6 +208,13 @@ export function ReferralProgramDetailPage() {
         {/* Outstanding balance vs the payout threshold */}
         <OutstandingCard referral={referral} />
       </div>
+
+      <ReferredVmsCard
+        referralId={referralId}
+        canDelete={canDelete}
+        refreshTrigger={refreshTrigger}
+        onChanged={refresh}
+      />
 
       {/* Payouts */}
       <Card
@@ -323,6 +345,158 @@ function OutstandingCard({ referral }: { referral: AdminReferralDetail }) {
           No rate available for {unvalued.map((b) => b.currency).join(", ")} — excluded from the total.
         </p>
       )}
+    </Card>
+  );
+}
+
+function AutoPayoutControl({
+  referral,
+  canUpdate,
+  onChanged,
+}: {
+  referral: AdminReferralDetail;
+  canUpdate: boolean;
+  onChanged: () => void;
+}) {
+  const api = useAdminApi();
+  const { success, error: showError } = useToast();
+  const [busy, setBusy] = useState(false);
+  const approved = referral.auto_payout_approved;
+
+  const handleToggle = async () => {
+    if (
+      !approved &&
+      !(await confirmDialog({
+        title: "Approve Auto-Payout",
+        message: `Pay ${referral.code} automatically from now on? Check the referred VMs below for self-referrals first.`,
+        confirmText: "Approve",
+        variant: "primary",
+      }))
+    ) {
+      return;
+    }
+    setBusy(true);
+    try {
+      await api.updateReferral(referral.id, { auto_payout_approved: !approved });
+      success(approved ? "Auto-payout revoked" : "Auto-payout approved");
+      onChanged();
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "Failed to update referral");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-3">
+      {approved ? (
+        <span className="inline-flex items-center gap-1 text-green-400">
+          <CheckCircleIcon className="h-4 w-4" /> Approved
+        </span>
+      ) : (
+        <span className="inline-flex items-center gap-1 text-amber-400">
+          <XCircleIcon className="h-4 w-4" /> Not approved, paid manually
+        </span>
+      )}
+      {canUpdate && (
+        <Button variant={approved ? "ghost" : "primary"} size="xs" disabled={busy} onClick={handleToggle}>
+          {approved ? "Revoke" : "Approve"}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function ReferredVmsCard({
+  referralId,
+  canDelete,
+  refreshTrigger,
+  onChanged,
+}: {
+  referralId: number;
+  canDelete: boolean;
+  refreshTrigger: number;
+  onChanged: () => void;
+}) {
+  const api = useAdminApi();
+  const { success, error: showError } = useToast();
+
+  const handleRemove = async (usage: AdminReferralUsageInfo) => {
+    if (
+      !(await confirmDialog({
+        title: "Remove Referred VM",
+        message: `Detach VM #${usage.vm_id} from this referral? Its ${formatCurrency(usage.commission, usage.currency)} commission is dropped, and anything already paid on it comes off the referrer's future earnings.`,
+        confirmText: "Remove",
+        variant: "danger",
+      }))
+    ) {
+      return;
+    }
+    try {
+      await api.removeReferredVm(referralId, usage.vm_id);
+      success(`VM #${usage.vm_id} removed from referral`);
+      onChanged();
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "Failed to remove referred VM");
+    }
+  };
+
+  const renderHeader = () => (
+    <>
+      <th>VM</th>
+      <th>Owner</th>
+      <th>First Payment</th>
+      <th>Rate</th>
+      <th>Commission</th>
+      <th>Paid On</th>
+      {canDelete && <th />}
+    </>
+  );
+
+  const renderRow = (usage: AdminReferralUsageInfo) => (
+    <tr key={usage.vm_id}>
+      <td>
+        <Link to={`/vms/${usage.vm_id}`} className="font-mono text-blue-400 hover:text-blue-300">
+          #{usage.vm_id}
+        </Link>
+      </td>
+      <td>
+        <Link to={`/users/${usage.user_id}`} className="text-blue-400 hover:text-blue-300">
+          User #{usage.user_id}
+        </Link>
+      </td>
+      <td className="font-mono">
+        {formatCurrency(usage.amount, usage.currency)}
+        {usage.refunded > 0 && (
+          <div className="text-[11px] text-amber-400">{formatCurrency(usage.refunded, usage.currency)} refunded</div>
+        )}
+      </td>
+      <td className="font-mono">{usage.effective_rate}%</td>
+      <td className="font-mono text-slate-100">{formatCurrency(usage.commission, usage.currency)}</td>
+      <td className="text-xs text-slate-400">{new Date(usage.created).toLocaleDateString()}</td>
+      {canDelete && (
+        <td>
+          <Button variant="ghost" size="xs" onClick={() => handleRemove(usage)}>
+            <TrashIcon className="h-4 w-4" />
+            Remove
+          </Button>
+        </td>
+      )}
+    </tr>
+  );
+
+  return (
+    <Card title="Referred VMs" icon={<ServerIcon className="h-5 w-5" />}>
+      <PaginatedTable<AdminReferralUsageInfo>
+        apiCall={(params) => api.getReferralUsage(referralId, params)}
+        renderHeader={renderHeader}
+        renderRow={renderRow}
+        itemsPerPage={10}
+        errorAction="load referred VMs"
+        loadingMessage="Loading referred VMs..."
+        dependencies={[referralId, refreshTrigger]}
+        renderEmptyState={() => <p className="py-4 text-sm text-slate-500">No referred VM has paid yet.</p>}
+      />
     </Card>
   );
 }

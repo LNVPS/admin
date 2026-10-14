@@ -262,7 +262,9 @@ Full request/response schemas: [REFERENCE.md](REFERENCE.md).
 |--------|----------|-------------|
 | GET | `/api/admin/v1/referrals` | List referrals (`search` = code substring or hex pubkey) |
 | GET | `/api/admin/v1/referrals/{id}` | Detail: earned/settled/outstanding per currency, payouts, counts |
-| PATCH | `/api/admin/v1/referrals/{id}` | Rename code, set commission override / payout threshold |
+| PATCH | `/api/admin/v1/referrals/{id}` | Rename code, set commission override / payout threshold, approve auto-payout |
+| GET | `/api/admin/v1/referrals/{id}/usage` | Referred VMs: owner, first payment, refunds, commission |
+| DELETE | `/api/admin/v1/referrals/{id}/usage/{vm_id}` | Detach a referred VM so it earns no commission (`referral::delete`) |
 | GET/POST | `/api/admin/v1/referrals/{id}/payouts` | List / create (record) payouts |
 | PATCH | `/api/admin/v1/referrals/{id}/payouts/{payout_id}` | Reconcile a payout (is_paid, output, mode, pre_image) |
 

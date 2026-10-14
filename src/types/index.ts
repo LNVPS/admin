@@ -104,6 +104,7 @@ export type Permission =
   | "referral::view"
   | "referral::create"
   | "referral::update"
+  | "referral::delete"
   | "marketplace_node::view"
   | "marketplace_node::update"
   | "marketplace_node::delete"

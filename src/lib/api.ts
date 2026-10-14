@@ -497,7 +497,7 @@ export interface AdminVmInfo {
 /**
  * Transfer usage for the current calendar month. `transfer_gb` is the plan's
  * monthly OUTBOUND allowance and is omitted when the plan is unmetered.
- * Exceeding the allowance has no automatic effect today — display only.
+ * Once it is used up the VM's network is limited until the period resets.
  */
 export interface VmTrafficSummary {
   transfer_gb?: number | null;
@@ -507,6 +507,7 @@ export interface VmTrafficSummary {
   period_end: string;
   bytes_out: number;
   bytes_in: number;
+  throttled?: boolean;
 }
 
 export interface VmTrafficDay {
@@ -1498,7 +1499,19 @@ export interface AdminReferralInfo {
   referral_rate: number | null;
   /** User-chosen payout threshold (satoshis); null = use the system minimum. */
   payout_threshold: number | null;
+  auto_payout_approved: boolean;
   created: string;
+}
+
+export interface AdminReferralUsageInfo {
+  vm_id: number;
+  user_id: number;
+  created: string;
+  amount: number;
+  refunded: number;
+  currency: string;
+  effective_rate: number;
+  commission: number;
 }
 
 /** Per-currency earned commission for a referral. */
@@ -4576,12 +4589,29 @@ export class AdminApi {
    */
   async updateReferral(
     id: number,
-    updates: { referral_rate?: number | null; code?: string; payout_threshold?: number | null },
+    updates: {
+      referral_rate?: number | null;
+      code?: string;
+      payout_threshold?: number | null;
+      auto_payout_approved?: boolean;
+    },
   ) {
     const result = await this.handleResponse<ApiResponse<AdminReferralDetail>>(
       await this.req(`/api/admin/v1/referrals/${id}`, "PATCH", updates),
     );
     return result.data;
+  }
+
+  async getReferralUsage(id: number, params?: { limit?: number; offset?: number }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminReferralUsageInfo>>(
+      await this.req(`/api/admin/v1/referrals/${id}/usage`, "GET", undefined, params),
+    );
+  }
+
+  async removeReferredVm(id: number, vmId: number) {
+    await this.handleResponse<ApiResponse<void>>(
+      await this.req(`/api/admin/v1/referrals/${id}/usage/${vmId}`, "DELETE"),
+    );
   }
 
   async getReferralPayouts(id: number) {

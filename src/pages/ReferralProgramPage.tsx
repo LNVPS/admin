@@ -119,11 +119,13 @@ function ReferrersTab() {
 
   const renderStats = (items: AdminReferralInfo[], total: number) => {
     const withOverride = items.filter((r) => r.referral_rate != null).length;
+    const approved = items.filter((r) => r.auto_payout_approved).length;
     return (
       <StatsHeader
         stats={[
           { label: "Referrers (page)", value: `${items.length} of ${total}` },
           { label: "With Rate Override", value: withOverride, tone: "success" },
+          { label: "Auto-Payout Approved", value: approved, tone: "purple" },
         ]}
       />
     );
@@ -136,6 +138,7 @@ function ReferrersTab() {
       <th>Payout Target</th>
       <th>Commission Rate</th>
       <th>Payout Threshold</th>
+      <th>Auto-Payout</th>
       <th>Created</th>
     </>
   );
@@ -197,6 +200,13 @@ function ReferrersTab() {
           <span className="font-mono text-sm text-slate-100">{referral.payout_threshold.toLocaleString()} sats</span>
         ) : (
           <span className="text-xs text-slate-500 italic">system min</span>
+        )}
+      </td>
+      <td className="align-top">
+        {referral.auto_payout_approved ? (
+          <span className="text-xs text-green-400">Approved</span>
+        ) : (
+          <span className="text-xs text-amber-400">Manual</span>
         )}
       </td>
       <td className="align-top text-xs text-slate-400">{new Date(referral.created).toLocaleDateString()}</td>

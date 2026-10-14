@@ -401,7 +401,12 @@ export function EditCustomTemplateModal({
               {numberField("Network Mbit/s", "network_mbps", undefined, 0)}
               {numberField("CPU limit", "cpu_limit", "Fraction of allocated cores, e.g. 0.5 = 50%", 0)}
               {numberField("Firewall rules", "firewall_rule_limit", "Blank uses the global default", 0)}
-              {numberField("Transfer (GB/mo)", "transfer_gb", "Outbound; blank is unmetered", 0)}
+              {numberField(
+                "Transfer (GB/mo)",
+                "transfer_gb",
+                "Outbound, throttled to 10 Mbit/s once used up; blank is unmetered",
+                0,
+              )}
             </div>
           </details>
 

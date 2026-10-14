@@ -6,6 +6,8 @@ import { useApiCall } from "../hooks/useApiCall";
 import type { VmTrafficSummary } from "../lib/api";
 import { formatTransferBytes, TRANSFER_GB_BYTES } from "../utils/formatBytes";
 
+const TRANSFER_THROTTLE_MBPS = 10;
+
 interface VmTrafficPanelProps {
   vmId: number;
   /**
@@ -50,8 +52,8 @@ const RANGES: { key: RangeKey; label: string }[] = [
  * Monthly transfer usage against the plan's allowance, plus the day-by-day
  * inbound/outbound breakdown.
  *
- * Only outbound counts against `transfer_gb`; exceeding it has no automatic
- * effect today, so an over-quota bar is informational, not an incident.
+ * Only outbound counts against `transfer_gb`; a VM that uses it up is throttled
+ * until the period resets.
  */
 export function VmTrafficPanel({ vmId, summary }: VmTrafficPanelProps) {
   const adminApi = useAdminApi();
@@ -177,7 +179,11 @@ export function VmTrafficPanel({ vmId, summary }: VmTrafficPanelProps) {
               </div>
               <div className="mt-1 text-xs text-gray-400">
                 {usedPct.toFixed(1)}% of the monthly outbound allowance used
-                {usedPct >= 100 && <span className="text-red-400"> — over allowance (not enforced)</span>}
+                {usage?.throttled && (
+                  <span className="text-red-400">
+                    . Throttled to {TRANSFER_THROTTLE_MBPS} Mbit/s until the allowance resets
+                  </span>
+                )}
               </div>
             </div>
           )}

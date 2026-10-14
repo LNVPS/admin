@@ -368,7 +368,7 @@ Errors: `400` bad id / zero amount / refund-of-a-refund; `409` unpaid, already f
 `GET /api/admin/v1/referrals/{id}` returns:
 
 ```
-{ id, user_id, user_pubkey, code, address, mode, referral_rate?, payout_threshold?, created,
+{ id, user_id, user_pubkey, code, address, mode, referral_rate?, payout_threshold?, auto_payout_approved, created,
   earned: [{ currency, amount }],
   balances: [{ currency, earned, settled, outstanding, outstanding_msat? }],
   outstanding_total_msat,
@@ -376,7 +376,8 @@ Errors: `400` bad id / zero amount / refund-of-a-refund; `409` unpaid, already f
   referrals_success, referrals_failed }
 ```
 
-- `earned` = commission (`first payment × effective_rate%`) per currency
+- `earned` = commission (`(first payment - refunds) × effective_rate%`) per currency; VMs owned by the referrer earn nothing
+- automated payouts skip a referrer until `auto_payout_approved` is set, and only pay commission whose first payment is `commission-hold-days` (default 30) old
 - `balances` nets earned against paid **or reserved** amounts (`settled` = payout `amount + fee`)
 - `outstanding_total_msat` is what the payout threshold is judged against — compare with `payout_threshold * 1000`
 
@@ -384,7 +385,10 @@ Errors: `400` bad id / zero amount / refund-of-a-refund; `409` unpaid, already f
 AdminReferralPayoutInfo { id, amount, fee, currency, sent_amount, sent_fee, sent_currency, rate, rate_collected?,
   created, is_paid: bool, mode, output?, pre_image? }
 
-PatchReferral { code?, referral_rate?: number|null, payout_threshold?: number|null }   // satoshis; null = system minimum
+PatchReferral { code?, referral_rate?: number|null, payout_threshold?: number|null, auto_payout_approved?: bool }   // threshold in satoshis; null = system minimum
+
+AdminReferralUsageInfo { vm_id, user_id, created, amount, refunded, currency, effective_rate, commission }
+  // GET /referrals/{id}/usage (paginated); DELETE /referrals/{id}/usage/{vm_id} clears the VM's ref_code, 404 if not referred by it
 
 CreateReferralPayout { amount, currency, fee?: 0, sent_currency?, sent_amount?, sent_fee?: 0, rate?,
   rate_collected?, output?, mode?: "lightning_address"|"nwc"|"on_chain", is_paid?: false }

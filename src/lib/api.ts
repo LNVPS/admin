@@ -1503,6 +1503,11 @@ export interface AdminReferralInfo {
   created: string;
 }
 
+export interface AdminReferralListItem extends AdminReferralInfo {
+  outstanding_total_msat: number;
+  paid_total_msat: number;
+}
+
 export interface AdminReferralUsageInfo {
   vm_id: number;
   user_id: number;
@@ -1582,6 +1587,7 @@ export interface AdminReferralDetail extends AdminReferralInfo {
    * `payout_threshold * 1000`. Currencies with no rate are excluded.
    */
   outstanding_total_msat: number;
+  paid_total_msat: number;
   payouts: AdminReferralPayoutInfo[];
   /** Referred VMs that made at least one payment. */
   referrals_success: number;
@@ -4570,7 +4576,7 @@ export class AdminApi {
 
   // Referral Program Management
   async getReferrals(params?: { limit?: number; offset?: number; search?: string }) {
-    return await this.handleResponse<PaginatedApiResponse<AdminReferralInfo>>(
+    return await this.handleResponse<PaginatedApiResponse<AdminReferralListItem>>(
       await this.req("/api/admin/v1/referrals", "GET", undefined, params),
     );
   }

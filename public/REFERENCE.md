@@ -371,7 +371,7 @@ Errors: `400` bad id / zero amount / refund-of-a-refund; `409` unpaid, already f
 { id, user_id, user_pubkey, code, address, mode, referral_rate?, payout_threshold?, auto_payout_approved, created,
   earned: [{ currency, amount }],
   balances: [{ currency, earned, settled, outstanding, outstanding_msat? }],
-  outstanding_total_msat,
+  outstanding_total_msat, paid_total_msat,
   payouts: [AdminReferralPayoutInfo],
   referrals_success, referrals_failed }
 ```
@@ -379,6 +379,7 @@ Errors: `400` bad id / zero amount / refund-of-a-refund; `409` unpaid, already f
 - `earned` = commission (`(first payment - refunds) × effective_rate%`) per currency; VMs owned by the referrer earn nothing
 - automated payouts skip a referrer until `auto_payout_approved` is set, and only pay commission whose first payment is `commission-hold-days` (default 30) old
 - `balances` nets earned against paid **or reserved** amounts (`settled` = payout `amount + fee`)
+- list rows (`GET /api/admin/v1/referrals`) also carry `outstanding_total_msat` and `paid_total_msat`; paid is the sum of paid payouts as sent, non-BTC valued at the current rate
 - `outstanding_total_msat` is what the payout threshold is judged against — compare with `payout_threshold * 1000`
 
 ```

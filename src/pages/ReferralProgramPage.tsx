@@ -15,7 +15,8 @@ import { StatsHeader } from "../components/StatsHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { useUserRoles } from "../hooks/useUserRoles";
-import type { AdminReferralInfo, AdminVmInfo, ReferralMode } from "../lib/api";
+import type { AdminReferralListItem, AdminVmInfo, ReferralMode } from "../lib/api";
+import { formatCurrency } from "../utils/currency";
 import { formatBytes } from "../utils/formatBytes";
 
 const MODE_LABELS: Record<ReferralMode, string> = {
@@ -117,15 +118,19 @@ function ReferrersTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchInput]);
 
-  const renderStats = (items: AdminReferralInfo[], total: number) => {
+  const renderStats = (items: AdminReferralListItem[], total: number) => {
     const withOverride = items.filter((r) => r.referral_rate != null).length;
     const approved = items.filter((r) => r.auto_payout_approved).length;
+    const pending = items.reduce((sum, r) => sum + r.outstanding_total_msat, 0);
+    const paid = items.reduce((sum, r) => sum + r.paid_total_msat, 0);
     return (
       <StatsHeader
         stats={[
           { label: "Referrers (page)", value: `${items.length} of ${total}` },
           { label: "With Rate Override", value: withOverride, tone: "success" },
           { label: "Auto-Payout Approved", value: approved, tone: "purple" },
+          { label: "Pending (page)", value: formatCurrency(pending, "BTC", 0, 0), tone: "warning" },
+          { label: "Paid Out (page)", value: formatCurrency(paid, "BTC", 0, 0) },
         ]}
       />
     );
@@ -137,13 +142,14 @@ function ReferrersTab() {
       <th>Referrer</th>
       <th>Payout Target</th>
       <th>Commission Rate</th>
-      <th>Payout Threshold</th>
+      <th>Pending</th>
+      <th>Paid Out</th>
       <th>Auto-Payout</th>
       <th>Created</th>
     </>
   );
 
-  const renderRow = (referral: AdminReferralInfo) => (
+  const renderRow = (referral: AdminReferralListItem) => (
     <tr
       key={referral.id}
       onClick={() => navigate(`/referral-program/${referral.id}`)}
@@ -195,12 +201,13 @@ function ReferrersTab() {
           <span className="text-xs text-slate-500 italic">company default</span>
         )}
       </td>
-      <td className="align-top">
-        {referral.payout_threshold != null ? (
-          <span className="font-mono text-sm text-slate-100">{referral.payout_threshold.toLocaleString()} sats</span>
-        ) : (
-          <span className="text-xs text-slate-500 italic">system min</span>
-        )}
+      <td className="align-top font-mono text-sm">
+        <span className={referral.outstanding_total_msat > 0 ? "text-amber-300" : "text-slate-500"}>
+          {formatCurrency(referral.outstanding_total_msat, "BTC", 0, 0)}
+        </span>
+      </td>
+      <td className="align-top font-mono text-sm text-slate-100">
+        {formatCurrency(referral.paid_total_msat, "BTC", 0, 0)}
       </td>
       <td className="align-top">
         {referral.auto_payout_approved ? (
@@ -251,7 +258,7 @@ function ReferrersTab() {
         </button>
       </div>
 
-      <PaginatedTable<AdminReferralInfo>
+      <PaginatedTable<AdminReferralListItem>
         apiCall={({ limit, offset }) => api.getReferrals({ limit, offset, search: appliedSearch || undefined })}
         renderHeader={renderHeader}
         renderRow={renderRow}

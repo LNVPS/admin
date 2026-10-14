@@ -18,6 +18,7 @@ import { ErrorState } from "../components/ErrorState";
 import { Pill } from "../components/Pill";
 import { Profile } from "../components/Profile";
 import { StatsHeader } from "../components/StatsHeader";
+import { Pagination } from "../components/Table";
 import { useAdminApi } from "../hooks/useAdminApi";
 import {
   type ActivityPaymentTotal,
@@ -31,7 +32,8 @@ import { formatRelative } from "../utils/relativeTime";
 
 const WINDOW_OPTIONS = [1, 7, 30, 90];
 const EXPIRING_OPTIONS = [3, 7, 14, 30];
-const LIST_LIMIT = 25;
+const LIST_LIMIT = 100;
+const PAGE_SIZE = 5;
 const HOUR_MS = 3_600_000;
 
 const PAYMENT_TYPE_VARIANT: Record<SubscriptionPaymentType, "success" | "primary" | "secondary" | "danger"> = {
@@ -122,6 +124,13 @@ function ActivityCard<T>({
   renderRow,
   className,
 }: ActivityCardProps<T>) {
+  const [paging, setPaging] = useState({ section, page: 1 });
+  const page = paging.section === section ? paging.page : 1;
+  const setPage = (p: number) => setPaging({ section, page: p });
+  const totalPages = Math.max(1, Math.ceil(section.items.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const rows = section.items.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   return (
     <div id={id} className={clsx("scroll-mt-6", className)}>
       <Card
@@ -154,12 +163,17 @@ function ActivityCard<T>({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-700/70 [&_td]:px-4 [&_td]:py-2 [&_td]:align-middle [&_td:last-child]:text-right">
-                {section.items.map(renderRow)}
+                {rows.map(renderRow)}
               </tbody>
             </table>
+            {totalPages > 1 && (
+              <div className="border-t border-slate-700 px-2 pb-2">
+                <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setPage} />
+              </div>
+            )}
             {section.total > section.items.length && (
               <p className="border-t border-slate-700 px-4 py-2 text-xs text-slate-500">
-                Showing {section.items.length} of {section.total}
+                Showing the latest {section.items.length} of {section.total}
               </p>
             )}
           </div>

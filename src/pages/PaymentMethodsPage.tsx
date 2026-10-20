@@ -913,7 +913,7 @@ function CreatePaymentMethodModal({
               className=""
               required
             >
-              {Object.values(AdminPaymentMethod).map((method) => (
+              {Object.values(AdminPaymentMethod).filter((method) => method !== AdminPaymentMethod.CREDIT).map((method) => (
                 <option key={method} value={method}>
                   {getPaymentMethodName(method)}
                 </option>
@@ -1337,7 +1337,7 @@ function EditPaymentMethodModal({
               className=""
               required
             >
-              {Object.values(AdminPaymentMethod).map((method) => (
+              {Object.values(AdminPaymentMethod).filter((method) => method !== AdminPaymentMethod.CREDIT).map((method) => (
                 <option key={method} value={method}>
                   {getPaymentMethodName(method)}
                 </option>

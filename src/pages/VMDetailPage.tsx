@@ -650,6 +650,7 @@ export function VMDetailPage() {
   const getPaymentMethodColor = (method: AdminPaymentMethod): "running" | "stopped" | "unknown" => {
     switch (method) {
       case AdminPaymentMethod.LIGHTNING:
+      case AdminPaymentMethod.CREDIT:
       case AdminPaymentMethod.ONCHAIN:
       case "on_chain" as AdminPaymentMethod: // payment records serialize onchain as "on_chain"
         return "running";
@@ -673,6 +674,8 @@ export function VMDetailPage() {
       case AdminPaymentMethod.ONCHAIN:
       case "on_chain" as AdminPaymentMethod:
         return "On-chain";
+      case AdminPaymentMethod.CREDIT:
+        return "Account credit";
       default:
         return method;
     }

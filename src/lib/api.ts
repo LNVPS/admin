@@ -128,6 +128,7 @@ export enum AdminPaymentMethod {
   // NOTE: payment method configs and refund requests use "onchain", but VM/subscription
   // payment records serialize this value as "on_chain" - handle both when displaying.
   ONCHAIN = "onchain",
+  CREDIT = "credit",
 }
 
 export enum PaymentProviderType {

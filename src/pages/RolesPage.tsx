@@ -412,6 +412,8 @@ const AVAILABLE_PERMISSIONS = [
   "user_payment_method::view",
   "user_payment_method::update",
   "user_payment_method::delete",
+  "account_credit::view",
+  "account_credit::update",
   "resource_cost::view",
   "resource_cost::create",
   "resource_cost::update",

@@ -111,4 +111,6 @@ export type Permission =
   | "marketplace_operator::view"
   | "marketplace_operator::update"
   | "support_agent::view"
-  | "support_agent::update";
+  | "support_agent::update"
+  | "account_credit::view"
+  | "account_credit::update";

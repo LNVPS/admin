@@ -394,6 +394,34 @@ export interface AdminPasskeyInfo {
   last_used: string | null;
 }
 
+export interface AdminAccountCredit {
+  user_id: number;
+  /** Minor units of `currency` (msat for BTC). Never negative. */
+  balance: number;
+  currency: string;
+  auto_apply: boolean;
+}
+
+export type AccountCreditEventKind = "topup" | "spend" | "refund" | "admin";
+
+export interface AdminAccountCreditEvent {
+  id: number;
+  kind: AccountCreditEventKind;
+  /** Signed change to the balance. */
+  amount: number;
+  currency: string;
+  subscription_payment_id: string | null;
+  note: string | null;
+  created: string;
+}
+
+export interface AdjustAccountCreditRequest {
+  /** Signed msat; negative must use kind "admin". */
+  delta: number;
+  kind?: "topup" | "refund" | "admin";
+  note?: string;
+}
+
 export interface VmRunningState {
   timestamp: number;
   state: VmRunningStates;
@@ -2917,6 +2945,26 @@ export class AdminApi {
   async revokeUserPasskey(userId: number, passkeyId: number) {
     return await this.handleResponse<ApiResponse<null>>(
       await this.req(`/api/admin/v1/users/${userId}/passkeys/${passkeyId}`, "DELETE"),
+    );
+  }
+
+  async getUserCredit(userId: number) {
+    const result = await this.handleResponse<ApiResponse<AdminAccountCredit>>(
+      await this.req(`/api/admin/v1/users/${userId}/credit`, "GET"),
+    );
+    return result.data;
+  }
+
+  async adjustUserCredit(userId: number, body: AdjustAccountCreditRequest) {
+    const result = await this.handleResponse<ApiResponse<AdminAccountCredit>>(
+      await this.req(`/api/admin/v1/users/${userId}/credit`, "PATCH", body),
+    );
+    return result.data;
+  }
+
+  async getUserCreditEvents(userId: number, params?: { limit?: number; offset?: number }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminAccountCreditEvent>>(
+      await this.req(`/api/admin/v1/users/${userId}/credit/events`, "GET", undefined, params),
     );
   }
 

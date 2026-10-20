@@ -19,6 +19,7 @@ import { PaginatedTable } from "../components/PaginatedTable";
 import { PermissionGuard } from "../components/PermissionGuard";
 import { Profile } from "../components/Profile";
 import { StatusBadge } from "../components/StatusBadge";
+import { UserCreditSection } from "../components/UserCreditSection";
 import { UserPasskeysSection } from "../components/UserPasskeysSection";
 import { UserPaymentMethodsSection } from "../components/UserPaymentMethodsSection";
 import { UserTaxFacts } from "../components/UserTaxSection";
@@ -584,6 +585,11 @@ export function UserDetailsPage() {
       {/* User's Saved Payment Methods */}
       <PermissionGuard requiredPermissions={["user_payment_method::view"]} fallback={<></>}>
         <UserPaymentMethodsSection userId={user.id} />
+      </PermissionGuard>
+
+      {/* User's Account Credit */}
+      <PermissionGuard requiredPermissions={["account_credit::view"]} fallback={<></>}>
+        <UserCreditSection userId={user.id} />
       </PermissionGuard>
 
       {/* User's Passkeys */}

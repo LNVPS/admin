@@ -403,6 +403,83 @@ export interface AdminAccountCredit {
   auto_apply: boolean;
 }
 
+export type AbuseCaseKind = "abuse" | "illegal_content" | "copyright_ca";
+
+export type AbuseActionKind = "forwarded" | "restricted" | "suspended" | "terminated" | "reinstated" | "no_action";
+
+export type AbuseChallengeOutcome = "upheld" | "reversed";
+
+export interface AdminAbuseCase {
+  id: number;
+  vm_id: number | null;
+  user_id: number | null;
+  kind: AbuseCaseKind;
+  reported_ip: string | null;
+  incident_at: string | null;
+  reporter_email: string | null;
+  summary: string;
+  proceedings_started: boolean;
+  created: string;
+  closed_at: string | null;
+  /** Cases on the same VM, this one included. Repeats count towards termination. */
+  report_count_for_service: number;
+}
+
+export interface AdminAbuseAction {
+  id: number;
+  kind: AbuseActionKind;
+  reason: string;
+  facts: string;
+  legal_basis: string | null;
+  followed_report: boolean;
+  notice_withheld: string | null;
+  /** When the statement of reasons reached the customer. Null if it has not been delivered. */
+  notified_at: string | null;
+  admin_user_id: number;
+  created: string;
+}
+
+export interface AdminAbuseChallenge {
+  id: number;
+  action_id: number;
+  message: string;
+  received_at: string;
+  outcome: AbuseChallengeOutcome | null;
+  response: string | null;
+  decided_at: string | null;
+  decided_by: number | null;
+}
+
+export interface AdminAbuseCaseDetail extends AdminAbuseCase {
+  actions: AdminAbuseAction[];
+  challenges: AdminAbuseChallenge[];
+}
+
+export interface CreateAbuseCaseRequest {
+  vm_id?: number;
+  kind: AbuseCaseKind;
+  reported_ip?: string;
+  incident_at?: string;
+  reporter_email?: string;
+  summary: string;
+  proceedings_started?: boolean;
+}
+
+export interface RecordAbuseActionRequest {
+  kind: AbuseActionKind;
+  reason: string;
+  facts: string;
+  legal_basis?: string;
+  followed_report: boolean;
+  /** Why the law requires the customer not to be told. Suppresses the notice. */
+  notice_withheld?: string;
+}
+
+export interface DecideAbuseChallengeRequest {
+  outcome: AbuseChallengeOutcome;
+  response: string;
+}
+
 export type AccountCreditEventKind = "topup" | "spend" | "refund" | "admin";
 
 export interface AdminAccountCreditEvent {
@@ -2967,6 +3044,55 @@ export class AdminApi {
     return await this.handleResponse<PaginatedApiResponse<AdminAccountCreditEvent>>(
       await this.req(`/api/admin/v1/users/${userId}/credit/events`, "GET", undefined, params),
     );
+  }
+
+  // Abuse cases
+  async getAbuseCases(params?: { limit?: number; offset?: number; user_id?: number; vm_id?: number; open?: boolean }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminAbuseCase>>(
+      await this.req("/api/admin/v1/abuse/cases", "GET", undefined, params),
+    );
+  }
+
+  async getAbuseCase(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminAbuseCaseDetail>>(
+      await this.req(`/api/admin/v1/abuse/cases/${id}`, "GET"),
+    );
+    return result.data;
+  }
+
+  async createAbuseCase(body: CreateAbuseCaseRequest) {
+    const result = await this.handleResponse<ApiResponse<AdminAbuseCase>>(
+      await this.req("/api/admin/v1/abuse/cases", "POST", body),
+    );
+    return result.data;
+  }
+
+  async recordAbuseAction(caseId: number, body: RecordAbuseActionRequest) {
+    const result = await this.handleResponse<ApiResponse<AdminAbuseAction>>(
+      await this.req(`/api/admin/v1/abuse/cases/${caseId}/actions`, "POST", body),
+    );
+    return result.data;
+  }
+
+  async closeAbuseCase(caseId: number) {
+    const result = await this.handleResponse<ApiResponse<AdminAbuseCase>>(
+      await this.req(`/api/admin/v1/abuse/cases/${caseId}/close`, "POST"),
+    );
+    return result.data;
+  }
+
+  async recordAbuseChallenge(caseId: number, body: { action_id: number; message: string }) {
+    const result = await this.handleResponse<ApiResponse<AdminAbuseChallenge>>(
+      await this.req(`/api/admin/v1/abuse/cases/${caseId}/challenges`, "POST", body),
+    );
+    return result.data;
+  }
+
+  async decideAbuseChallenge(challengeId: number, body: DecideAbuseChallengeRequest) {
+    const result = await this.handleResponse<ApiResponse<AdminAbuseChallenge>>(
+      await this.req(`/api/admin/v1/abuse/challenges/${challengeId}/decision`, "POST", body),
+    );
+    return result.data;
   }
 
   // VM Management

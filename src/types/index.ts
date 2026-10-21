@@ -113,4 +113,8 @@ export type Permission =
   | "support_agent::view"
   | "support_agent::update"
   | "account_credit::view"
-  | "account_credit::update";
+  | "account_credit::update"
+  | "abuse::view"
+  | "abuse::create"
+  | "abuse::update"
+  | "abuse::delete";

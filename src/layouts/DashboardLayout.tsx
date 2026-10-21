@@ -26,6 +26,7 @@ import {
   ServerIcon,
   ServerStackIcon,
   ShieldCheckIcon,
+  ShieldExclamationIcon,
   SignalIcon,
   Squares2X2Icon,
   SunIcon,
@@ -222,6 +223,12 @@ const navigation: NavSection[] = [
     items: [
       { name: "Users", to: "/users", icon: ListBulletIcon, requiredPermissions: ["users::view"] },
       { name: "Roles", to: "/roles", icon: KeyIcon, requiredPermissions: ["roles::view"] },
+      {
+        name: "Abuse Cases",
+        to: "/abuse",
+        icon: ShieldExclamationIcon,
+        requiredPermissions: ["abuse::view"],
+      },
       {
         name: "Support Chats",
         to: "/agent/conversations",

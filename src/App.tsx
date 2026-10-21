@@ -5,6 +5,8 @@ import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-d
 import { PermissionGuard } from "./components/PermissionGuard";
 import { SmartRedirect } from "./components/SmartRedirect";
 import { ProtectedLayout } from "./layouts/ProtectedLayout";
+import { AbuseCaseDetailPage } from "./pages/AbuseCaseDetailPage";
+import { AbuseCasesPage } from "./pages/AbuseCasesPage";
 import { AccessPoliciesPage } from "./pages/AccessPoliciesPage";
 import { ActivityPage } from "./pages/ActivityPage";
 import { AgentConversationDetailPage } from "./pages/AgentConversationDetailPage";
@@ -107,6 +109,22 @@ function AppContent() {
               element={
                 <PermissionGuard requiredPermissions={["analytics::view"]}>
                   <ActivityPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="abuse"
+              element={
+                <PermissionGuard requiredPermissions={["abuse::view"]}>
+                  <AbuseCasesPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="abuse/:id"
+              element={
+                <PermissionGuard requiredPermissions={["abuse::view"]}>
+                  <AbuseCaseDetailPage />
                 </PermissionGuard>
               }
             />

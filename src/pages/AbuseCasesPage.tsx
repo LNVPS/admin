@@ -181,11 +181,19 @@ export function AbuseCasesPage() {
   );
 }
 
-function NewCaseModal({ onClose, onCreated }: { onClose: () => void; onCreated: (id: number) => void }) {
+export function NewCaseModal({
+  onClose,
+  onCreated,
+  initialVmId,
+}: {
+  onClose: () => void;
+  onCreated: (id: number) => void;
+  initialVmId?: number;
+}) {
   const adminApi = useAdminApi();
   const [saving, setSaving] = useState(false);
   const [kind, setKind] = useState<AbuseCaseKind>("abuse");
-  const [vmId, setVmId] = useState("");
+  const [vmId, setVmId] = useState(initialVmId != null ? String(initialVmId) : "");
   const [reportedIp, setReportedIp] = useState("");
   const [incidentAt, setIncidentAt] = useState("");
   const [reporterEmail, setReporterEmail] = useState("");

@@ -32,6 +32,7 @@ import { PermissionGuard } from "../components/PermissionGuard";
 import { Profile } from "../components/Profile";
 import { RecordPaymentRefundModal } from "../components/RecordPaymentRefundModal";
 import { StatusBadge } from "../components/StatusBadge";
+import { VmAbuseSection } from "../components/VmAbuseSection";
 import { VmIpAssignmentModal } from "../components/VmIpAssignmentModal";
 import { VmMigrateModal } from "../components/VmMigrateModal";
 import { VmRefundModal } from "../components/VmRefundModal";
@@ -1144,6 +1145,10 @@ export function VMDetailPage() {
 
       {/* Monthly transfer usage + daily breakdown */}
       <VmTrafficPanel vmId={vm.id} summary={vm.traffic} />
+
+      <PermissionGuard requiredPermissions={["abuse::view"]} fallback={null}>
+        <VmAbuseSection vmId={vm.id} />
+      </PermissionGuard>
 
       {vm.deleted && (
         <div className="bg-red-900/20 border border-red-500/20 rounded-lg p-3">

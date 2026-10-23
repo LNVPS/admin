@@ -1014,10 +1014,17 @@ export interface AdminCustomTemplateInfo {
   region_name: string | null;
   currency: string;
   /**
-   * Monthly renewal cost in smallest currency units. `0` when the current plan
-   * cannot price this spec (a grandfathered VM).
+   * Renewal cost of one billing interval in smallest currency units, rounded up
+   * from the plan's finer `rate_scale`. `0` when the current plan cannot price
+   * this spec (a grandfathered VM).
    */
   price: number;
+  /** The same price unrounded, in 1/`rate_scale` of the smallest unit. */
+  price_raw: number;
+  rate_scale: number;
+  /** The billing interval `price` is for (the pricing plan's). */
+  interval_amount: number;
+  interval_type: CustomPricingIntervalType;
   ip4_count: number;
   ip6_count: number;
   cpu_mfg?: string;
@@ -3985,7 +3992,7 @@ export class AdminApi {
       name: string;
       region_id?: number;
       enabled?: boolean;
-      /** Defaults to the source model's interval. */
+      /** Defaults to the source model's interval. A different one converts every rate so the price over time is the same. */
       interval_amount?: number;
       interval_type?: CustomPricingIntervalType;
     },

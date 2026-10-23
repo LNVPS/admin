@@ -31,6 +31,28 @@ export interface SuggestedAppPrice {
   disk_rate: DiskRate | null;
 }
 
+/** Hours in a month on the 30-day basis the pricing engine uses. */
+const MONTH_HOURS = 30 * 24;
+
+/** Length of one of the plan's billing intervals, in hours. */
+export function intervalHours(pricing: Pick<AdminCustomPricingInfo, "interval_type" | "interval_amount">): number {
+  const per = { hour: 1, day: 24, month: MONTH_HOURS, year: 365 * 24 }[pricing.interval_type ?? "month"];
+  return per * Math.max(1, pricing.interval_amount ?? 1);
+}
+
+/**
+ * Re-express one of the plan's rates (the price for one billing interval, in
+ * 1/`rate_scale` of the smallest currency unit) as a monthly amount in the
+ * smallest currency unit. Plans quote per interval — an hourly plan's rates are
+ * a fraction of a cent — so the raw number is not a monthly cent price.
+ */
+export function monthlyRate(
+  rate: number,
+  pricing: Pick<AdminCustomPricingInfo, "interval_type" | "interval_amount" | "rate_scale">,
+): number {
+  return (rate * (MONTH_HOURS / intervalHours(pricing))) / Math.max(1, pricing.rate_scale ?? 1);
+}
+
 function billableUnits(value: number, rounding: PricingRounding): number {
   return rounding === "vm" ? Math.ceil(value) : value;
 }
@@ -65,9 +87,10 @@ export function suggestAppPrice(
   const memory_gb = billableUnits(footprint.memory_bytes / PRICING_GB, rounding);
   const disk_gb = billableUnits(footprint.storage_bytes / PRICING_GB, rounding);
 
-  const cpu_cost = Math.ceil(pricing.cpu_cost * cpu_cores);
-  const memory_cost = Math.ceil(pricing.memory_cost * memory_gb);
-  const disk_cost = disk_rate ? Math.ceil(disk_rate.cost * disk_gb) : 0;
+  // Rates are per billing interval; the suggestion is a monthly price.
+  const cpu_cost = Math.ceil(monthlyRate(pricing.cpu_cost, pricing) * cpu_cores);
+  const memory_cost = Math.ceil(monthlyRate(pricing.memory_cost, pricing) * memory_gb);
+  const disk_cost = disk_rate ? Math.ceil(monthlyRate(disk_rate.cost, pricing) * disk_gb) : 0;
 
   return {
     pricing,

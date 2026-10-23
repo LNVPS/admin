@@ -4,7 +4,7 @@ import { useAdminApi } from "../hooks/useAdminApi";
 import type { AdminCustomPricingInfo, AdminCustomTemplateInfo, UpdateCustomTemplateRequest } from "../lib/api";
 import { DiskInterface, DiskType } from "../lib/api";
 import { toastService } from "../services/toastService";
-import { formatCurrency } from "../utils/currency";
+import { formatScaledCurrency } from "../utils/currency";
 import { Button } from "./Button";
 import { Modal } from "./Modal";
 
@@ -124,9 +124,20 @@ function buildPatch(template: AdminCustomTemplateInfo, form: FormState): UpdateC
   return patch;
 }
 
+/** "hour" / "1 month" — how often the plan bills, for labels. */
+function intervalLabel(plan: Pick<AdminCustomPricingInfo, "interval_amount" | "interval_type">): string {
+  const amount = plan.interval_amount ?? 1;
+  const type = plan.interval_type ?? "month";
+  return amount === 1 ? type : `${amount} ${type}s`;
+}
+
 /**
  * Price the form's spec against a plan, mirroring the server's pricing engine
  * (GB counts rounded **up**, disk priced by matching kind *and* interface).
+ *
+ * The result is the price of one billing interval in 1/`rate_scale` of the
+ * smallest currency unit (an hourly plan's rates are a fraction of a cent), so
+ * format it with the plan's scale and compare it only with prices at that scale.
  *
  * Returns null when the plan cannot price this spec at all — which is exactly
  * what the server rejects with a 400, so it is worth showing before saving.
@@ -277,8 +288,8 @@ export function EditCustomTemplateModal({
       toastService.success(
         "Spec updated",
         result.job_ids.length > 0
-          ? `Renewal is now ${formatCurrency(result.renewal_amount, result.template.currency)}/mo. ${result.job_ids.length} host job(s) queued.`
-          : `Renewal is now ${formatCurrency(result.renewal_amount, result.template.currency)}/mo. No host changes were needed.`,
+          ? `Renewal is now ${formatScaledCurrency(result.renewal_amount, result.template.currency)} per ${intervalLabel(result.template)}. ${result.job_ids.length} host job(s) queued.`
+          : `Renewal is now ${formatScaledCurrency(result.renewal_amount, result.template.currency)} per ${intervalLabel(result.template)}. No host changes were needed.`,
       );
       onClose();
       onUpdated();
@@ -412,14 +423,18 @@ export function EditCustomTemplateModal({
 
           <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-3 text-sm">
             <div className="flex items-center justify-between">
-              <span className="text-gray-400">Monthly renewal</span>
+              <span className="text-gray-400">Renewal per {intervalLabel(selectedPlan ?? template)}</span>
               <span className="text-white">
-                {formatCurrency(template.price, template.currency)}
-                {newPrice !== null && newPrice !== template.price && (
+                {formatScaledCurrency(template.price_raw, template.currency, template.rate_scale)}
+                {newPrice !== null && newPrice !== template.price_raw && (
                   <>
                     <span className="text-slate-600"> → </span>
-                    <span className={newPrice > template.price ? "text-green-400" : "text-yellow-400"}>
-                      {formatCurrency(newPrice, selectedPlan?.currency ?? template.currency)}
+                    <span className={newPrice > template.price_raw ? "text-green-400" : "text-yellow-400"}>
+                      {formatScaledCurrency(
+                        newPrice,
+                        selectedPlan?.currency ?? template.currency,
+                        selectedPlan?.rate_scale ?? template.rate_scale,
+                      )}
                     </span>
                   </>
                 )}

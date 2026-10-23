@@ -178,6 +178,9 @@ export enum CostPlanIntervalType {
   YEAR = "year",
 }
 
+/** Billing interval units a custom pricing model can use. */
+export type CustomPricingIntervalType = "hour" | "day" | "month" | "year";
+
 export enum InternetRegistry {
   ARIN = 0,
   RIPE = 1,
@@ -985,6 +988,9 @@ export interface AdminCustomPricingInfo {
   min_network_mbps: number;
   max_network_mbps: number;
   network_cost_per_gbps: number;
+  /** Billing interval of VMs built from this model. Prices stay per month. */
+  interval_amount: number;
+  interval_type: CustomPricingIntervalType;
 }
 
 /**
@@ -3902,6 +3908,8 @@ export class AdminApi {
     min_network_mbps?: number;
     max_network_mbps?: number;
     network_cost_per_gbps?: number;
+    interval_amount?: number;
+    interval_type?: CustomPricingIntervalType;
   }) {
     const result = await this.handleResponse<ApiResponse<AdminCustomPricingInfo>>(
       await this.req("/api/admin/v1/custom_pricing", "POST", data),
@@ -3953,6 +3961,8 @@ export class AdminApi {
       min_network_mbps: number;
       max_network_mbps: number;
       network_cost_per_gbps: number;
+      interval_amount: number;
+      interval_type: CustomPricingIntervalType;
     }>,
   ) {
     const result = await this.handleResponse<ApiResponse<AdminCustomPricingInfo>>(
@@ -3971,6 +3981,9 @@ export class AdminApi {
       name: string;
       region_id?: number;
       enabled?: boolean;
+      /** Defaults to the source model's interval. */
+      interval_amount?: number;
+      interval_type?: CustomPricingIntervalType;
     },
   ) {
     const result = await this.handleResponse<ApiResponse<AdminCustomPricingInfo>>(

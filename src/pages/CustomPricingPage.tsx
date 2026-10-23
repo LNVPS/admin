@@ -18,6 +18,16 @@ import { confirmDialog, promptDialog } from "../services/confirmService";
 import { formatCurrency } from "../utils/currency";
 import { formatBytes } from "../utils/formatBytes";
 
+/** "hourly" / "monthly" / "every 2 days" — how VMs on this model are billed. */
+function billingLabel(pricing: AdminCustomPricingInfo): string {
+  const amount = pricing.interval_amount ?? 1;
+  const type = pricing.interval_type ?? "month";
+  if (amount === 1) {
+    return { hour: "hourly", day: "daily", month: "monthly", year: "yearly" }[type];
+  }
+  return `every ${amount} ${type}s`;
+}
+
 export function CustomPricingPage() {
   const adminApi = useAdminApi();
   const [showModal, setShowModal] = useState(false);
@@ -108,6 +118,7 @@ export function CustomPricingPage() {
                 {pricing.region_name || `Region ${pricing.region_id}`}
               </span>
             </div>
+            <div className="mt-0.5 text-xs text-slate-400">Billed {billingLabel(pricing)}</div>
           </div>
         </td>
         <td className="align-top text-gray-300">

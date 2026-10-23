@@ -2,12 +2,14 @@ import { PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 import { useAdminApi } from "../hooks/useAdminApi";
 import { useCachedRegions } from "../hooks/useCachedRegions";
-import type { AdminCustomPricingInfo } from "../lib/api";
+import type { AdminCustomPricingInfo, CustomPricingIntervalType } from "../lib/api";
 import { CpuArch, CpuFeature, CpuMfg } from "../lib/api";
 import { Button } from "./Button";
 import { Modal } from "./Modal";
 import { CurrencySelect, MoneyAmountInput } from "./MoneyInput";
 import { MultiSelect } from "./MultiSelect";
+
+const CUSTOM_PRICING_INTERVALS: CustomPricingIntervalType[] = ["hour", "day", "month", "year"];
 
 interface PricingModalProps {
   isOpen: boolean;
@@ -29,6 +31,8 @@ interface FormData {
   enabled: boolean;
   region_id: string;
   currency: string;
+  interval_amount: string;
+  interval_type: CustomPricingIntervalType;
   cpu_mfg: string;
   cpu_arch: string;
   cpu_features: string[];
@@ -70,6 +74,8 @@ const getDefaultFormData = (): FormData => ({
   enabled: true,
   region_id: "",
   currency: "USD",
+  interval_amount: "1",
+  interval_type: "month",
   cpu_mfg: "",
   cpu_arch: "",
   cpu_features: [],
@@ -106,6 +112,8 @@ const getFormDataFromPricing = (pricing: AdminCustomPricingInfo): FormData => ({
   enabled: pricing.enabled,
   region_id: pricing.region_id.toString(),
   currency: pricing.currency,
+  interval_amount: (pricing.interval_amount ?? 1).toString(),
+  interval_type: pricing.interval_type ?? "month",
   cpu_mfg: pricing.cpu_mfg || "",
   cpu_arch: pricing.cpu_arch || "",
   cpu_features: pricing.cpu_features || [],
@@ -172,6 +180,8 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
         enabled: formData.enabled,
         region_id: parseInt(formData.region_id),
         currency: formData.currency,
+        interval_amount: Math.max(1, parseInt(formData.interval_amount) || 1),
+        interval_type: formData.interval_type,
         cpu_cost: formData.cpu_cost,
         memory_cost: formData.memory_cost,
         ip4_cost: formData.ip4_cost,
@@ -310,16 +320,52 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
           </label>
         </div>
 
-        {/* Currency & CPU constraints */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Currency</label>
-            <CurrencySelect
-              value={formData.currency}
-              onChange={(currency) => setFormData({ ...formData, currency })}
-              currencies={["USD", "EUR", "BTC"]}
-            />
+        {/* Currency & billing interval */}
+        <div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Currency</label>
+              <CurrencySelect
+                value={formData.currency}
+                onChange={(currency) => setFormData({ ...formData, currency })}
+                currencies={["USD", "EUR", "BTC"]}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Bill every</label>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={formData.interval_amount}
+                onChange={(e) => setFormData({ ...formData, interval_amount: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Interval</label>
+              <select
+                value={formData.interval_type}
+                onChange={(e) =>
+                  setFormData({ ...formData, interval_type: e.target.value as CustomPricingIntervalType })
+                }
+              >
+                {CUSTOM_PRICING_INTERVALS.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
+          <p className="text-xs text-gray-400 mt-1">
+            Prices below stay per month. A shorter interval charges the matching share each period
+            (an hour is 1/720th of the monthly price), and hourly VMs are paid from account credit.
+            Only VMs created from now on use the new interval.
+          </p>
+        </div>
+
+        {/* CPU constraints */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">CPU Manufacturer</label>
             <select value={formData.cpu_mfg} onChange={(e) => setFormData({ ...formData, cpu_mfg: e.target.value })}>

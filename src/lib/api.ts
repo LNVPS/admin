@@ -988,9 +988,11 @@ export interface AdminCustomPricingInfo {
   min_network_mbps: number;
   max_network_mbps: number;
   network_cost_per_gbps: number;
-  /** Billing interval of VMs built from this model. Prices stay per month. */
+  /** Billing interval of VMs built from this model. Every rate is the price for one interval. */
   interval_amount: number;
   interval_type: CustomPricingIntervalType;
+  /** Rates and disk costs are in 1/rate_scale of the currency's smallest unit (1 = cents/millisats). */
+  rate_scale: number;
 }
 
 /**
@@ -3910,6 +3912,7 @@ export class AdminApi {
     network_cost_per_gbps?: number;
     interval_amount?: number;
     interval_type?: CustomPricingIntervalType;
+    rate_scale?: number;
   }) {
     const result = await this.handleResponse<ApiResponse<AdminCustomPricingInfo>>(
       await this.req("/api/admin/v1/custom_pricing", "POST", data),
@@ -3963,6 +3966,7 @@ export class AdminApi {
       network_cost_per_gbps: number;
       interval_amount: number;
       interval_type: CustomPricingIntervalType;
+      rate_scale: number;
     }>,
   ) {
     const result = await this.handleResponse<ApiResponse<AdminCustomPricingInfo>>(

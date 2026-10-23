@@ -31,6 +31,22 @@ export const formatCurrency = (amount: number, currency: string, minDigits?: num
 };
 
 /**
+ * `formatCurrency` for an amount held in 1/`scale` of the currency's smallest
+ * unit (custom pricing rates, which are per billing interval and can be a
+ * fraction of a cent, e.g. an hourly rate). A scale of 1 is plain cents/millisats.
+ * Shows as many decimals as the scale needs, so a sub-cent rate is not rounded away.
+ */
+export const formatScaledCurrency = (amount: number, currency: string, scale = 1) => {
+  const s = Math.max(1, scale);
+  if (s === 1) {
+    return formatCurrency(amount, currency, undefined, currency === "BTC" ? 3 : 2);
+  }
+  const extra = Math.max(0, Math.round(Math.log10(s)));
+  const base = currency === "BTC" ? 3 : 2;
+  return formatCurrency(amount / s, currency, base, base + extra);
+};
+
+/**
  * Tailwind text colour for a **signed** money figure.
  *
  * Report totals are signed: a period that refunds more than it sells reports a
@@ -119,13 +135,14 @@ export function formatDecimalCurrency(amount: number, currency: string): string 
  * @param currency - The currency code
  * @returns Amount in smallest units (cents/millisats)
  */
-export function toSmallestUnits(amount: number, currency: string): number {
+export function toSmallestUnits(amount: number, currency: string, scale = 1): number {
+  const s = Math.max(1, scale);
   if (currency === "BTC") {
     // User enters sats, API expects millisats
-    return Math.round(amount * 1000);
+    return Math.round(amount * 1000 * s);
   }
   // User enters dollars/euros, API expects cents
-  return Math.round(amount * 100);
+  return Math.round(amount * 100 * s);
 }
 
 /**
@@ -137,11 +154,12 @@ export function toSmallestUnits(amount: number, currency: string): number {
  * @param currency - The currency code
  * @returns Human-readable amount (e.g., 10.99 for $10.99, or 5000 for 5000 sats)
  */
-export function fromSmallestUnits(amount: number, currency: string): number {
+export function fromSmallestUnits(amount: number, currency: string, scale = 1): number {
+  const s = Math.max(1, scale);
   if (currency === "BTC") {
     // API returns millisats, display as sats
-    return amount / 1000;
+    return amount / (1000 * s);
   }
   // API returns cents, display as dollars/euros
-  return amount / 100;
+  return amount / (100 * s);
 }

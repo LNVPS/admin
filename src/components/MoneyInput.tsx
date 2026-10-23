@@ -7,8 +7,8 @@ function currencyUnitLabel(currency: string): string {
 }
 
 /** Human-readable buffer string for a smallest-units value ("" for 0 so placeholders show). */
-function bufferFrom(value: number, currency: string): string {
-  return value ? String(fromSmallestUnits(value, currency)) : "";
+function bufferFrom(value: number, currency: string, scale: number): string {
+  return value ? String(fromSmallestUnits(value, currency, scale)) : "";
 }
 
 interface CurrencySelectProps {
@@ -56,6 +56,11 @@ interface MoneyAmountInputProps {
   currency: string;
   /** Fired with the new amount in smallest units. */
   onChange: (amount: number) => void;
+  /**
+   * The amount is in 1/`scale` of the smallest unit (default 1). Custom pricing
+   * rates use a finer unit so an hourly rate can hold a fraction of a cent.
+   */
+  scale?: number;
   id?: string;
   disabled?: boolean;
   required?: boolean;
@@ -72,19 +77,20 @@ export function MoneyAmountInput({
   value,
   currency,
   onChange,
+  scale = 1,
   id,
   disabled,
   required,
   placeholder,
   className,
 }: MoneyAmountInputProps) {
-  const [text, setText] = useState(() => bufferFrom(value, currency));
+  const [text, setText] = useState(() => bufferFrom(value, currency, scale));
   // Tracks the last value we emitted so external updates can be told apart from our own echoes.
   const lastEmitted = useRef(value);
   const prevCurrency = useRef(currency);
 
   const emit = (nextText: string, cur: string) => {
-    const units = toSmallestUnits(Number.parseFloat(nextText) || 0, cur);
+    const units = toSmallestUnits(Number.parseFloat(nextText) || 0, cur, scale);
     lastEmitted.current = units;
     onChange(units);
   };
@@ -93,9 +99,9 @@ export function MoneyAmountInput({
   useEffect(() => {
     if (value !== lastEmitted.current) {
       lastEmitted.current = value;
-      setText(bufferFrom(value, currency));
+      setText(bufferFrom(value, currency, scale));
     }
-  }, [value, currency]);
+  }, [value, currency, scale]);
 
   // On a currency switch keep the typed number but re-derive its smallest-units value.
   useEffect(() => {
@@ -115,6 +121,7 @@ export function MoneyAmountInput({
       id={id}
       type="number"
       inputMode="decimal"
+      step="any"
       value={text}
       onChange={(e) => handleChange(e.target.value)}
       disabled={disabled}

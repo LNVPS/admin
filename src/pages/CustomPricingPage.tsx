@@ -15,7 +15,7 @@ import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
 import type { AdminCustomPricingInfo } from "../lib/api";
 import { confirmDialog, promptDialog } from "../services/confirmService";
-import { formatCurrency } from "../utils/currency";
+import { formatScaledCurrency } from "../utils/currency";
 import { formatBytes } from "../utils/formatBytes";
 
 /** "hourly" / "monthly" / "every 2 days" — how VMs on this model are billed. */
@@ -102,8 +102,8 @@ export function CustomPricingPage() {
   );
 
   const renderRow = (pricing: AdminCustomPricingInfo, index: number) => {
-    // API returns values in smallest units (cents/millisats), formatCurrency handles conversion
-    const maxDigits = pricing.currency === "BTC" ? 3 : 2;
+    // Rates are per billing period, in 1/rate_scale of the smallest unit (cents/millisats)
+    const fmt = (amount: number) => formatScaledCurrency(amount, pricing.currency, pricing.rate_scale);
     return (
       <tr key={pricing.id || index}>
         <td className="whitespace-nowrap align-top text-white">{pricing.id}</td>
@@ -124,30 +124,30 @@ export function CustomPricingPage() {
         <td className="align-top text-gray-300">
           <div className="space-y-0.5 text-sm tabular-nums">
             <div>
-              CPU: {formatCurrency(pricing.cpu_cost, pricing.currency, undefined, maxDigits)}
+              CPU: {fmt(pricing.cpu_cost)}
               /core
             </div>
             <div>
-              RAM: {formatCurrency(pricing.memory_cost, pricing.currency, undefined, maxDigits)}
+              RAM: {fmt(pricing.memory_cost)}
               /GB
             </div>
             <div>
-              IPv4: {formatCurrency(pricing.ip4_cost, pricing.currency, undefined, maxDigits)}
+              IPv4: {fmt(pricing.ip4_cost)}
               /IP
             </div>
             <div>
-              IPv6: {formatCurrency(pricing.ip6_cost, pricing.currency, undefined, maxDigits)}
+              IPv6: {fmt(pricing.ip6_cost)}
               /IP
             </div>
             {pricing.transfer_gb != null && (
               <div>
-                Transfer: {formatCurrency(pricing.transfer_cost_per_tb, pricing.currency, undefined, maxDigits)}
+                Transfer: {fmt(pricing.transfer_cost_per_tb)}
                 /TB
               </div>
             )}
             {pricing.network_mbps != null && (
               <div>
-                Speed: {formatCurrency(pricing.network_cost_per_gbps, pricing.currency, undefined, maxDigits)}
+                Speed: {fmt(pricing.network_cost_per_gbps)}
                 /Gbit/s
               </div>
             )}
@@ -194,7 +194,7 @@ export function CustomPricingPage() {
               <div key={idx}>
                 <div>
                   {disk.kind.toUpperCase()} {disk.interface.toUpperCase()}:{" "}
-                  {formatCurrency(disk.cost, pricing.currency, undefined, maxDigits)}
+                  {fmt(disk.cost)}
                   /GB
                 </div>
                 <div className="text-xs text-slate-400">

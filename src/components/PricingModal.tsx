@@ -11,6 +11,12 @@ import { MultiSelect } from "./MultiSelect";
 
 const CUSTOM_PRICING_INTERVALS: CustomPricingIntervalType[] = ["hour", "day", "month", "year"];
 
+/** Finer unit given to rates priced per hour/day: 1/10,000 of a cent, enough for an hourly share of a monthly rate. */
+const FINE_RATE_SCALE = 10_000;
+
+/** Intervals shorter than a month need rates smaller than a cent. */
+const isShortInterval = (type: CustomPricingIntervalType) => type === "hour" || type === "day";
+
 interface PricingModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -33,6 +39,8 @@ interface FormData {
   currency: string;
   interval_amount: string;
   interval_type: CustomPricingIntervalType;
+  /** Rates are in 1/rate_scale of the currency's smallest unit. */
+  rate_scale: number;
   cpu_mfg: string;
   cpu_arch: string;
   cpu_features: string[];
@@ -76,6 +84,7 @@ const getDefaultFormData = (): FormData => ({
   currency: "USD",
   interval_amount: "1",
   interval_type: "month",
+  rate_scale: 1,
   cpu_mfg: "",
   cpu_arch: "",
   cpu_features: [],
@@ -114,6 +123,7 @@ const getFormDataFromPricing = (pricing: AdminCustomPricingInfo): FormData => ({
   currency: pricing.currency,
   interval_amount: (pricing.interval_amount ?? 1).toString(),
   interval_type: pricing.interval_type ?? "month",
+  rate_scale: pricing.rate_scale ?? 1,
   cpu_mfg: pricing.cpu_mfg || "",
   cpu_arch: pricing.cpu_arch || "",
   cpu_features: pricing.cpu_features || [],
@@ -158,6 +168,8 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
   const adminApi = useAdminApi();
   const { data: regions = [] } = useCachedRegions();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // The API refuses to change the interval or rate scale under VMs already on the model.
+  const intervalLocked = !!pricing && pricing.template_count > 0;
   const [formData, setFormData] = useState<FormData>(getDefaultFormData);
 
   const isEditMode = !!pricing;
@@ -168,6 +180,32 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
       setFormData(pricing ? getFormDataFromPricing(pricing) : getDefaultFormData());
     }
   }, [pricing, isOpen]);
+
+  /**
+   * Change the billing interval. A shorter interval needs a finer rate unit, so
+   * the scale is raised (never lowered) and every stored rate is multiplied by
+   * the same factor, which leaves the numbers shown on screen unchanged.
+   */
+  const changeInterval = (interval_type: CustomPricingIntervalType) => {
+    setFormData((prev) => {
+      const rate_scale = isShortInterval(interval_type) ? Math.max(prev.rate_scale, FINE_RATE_SCALE) : prev.rate_scale;
+      if (rate_scale === prev.rate_scale) return { ...prev, interval_type };
+      const k = rate_scale / prev.rate_scale;
+      const up = (n: number) => Math.round(n * k);
+      return {
+        ...prev,
+        interval_type,
+        rate_scale,
+        cpu_cost: up(prev.cpu_cost),
+        memory_cost: up(prev.memory_cost),
+        ip4_cost: up(prev.ip4_cost),
+        ip6_cost: up(prev.ip6_cost),
+        transfer_cost_per_tb: up(prev.transfer_cost_per_tb),
+        network_cost_per_gbps: up(prev.network_cost_per_gbps),
+        disk_pricing: prev.disk_pricing.map((d) => ({ ...d, cost: up(d.cost) })),
+      };
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,6 +220,7 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
         currency: formData.currency,
         interval_amount: Math.max(1, parseInt(formData.interval_amount) || 1),
         interval_type: formData.interval_type,
+        rate_scale: formData.rate_scale,
         cpu_cost: formData.cpu_cost,
         memory_cost: formData.memory_cost,
         ip4_cost: formData.ip4_cost,
@@ -339,15 +378,15 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
                 step={1}
                 value={formData.interval_amount}
                 onChange={(e) => setFormData({ ...formData, interval_amount: e.target.value })}
+                disabled={intervalLocked}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">Interval</label>
               <select
                 value={formData.interval_type}
-                onChange={(e) =>
-                  setFormData({ ...formData, interval_type: e.target.value as CustomPricingIntervalType })
-                }
+                onChange={(e) => changeInterval(e.target.value as CustomPricingIntervalType)}
+                disabled={intervalLocked}
               >
                 {CUSTOM_PRICING_INTERVALS.map((t) => (
                   <option key={t} value={t}>
@@ -358,9 +397,10 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
             </div>
           </div>
           <p className="text-xs text-gray-400 mt-1">
-            Prices below stay per month. A shorter interval charges the matching share each period
-            (an hour is 1/720th of the monthly price), and hourly VMs are paid from account credit.
-            Only VMs created from now on use the new interval.
+            Each price below is what one billing period costs. Hourly VMs are paid from account credit.
+            {intervalLocked
+              ? " The interval can't change while VMs use this model; copy it to a new model with the interval you want."
+              : ""}
           </p>
         </div>
 
@@ -401,7 +441,7 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
 
         {/* Resource costs */}
         <div>
-          <p className="text-xs text-gray-400 mb-2">All prices are per month</p>
+          <p className="text-xs text-gray-400 mb-2">All prices are per billing period ({formData.interval_amount || 1} {formData.interval_type})</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
@@ -410,6 +450,7 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
               <MoneyAmountInput
                 value={formData.cpu_cost}
                 currency={formData.currency}
+                scale={formData.rate_scale}
                 onChange={(cpu_cost) => setFormData({ ...formData, cpu_cost })}
               />
             </div>
@@ -420,6 +461,7 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
               <MoneyAmountInput
                 value={formData.memory_cost}
                 currency={formData.currency}
+                scale={formData.rate_scale}
                 onChange={(memory_cost) => setFormData({ ...formData, memory_cost })}
               />
             </div>
@@ -430,6 +472,7 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
               <MoneyAmountInput
                 value={formData.ip4_cost}
                 currency={formData.currency}
+                scale={formData.rate_scale}
                 onChange={(ip4_cost) => setFormData({ ...formData, ip4_cost })}
               />
             </div>
@@ -440,6 +483,7 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
               <MoneyAmountInput
                 value={formData.ip6_cost}
                 currency={formData.currency}
+                scale={formData.rate_scale}
                 onChange={(ip6_cost) => setFormData({ ...formData, ip6_cost })}
               />
             </div>
@@ -582,6 +626,7 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
               <MoneyAmountInput
                 value={formData.transfer_cost_per_tb}
                 currency={formData.currency}
+                scale={formData.rate_scale}
                 onChange={(transfer_cost_per_tb) => setFormData({ ...formData, transfer_cost_per_tb })}
               />
             </div>
@@ -624,6 +669,7 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
               <MoneyAmountInput
                 value={formData.network_cost_per_gbps}
                 currency={formData.currency}
+                scale={formData.rate_scale}
                 onChange={(network_cost_per_gbps) => setFormData({ ...formData, network_cost_per_gbps })}
               />
             </div>
@@ -739,6 +785,7 @@ export function PricingModal({ isOpen, onClose, onSuccess, pricing }: PricingMod
                   <MoneyAmountInput
                     value={disk.cost}
                     currency={formData.currency}
+                    scale={formData.rate_scale}
                     onChange={(cost) => updateDiskCost(index, cost)}
                     className="w-full px-2 py-1 bg-slate-600 border border-slate-500 rounded text-white text-sm"
                   />

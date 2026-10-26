@@ -10,20 +10,23 @@ import {
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { ErrorState } from "../components/ErrorState";
+import { PaymentSwapLog } from "../components/PaymentSwapLog";
 import { Pill } from "../components/Pill";
 import { Profile } from "../components/Profile";
 import { StatsHeader } from "../components/StatsHeader";
 import { Pagination } from "../components/Table";
 import { useAdminApi } from "../hooks/useAdminApi";
 import {
+  type ActivityPayment,
   type ActivityPaymentTotal,
   type ActivityReport,
   type ActivitySection,
+  AdminPaymentMethod,
   paymentSign,
   SubscriptionPaymentType,
 } from "../lib/api";
@@ -107,6 +110,7 @@ interface ActivityCardProps<T> {
   icon: React.ElementType;
   section: ActivitySection<T>;
   viewAll?: string;
+  extraActions?: React.ReactNode;
   empty: string;
   headers: string[];
   renderRow: (item: T) => React.ReactNode;
@@ -119,6 +123,7 @@ function ActivityCard<T>({
   icon: Icon,
   section,
   viewAll,
+  extraActions,
   empty,
   headers,
   renderRow,
@@ -137,10 +142,15 @@ function ActivityCard<T>({
         title={`${title} (${section.total})`}
         icon={<Icon className="h-5 w-5" />}
         actions={
-          viewAll && (
-            <Link to={viewAll} className="text-sm text-blue-400 hover:text-blue-300">
-              View all
-            </Link>
+          (viewAll || extraActions) && (
+            <div className="flex items-center gap-4">
+              {extraActions}
+              {viewAll && (
+                <Link to={viewAll} className="text-sm text-blue-400 hover:text-blue-300">
+                  View all
+                </Link>
+              )}
+            </div>
           )
         }
         className="h-full"
@@ -190,6 +200,15 @@ export function ActivityPage() {
   const [report, setReport] = useState<ActivityReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [showCreditPayments, setShowCreditPayments] = useState(false);
+
+  const payments = useMemo<ActivitySection<ActivityPayment> | null>(() => {
+    if (!report) return null;
+    if (showCreditPayments) return report.payments;
+    const items = report.payments.items.filter((p) => p.payment_method !== AdminPaymentMethod.CREDIT);
+    const hidden = report.payments.items.length - items.length;
+    return { total: report.payments.total - hidden, items };
+  }, [report, showCreditPayments]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -290,7 +309,7 @@ export function ActivityPage() {
                 )
               }
             />
-            <Tile label="Payments" icon={BanknotesIcon} href="#activity-payments" value={report.payments.total} />
+            <Tile label="Payments" icon={BanknotesIcon} href="#activity-payments" value={payments?.total ?? 0} />
             <Tile label="New VMs" icon={ServerIcon} href="#activity-new-vms" value={report.new_vms.total} />
             <Tile
               label="Deleted VMs"
@@ -322,8 +341,18 @@ export function ActivityPage() {
               className="xl:col-span-2"
               title="Payments"
               icon={BanknotesIcon}
-              section={report.payments}
+              section={payments ?? report.payments}
               viewAll="/subscriptions"
+              extraActions={
+                <label className="flex items-center gap-1.5 text-xs text-slate-400">
+                  <input
+                    type="checkbox"
+                    checked={showCreditPayments}
+                    onChange={(e) => setShowCreditPayments(e.target.checked)}
+                  />
+                  Show credit payments
+                </label>
+              }
               empty={`No payments in the last ${windowLabel}`}
               headers={["Paid", "Subscription", "User", "Type", "Method", "Amount"]}
               renderRow={(p) => {
@@ -344,7 +373,12 @@ export function ActivityPage() {
                     <td>
                       <Pill variant={PAYMENT_TYPE_VARIANT[p.payment_type] ?? "default"}>{p.payment_type}</Pill>
                     </td>
-                    <td className="text-slate-300">{p.payment_method}</td>
+                    <td className="text-slate-300">
+                      {p.payment_method}
+                      {p.payment_method === AdminPaymentMethod.FIXEDFLOAT && (
+                        <PaymentSwapLog paymentId={p.id} swap={p.swap} userId={p.user_id} />
+                      )}
+                    </td>
                     <td className={clsx("whitespace-nowrap font-mono", isRefund ? "text-red-400" : "text-slate-100")}>
                       {isRefund && "-"}
                       {formatCurrency(p.amount, p.currency)}

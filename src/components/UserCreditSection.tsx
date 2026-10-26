@@ -10,6 +10,7 @@ import { Button } from "./Button";
 import { SectionHeading } from "./Facts";
 import { Modal } from "./Modal";
 import { PaginatedTable } from "./PaginatedTable";
+import { PaymentSwapLog } from "./PaymentSwapLog";
 
 const KIND_STYLE: Record<AccountCreditEventKind, string> = {
   topup: "bg-green-500/10 text-green-400",
@@ -62,6 +63,9 @@ export function UserCreditSection({ userId }: { userId: number }) {
           </div>
         ) : (
           <span className="text-slate-500">—</span>
+        )}
+        {event.kind === "topup" && event.subscription_payment_id && (
+          <PaymentSwapLog paymentId={event.subscription_payment_id} userId={userId} />
         )}
       </td>
       <td className="align-top text-sm text-gray-300">{event.note ?? <span className="text-slate-500">—</span>}</td>

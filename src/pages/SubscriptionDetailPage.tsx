@@ -25,6 +25,7 @@ import { ErrorState } from "../components/ErrorState";
 import { Modal } from "../components/Modal";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { PaymentDiscount } from "../components/PaymentDiscount";
+import { PaymentSwapLog } from "../components/PaymentSwapLog";
 import { Profile } from "../components/Profile";
 import { StatusBadge } from "../components/StatusBadge";
 import { useAdminApi } from "../hooks/useAdminApi";
@@ -488,6 +489,8 @@ function SubscriptionPaymentsTable({ subscriptionId, refreshKey }: { subscriptio
       case AdminPaymentMethod.ONCHAIN:
       case "on_chain" as AdminPaymentMethod:
         return "On-chain";
+      case AdminPaymentMethod.FIXEDFLOAT:
+        return "FixedFloat";
       default:
         return method;
     }
@@ -631,6 +634,9 @@ function SubscriptionPaymentsTable({ subscriptionId, refreshKey }: { subscriptio
                 : "Pending"}
           </span>
         </div>
+        {payment.payment_method === AdminPaymentMethod.FIXEDFLOAT && (
+          <PaymentSwapLog paymentId={payment.id} swap={payment.swap} userId={payment.user_id} />
+        )}
         {!payment.is_paid && canCompletePayments && (
           <Button
             size="sm"

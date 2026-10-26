@@ -168,7 +168,7 @@ export function RecordPaymentRefundModal({ isOpen, onClose, vmId, payment, onSuc
         ) : existing ? (
           <div className="bg-gray-800 rounded-lg p-4 space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-gray-400">Originally charged</span>
+              <span className="text-gray-400">Originally charged (incl. tax)</span>
               <span className="text-slate-100 font-medium">{formatCurrency(existing.amount, currency)}</span>
             </div>
             <div className="flex justify-between">
@@ -188,7 +188,7 @@ export function RecordPaymentRefundModal({ isOpen, onClose, vmId, payment, onSuc
                 {existing.refunds.map((r) => (
                   <li key={r.id} className="flex justify-between">
                     <span title={r.id}>{new Date(r.created).toLocaleString()}</span>
-                    <span className="text-red-400">-{formatCurrency(r.amount, r.currency)}</span>
+                    <span className="text-red-400">-{formatCurrency(r.amount + r.tax, r.currency)}</span>
                   </li>
                 ))}
               </ul>
@@ -214,8 +214,8 @@ export function RecordPaymentRefundModal({ isOpen, onClose, vmId, payment, onSuc
               required
             />
             <p className="text-xs text-gray-400 mt-1">
-              Gross magnitude returned (net + tax), in the original payment's currency. Tax is pro-rated and rounded
-              down by the API, so partial refunds can never return more VAT than was collected.
+              Gross returned to the customer (net + tax), in the original payment's currency. The VAT inside it is
+              pro-rated and rounded down by the API, so partial refunds can never return more VAT than was collected.
             </p>
           </div>
 

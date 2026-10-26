@@ -28,6 +28,7 @@ import { ErrorState } from "../components/ErrorState";
 import { HoverTooltip } from "../components/HoverTooltip";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { PaymentDiscount } from "../components/PaymentDiscount";
+import { PaymentSwapLog } from "../components/PaymentSwapLog";
 import { PermissionGuard } from "../components/PermissionGuard";
 import { Profile } from "../components/Profile";
 import { RecordPaymentRefundModal } from "../components/RecordPaymentRefundModal";
@@ -571,6 +572,9 @@ export function VMDetailPage() {
             {payment.is_paid ? "Paid" : new Date(payment.expires) < new Date() ? "Expired" : "Pending"}
           </span>
         </div>
+        {payment.payment_method === AdminPaymentMethod.FIXEDFLOAT && (
+          <PaymentSwapLog paymentId={payment.id} swap={payment.swap} />
+        )}
       </td>
       {/* Date */}
       <td className="align-top text-gray-400 text-sm">
@@ -677,6 +681,8 @@ export function VMDetailPage() {
         return "On-chain";
       case AdminPaymentMethod.CREDIT:
         return "Account credit";
+      case AdminPaymentMethod.FIXEDFLOAT:
+        return "FixedFloat";
       default:
         return method;
     }

@@ -38,6 +38,8 @@ function getPaymentMethodName(method: AdminPaymentMethod): string {
     [AdminPaymentMethod.PAYPAL]: "PayPal",
     [AdminPaymentMethod.STRIPE]: "Stripe",
     [AdminPaymentMethod.ONCHAIN]: "On-chain (Bitcoin)",
+    [AdminPaymentMethod.CREDIT]: "Account credit",
+    [AdminPaymentMethod.FIXEDFLOAT]: "FixedFloat",
   };
   return names[method] || method;
 }
@@ -913,7 +915,7 @@ function CreatePaymentMethodModal({
               className=""
               required
             >
-              {Object.values(AdminPaymentMethod).filter((method) => method !== AdminPaymentMethod.CREDIT).map((method) => (
+              {Object.values(AdminPaymentMethod).filter((method) => method !== AdminPaymentMethod.CREDIT && method !== AdminPaymentMethod.FIXEDFLOAT).map((method) => (
                 <option key={method} value={method}>
                   {getPaymentMethodName(method)}
                 </option>
@@ -1337,7 +1339,7 @@ function EditPaymentMethodModal({
               className=""
               required
             >
-              {Object.values(AdminPaymentMethod).filter((method) => method !== AdminPaymentMethod.CREDIT).map((method) => (
+              {Object.values(AdminPaymentMethod).filter((method) => method !== AdminPaymentMethod.CREDIT && method !== AdminPaymentMethod.FIXEDFLOAT).map((method) => (
                 <option key={method} value={method}>
                   {getPaymentMethodName(method)}
                 </option>

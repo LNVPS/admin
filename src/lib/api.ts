@@ -129,6 +129,7 @@ export enum AdminPaymentMethod {
   // payment records serialize this value as "on_chain" - handle both when displaying.
   ONCHAIN = "onchain",
   CREDIT = "credit",
+  FIXEDFLOAT = "fixedfloat",
 }
 
 export enum PaymentProviderType {
@@ -1394,6 +1395,34 @@ export interface AdminPaymentDiscountInfo {
   settled: boolean;
 }
 
+/** The FixedFloat swap order behind a `fixedfloat` payment. */
+export interface AdminSwapInfo {
+  /** XMR, LTC, ETH or USDTTRC */
+  coin: string;
+  /** FixedFloat order id, as shown on ff.io/order/{order_id} */
+  order_id: string;
+  /** Where the customer sends `coin`. */
+  deposit_address: string;
+  /** Amount of `coin` the customer must send. */
+  deposit_amount: string;
+  /** Our on-chain address FixedFloat pays the Bitcoin to. */
+  receive_address: string;
+}
+
+/** Who placed a FixedFloat swap order and from where (kept for 13 months). */
+export interface AdminSwapOrderClient {
+  id: number;
+  user_id: number;
+  order_id: string;
+  /** Hex id of the subscription payment or credit top-up it paid for. */
+  payment_id: string;
+  coin: string;
+  ip: string;
+  user_agent: string;
+  accept_language: string;
+  created: string;
+}
+
 export interface AdminVmPaymentInfo {
   id: string;
   vm_id: number;
@@ -1418,6 +1447,8 @@ export interface AdminVmPaymentInfo {
   refunded_payment_id: string | null;
   /** The discount applied to this payment; omitted when there was none. */
   discount?: AdminPaymentDiscountInfo;
+  /** The swap order behind a `fixedfloat` payment; omitted for every other method. */
+  swap?: AdminSwapInfo;
 }
 
 export interface AdminRefundAmountInfo {
@@ -1856,6 +1887,8 @@ export interface AdminSubscriptionPaymentInfo {
   external_id: string | null;
   /** The discount applied to this payment; omitted when there was none. */
   discount?: AdminPaymentDiscountInfo;
+  /** The swap order behind a `fixedfloat` payment; omitted for every other method. */
+  swap?: AdminSwapInfo;
   company_id: number | null;
   company_name: string | null;
   company_base_currency: string | null;
@@ -3058,6 +3091,12 @@ export class AdminApi {
   async getUserCreditEvents(userId: number, params?: { limit?: number; offset?: number }) {
     return await this.handleResponse<PaginatedApiResponse<AdminAccountCreditEvent>>(
       await this.req(`/api/admin/v1/users/${userId}/credit/events`, "GET", undefined, params),
+    );
+  }
+
+  async getSwapOrders(params?: { limit?: number; offset?: number; user_id?: number; order_id?: string }) {
+    return await this.handleResponse<PaginatedApiResponse<AdminSwapOrderClient>>(
+      await this.req("/api/admin/v1/swap_orders", "GET", undefined, params),
     );
   }
 

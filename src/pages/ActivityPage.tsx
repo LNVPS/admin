@@ -1,5 +1,6 @@
 import {
   ArrowPathIcon,
+  ArrowUturnLeftIcon,
   BanknotesIcon,
   ClockIcon,
   CubeIcon,
@@ -31,6 +32,15 @@ import {
   SubscriptionPaymentType,
 } from "../lib/api";
 import { formatCurrency } from "../utils/currency";
+import {
+  REFUND_TRIGGER_LABEL,
+  refundedPaymentId,
+  refundReason,
+  refundRows,
+  refundsInCurrency,
+  refundTotals,
+  refundTrigger,
+} from "../utils/refunds";
 import { formatRelative } from "../utils/relativeTime";
 
 const WINDOW_OPTIONS = [1, 7, 30, 90];
@@ -201,6 +211,7 @@ export function ActivityPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [showCreditPayments, setShowCreditPayments] = useState(false);
+  const [refundCurrency, setRefundCurrency] = useState<string | null>(null);
 
   const payments = useMemo<ActivitySection<ActivityPayment> | null>(() => {
     if (!report) return null;
@@ -209,6 +220,17 @@ export function ActivityPage() {
     const hidden = report.payments.items.length - items.length;
     return { total: report.payments.total - hidden, items };
   }, [report, showCreditPayments]);
+
+  const refundTotalList = useMemo(() => (report ? refundTotals(report.payment_totals) : []), [report]);
+
+  const refunds = useMemo<ActivitySection<ActivityPayment> | null>(() => {
+    if (!report) return null;
+    const items = refundsInCurrency(refundRows(report.payments.items), refundCurrency);
+    const total = refundTotalList
+      .filter((t) => refundCurrency === null || t.currency === refundCurrency)
+      .reduce((sum, t) => sum + t.count, 0);
+    return { total, items };
+  }, [report, refundCurrency, refundTotalList]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -229,7 +251,6 @@ export function ActivityPage() {
   const windowLabel = days === 1 ? "24 hours" : `${days} days`;
   const now = Date.now();
   const net = report ? netByCurrency(report.payment_totals) : [];
-  const refunds = report?.payment_totals.filter((t) => t.payment_type === SubscriptionPaymentType.REFUND) ?? [];
 
   const select = (id: string, label: string, value: number, options: number[], onChange: (v: number) => void) => (
     <div>
@@ -300,14 +321,30 @@ export function ActivityPage() {
                         {formatCurrency(amount, currency)}
                       </div>
                     ))}
-                    {refunds.map((r) => (
-                      <div key={`refund-${r.currency}`} className="text-xs font-normal text-slate-400">
-                        after {formatCurrency(r.amount, r.currency)} refunded
-                      </div>
+                    {refundTotalList.map((r) => (
+                      <button
+                        type="button"
+                        key={`refund-${r.currency}`}
+                        className="block text-left text-xs font-normal text-slate-400 underline decoration-dotted hover:text-slate-200"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setRefundCurrency(r.currency);
+                          document.getElementById("activity-refunds")?.scrollIntoView({ behavior: "smooth" });
+                        }}
+                      >
+                        after {formatCurrency(r.amount, r.currency)} refunded ({r.count})
+                      </button>
                     ))}
                   </div>
                 )
               }
+            />
+            <Tile
+              label="Refunds"
+              icon={ArrowUturnLeftIcon}
+              href="#activity-refunds"
+              tone={refundTotalList.length > 0 ? "text-red-400" : "text-white"}
+              value={refundTotalList.reduce((sum, t) => sum + t.count, 0)}
             />
             <Tile label="Payments" icon={BanknotesIcon} href="#activity-payments" value={payments?.total ?? 0} />
             <Tile label="New VMs" icon={ServerIcon} href="#activity-new-vms" value={report.new_vms.total} />
@@ -336,6 +373,88 @@ export function ActivityPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <ActivityCard
+              id="activity-refunds"
+              className="xl:col-span-2"
+              title="Refunds"
+              icon={ArrowUturnLeftIcon}
+              section={refunds ?? report.payments}
+              extraActions={
+                <div className="flex items-center gap-1.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setRefundCurrency(null)}
+                    className={clsx(refundCurrency === null ? "text-white" : "text-slate-400 hover:text-slate-200")}
+                  >
+                    All
+                  </button>
+                  {refundTotalList.map((t) => (
+                    <button
+                      type="button"
+                      key={t.currency}
+                      onClick={() => setRefundCurrency(t.currency)}
+                      className={clsx(
+                        refundCurrency === t.currency ? "text-white" : "text-slate-400 hover:text-slate-200",
+                      )}
+                    >
+                      {formatCurrency(t.amount, t.currency)}
+                    </button>
+                  ))}
+                </div>
+              }
+              empty={`No refunds in the last ${windowLabel}`}
+              headers={["Refunded", "User", "VM", "Subscription", "Trigger", "Original payment", "Amount"]}
+              renderRow={(p) => {
+                const original = refundedPaymentId(p);
+                const reason = refundReason(p);
+                return (
+                  <tr key={p.id}>
+                    <td>
+                      <When at={p.paid_at ?? p.created} />
+                    </td>
+                    <td>
+                      <UserLink id={p.user_id} />
+                    </td>
+                    <td>
+                      {p.vm_id ? (
+                        <Link to={`/vms/${p.vm_id}`} className="text-blue-400 hover:text-blue-300">
+                          VM #{p.vm_id}
+                        </Link>
+                      ) : (
+                        <span className="text-slate-500">-</span>
+                      )}
+                    </td>
+                    <td>
+                      <Link to={`/subscriptions/${p.subscription_id}`} className="text-blue-400 hover:text-blue-300">
+                        {p.subscription_name}
+                      </Link>
+                    </td>
+                    <td>
+                      <Pill variant="danger" title={reason ?? undefined}>
+                        {REFUND_TRIGGER_LABEL[refundTrigger(p)]}
+                      </Pill>
+                    </td>
+                    <td>
+                      {original ? (
+                        <Link
+                          to={`/subscriptions/${p.subscription_id}`}
+                          className="font-mono text-xs text-blue-400 hover:text-blue-300"
+                          title={original}
+                        >
+                          {original.slice(0, 8)}
+                        </Link>
+                      ) : (
+                        <span className="text-slate-500">-</span>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap font-mono text-red-400">
+                      -{formatCurrency(p.amount, p.currency)}
+                    </td>
+                  </tr>
+                );
+              }}
+            />
+
             <ActivityCard
               id="activity-payments"
               className="xl:col-span-2"

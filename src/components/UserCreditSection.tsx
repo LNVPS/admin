@@ -4,7 +4,8 @@ import { useAdminApi } from "../hooks/useAdminApi";
 import { useApiCall } from "../hooks/useApiCall";
 import { useToast } from "../hooks/useToast";
 import { useUserRoles } from "../hooks/useUserRoles";
-import type { AccountCreditEventKind, AdminAccountCredit, AdminAccountCreditEvent } from "../lib/api";
+import type { AccountCreditEventKind, AdminAccountCreditEvent, AdminCreditBalance } from "../lib/api";
+import { creditBalances, creditDeltaMinor, creditUnitLabel } from "../utils/credit";
 import { formatCurrency, signedAmountClass } from "../utils/currency";
 import { Button } from "./Button";
 import { SectionHeading } from "./Facts";
@@ -17,6 +18,7 @@ const KIND_STYLE: Record<AccountCreditEventKind, string> = {
   spend: "bg-amber-500/10 text-amber-400",
   refund: "bg-blue-500/10 text-blue-400",
   admin: "bg-purple-500/10 text-purple-400",
+  settlement: "bg-cyan-500/10 text-cyan-400",
 };
 
 export function UserCreditSection({ userId }: { userId: number }) {
@@ -24,9 +26,12 @@ export function UserCreditSection({ userId }: { userId: number }) {
   const { hasPermission } = useUserRoles();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [adjusting, setAdjusting] = useState(false);
+  const [currencyFilter, setCurrencyFilter] = useState<string | null>(null);
   const canUpdate = hasPermission("account_credit::update");
 
   const { data: credit, loading, error } = useApiCall(() => adminApi.getUserCredit(userId), [userId, refreshTrigger]);
+
+  const balances = credit ? creditBalances(credit) : [];
 
   const refreshData = () => setRefreshTrigger((prev) => prev + 1);
 
@@ -91,24 +96,50 @@ export function UserCreditSection({ userId }: { userId: number }) {
       {loading && !credit && <div className="text-sm text-gray-400">Loading credit...</div>}
       {error && !credit && <div className="text-sm text-red-400">Failed to load credit: {error.message}</div>}
       {credit && (
-        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 text-sm text-gray-400">
-          <span>
-            Balance:{" "}
-            <span className="text-lg font-semibold text-white tabular-nums">
-              {formatCurrency(credit.balance, credit.currency)}
-            </span>
-          </span>
-          <span>
+        <div className="space-y-2 text-sm text-gray-400">
+          <div className="flex flex-wrap items-stretch gap-2">
+            {balances.map((b) => (
+              <button
+                type="button"
+                key={b.currency}
+                onClick={() => setCurrencyFilter(currencyFilter === b.currency ? null : b.currency)}
+                className={`rounded-lg border px-3 py-2 text-left ${
+                  currencyFilter === b.currency ? "border-blue-500 bg-slate-800" : "border-slate-700 bg-slate-800/50"
+                }`}
+              >
+                <div className="text-xs uppercase tracking-wider text-slate-400">
+                  {b.currency}
+                  {b.currency === credit.currency && <span className="ml-1 text-blue-400">base</span>}
+                </div>
+                <div className="text-lg font-semibold text-white tabular-nums">
+                  {formatCurrency(b.balance, b.currency)}
+                </div>
+              </button>
+            ))}
+          </div>
+          <div>
             Auto-apply:{" "}
             <span className={credit.auto_apply ? "font-medium text-green-400" : "font-medium text-slate-400"}>
               {credit.auto_apply ? "On" : "Off"}
             </span>
-          </span>
+            {currencyFilter && (
+              <span className="ml-4">
+                History: {currencyFilter}{" "}
+                <button
+                  type="button"
+                  className="text-blue-400 hover:text-blue-300"
+                  onClick={() => setCurrencyFilter(null)}
+                >
+                  show all
+                </button>
+              </span>
+            )}
+          </div>
         </div>
       )}
 
       <PaginatedTable
-        apiCall={(params) => adminApi.getUserCreditEvents(userId, params)}
+        apiCall={(params) => adminApi.getUserCreditEvents(userId, { ...params, currency: currencyFilter ?? undefined })}
         renderHeader={renderHeader}
         renderRow={renderRow}
         itemsPerPage={10}
@@ -116,14 +147,15 @@ export function UserCreditSection({ userId }: { userId: number }) {
         loadingMessage="Loading credit ledger..."
         minWidth="700px"
         inlineError={true}
-        dependencies={[userId, refreshTrigger]}
+        dependencies={[userId, refreshTrigger, currencyFilter]}
         renderEmptyState={() => <div className="text-center py-8 text-gray-400">No credit movements for this user</div>}
       />
 
       {adjusting && credit && (
         <AdjustCreditModal
           userId={userId}
-          credit={credit}
+          balances={balances}
+          defaultCurrency={currencyFilter ?? credit.currency}
           onClose={() => setAdjusting(false)}
           onSuccess={refreshData}
         />
@@ -134,12 +166,14 @@ export function UserCreditSection({ userId }: { userId: number }) {
 
 function AdjustCreditModal({
   userId,
-  credit,
+  balances,
+  defaultCurrency,
   onClose,
   onSuccess,
 }: {
   userId: number;
-  credit: AdminAccountCredit;
+  balances: AdminCreditBalance[];
+  defaultCurrency: string;
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -147,9 +181,11 @@ function AdjustCreditModal({
   const { success, error: showError } = useToast();
   const [loading, setLoading] = useState(false);
   const [direction, setDirection] = useState<"grant" | "clawback">("grant");
+  const [currency, setCurrency] = useState(defaultCurrency);
   const [sats, setSats] = useState("");
   const [note, setNote] = useState("");
 
+  const current = balances.find((b) => b.currency === currency)?.balance ?? 0;
   const amountSats = Number(sats);
   const valid = Number.isFinite(amountSats) && amountSats > 0;
 
@@ -158,9 +194,9 @@ function AdjustCreditModal({
     if (!valid) return;
     setLoading(true);
     try {
-      const msat = Math.round(amountSats * 1000);
       await adminApi.adjustUserCredit(userId, {
-        delta: direction === "grant" ? msat : -msat,
+        currency,
+        delta: creditDeltaMinor(amountSats, direction, currency),
         kind: "admin",
         note: note.trim() === "" ? undefined : note.trim(),
       });
@@ -179,8 +215,17 @@ function AdjustCreditModal({
     <Modal isOpen={true} onClose={onClose} title="Adjust Account Credit">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="text-sm text-gray-400">
-          Current balance:{" "}
-          <span className="font-medium text-white">{formatCurrency(credit.balance, credit.currency)}</span>
+          Current balance: <span className="font-medium text-white">{formatCurrency(current, currency)}</span>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-white mb-2">Currency</label>
+          <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+            {balances.map((b) => (
+              <option key={b.currency} value={b.currency}>
+                {b.currency}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="block text-xs font-medium text-white mb-2">Action</label>
@@ -190,14 +235,14 @@ function AdjustCreditModal({
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-white mb-2">Amount (sats)</label>
+          <label className="block text-xs font-medium text-white mb-2">Amount ({creditUnitLabel(currency)})</label>
           <input
             type="number"
             min="0"
             step="any"
             value={sats}
             onChange={(e) => setSats(e.target.value)}
-            placeholder="e.g. 10000"
+            placeholder="e.g. 100"
             required
           />
           {direction === "clawback" && (

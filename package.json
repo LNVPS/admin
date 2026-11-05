@@ -8,7 +8,8 @@
     "build": "tsc && vite build && yarn skill:index",
     "skill:index": "node scripts/gen-skill-index.mjs",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.7",
@@ -38,6 +39,7 @@
     "@vitejs/plugin-react": "^4.7.0",
     "tailwindcss": "^4.1.11",
     "typescript": "^5.9.2",
-    "vite": "^7.0.6"
+    "vite": "^7.0.6",
+    "vitest": "^5.1.0"
   }
 }

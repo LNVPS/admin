@@ -405,6 +405,14 @@ export interface AdminAccountCredit {
   balance: number;
   currency: string;
   auto_apply: boolean;
+  /** Every currency the user holds credit in. Older API builds omit it. */
+  balances?: AdminCreditBalance[];
+}
+
+export interface AdminCreditBalance {
+  currency: string;
+  /** Minor units of `currency` (msat for BTC). */
+  balance: number;
 }
 
 export type AbuseCaseKind = "abuse" | "illegal_content" | "copyright_ca";
@@ -484,7 +492,7 @@ export interface DecideAbuseChallengeRequest {
   response: string;
 }
 
-export type AccountCreditEventKind = "topup" | "spend" | "refund" | "admin";
+export type AccountCreditEventKind = "topup" | "spend" | "refund" | "admin" | "settlement";
 
 export interface AdminAccountCreditEvent {
   id: number;
@@ -498,7 +506,9 @@ export interface AdminAccountCreditEvent {
 }
 
 export interface AdjustAccountCreditRequest {
-  /** Signed msat; negative must use kind "admin". */
+  /** Currency of the balance to adjust; the API defaults to BTC. */
+  currency?: string;
+  /** Signed minor units of `currency` (msat for BTC); negative must use kind "admin". */
   delta: number;
   kind?: "topup" | "refund" | "admin";
   note?: string;
@@ -654,8 +664,16 @@ export interface ActivityDeletedVm extends AdminVmInfo {
   delete_reason: string | null;
 }
 
+export type RefundTrigger = "owner_delete" | "admin_delete" | "admin" | "manual";
+
 export interface ActivityPayment extends AdminSubscriptionPaymentInfo {
   subscription_name: string;
+  /** The VM the subscription belongs to; absent on API builds that do not send it. */
+  vm_id?: number | null;
+  /** What caused a refund row; absent on API builds that do not send it. */
+  refund_trigger?: RefundTrigger;
+  /** For a refund row, the hex id of the payment it reverses. */
+  refunded_payment_id?: string | null;
 }
 
 export interface ActivityPaymentTotal {
@@ -3088,7 +3106,7 @@ export class AdminApi {
     return result.data;
   }
 
-  async getUserCreditEvents(userId: number, params?: { limit?: number; offset?: number }) {
+  async getUserCreditEvents(userId: number, params?: { limit?: number; offset?: number; currency?: string }) {
     return await this.handleResponse<PaginatedApiResponse<AdminAccountCreditEvent>>(
       await this.req(`/api/admin/v1/users/${userId}/credit/events`, "GET", undefined, params),
     );

@@ -24,13 +24,12 @@ import { Pagination } from "../components/Table";
 import { useAdminApi } from "../hooks/useAdminApi";
 import {
   type ActivityPayment,
-  type ActivityPaymentTotal,
   type ActivityReport,
   type ActivitySection,
   AdminPaymentMethod,
-  paymentSign,
   SubscriptionPaymentType,
 } from "../lib/api";
+import { currencySummaries, refundDestinationLabel, refundsById } from "../utils/activitySummary";
 import { formatCurrency } from "../utils/currency";
 import {
   REFUND_TRIGGER_LABEL,
@@ -55,14 +54,6 @@ const PAYMENT_TYPE_VARIANT: Record<SubscriptionPaymentType, "success" | "primary
   [SubscriptionPaymentType.UPGRADE]: "secondary",
   [SubscriptionPaymentType.REFUND]: "danger",
 };
-
-function netByCurrency(totals: ActivityPaymentTotal[]): [string, number][] {
-  const net = new Map<string, number>();
-  for (const t of totals) {
-    net.set(t.currency, (net.get(t.currency) ?? 0) + paymentSign(t.payment_type) * t.amount);
-  }
-  return [...net.entries()].sort(([a], [b]) => a.localeCompare(b));
-}
 
 function When({ at, className }: { at: string; className?: string }) {
   return (
@@ -250,7 +241,8 @@ export function ActivityPage() {
 
   const windowLabel = days === 1 ? "24 hours" : `${days} days`;
   const now = Date.now();
-  const net = report ? netByCurrency(report.payment_totals) : [];
+  const summaries = report ? currencySummaries(report) : [];
+  const refundDetails = useMemo(() => refundsById(report?.refunds?.items), [report]);
 
   const select = (id: string, label: string, value: number, options: number[], onChange: (v: number) => void) => (
     <div>
@@ -307,33 +299,25 @@ export function ActivityPage() {
         <>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <Tile
-              label="Net revenue"
+              label="Revenue"
               icon={BanknotesIcon}
               href="#activity-payments"
               tone="text-green-400"
               value={
-                net.length === 0 ? (
+                summaries.length === 0 ? (
                   <span className="text-slate-500">0</span>
                 ) : (
-                  <div className="space-y-0.5">
-                    {net.map(([currency, amount]) => (
-                      <div key={currency} className={clsx("text-lg leading-tight", amount < 0 && "text-red-400")}>
-                        {formatCurrency(amount, currency)}
+                  <div className="space-y-1">
+                    {summaries.map((s) => (
+                      <div key={s.currency} className="text-lg leading-tight">
+                        {formatCurrency(s.revenue, s.currency)}
+                        {s.net !== null && s.net !== s.revenue && (
+                          <div className="text-xs font-normal text-slate-400">
+                            net {formatCurrency(s.net, s.currency)}
+                          </div>
+                        )}
+                        {s.net_note && <div className="text-xs font-normal text-slate-400">{s.net_note}</div>}
                       </div>
-                    ))}
-                    {refundTotalList.map((r) => (
-                      <button
-                        type="button"
-                        key={`refund-${r.currency}`}
-                        className="block text-left text-xs font-normal text-slate-400 underline decoration-dotted hover:text-slate-200"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setRefundCurrency(r.currency);
-                          document.getElementById("activity-refunds")?.scrollIntoView({ behavior: "smooth" });
-                        }}
-                      >
-                        after {formatCurrency(r.amount, r.currency)} refunded ({r.count})
-                      </button>
                     ))}
                   </div>
                 )
@@ -344,7 +328,40 @@ export function ActivityPage() {
               icon={ArrowUturnLeftIcon}
               href="#activity-refunds"
               tone={refundTotalList.length > 0 ? "text-red-400" : "text-white"}
-              value={refundTotalList.reduce((sum, t) => sum + t.count, 0)}
+              value={
+                summaries.every((s) => s.cash_refund_count + s.credit_refund_count === 0) ? (
+                  0
+                ) : (
+                  <div className="space-y-1">
+                    {summaries
+                      .filter((s) => s.cash_refund_count + s.credit_refund_count > 0)
+                      .map((s) => (
+                        <button
+                          type="button"
+                          key={`refund-${s.currency}`}
+                          className="block text-left text-sm font-normal text-slate-200 underline decoration-dotted hover:text-white"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setRefundCurrency(s.currency);
+                            document.getElementById("activity-refunds")?.scrollIntoView({ behavior: "smooth" });
+                          }}
+                        >
+                          {s.cash_refund_count > 0 && (
+                            <div>
+                              {formatCurrency(s.cash_refunds, s.currency)} refunded in cash ({s.cash_refund_count})
+                            </div>
+                          )}
+                          {s.credit_refund_count > 0 && (
+                            <div>
+                              {formatCurrency(s.credit_refunds, s.currency)} refunded to credit ({s.credit_refund_count}
+                              )
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                  </div>
+                )
+              }
             />
             <Tile label="Payments" icon={BanknotesIcon} href="#activity-payments" value={payments?.total ?? 0} />
             <Tile label="New VMs" icon={ServerIcon} href="#activity-new-vms" value={report.new_vms.total} />
@@ -411,6 +428,8 @@ export function ActivityPage() {
               renderRow={(p) => {
                 const original = refundedPaymentId(p);
                 const reason = refundReason(p);
+                const detail = refundDetails.get(p.id);
+                const destination = refundDestinationLabel(detail);
                 return (
                   <tr key={p.id}>
                     <td>
@@ -450,9 +469,20 @@ export function ActivityPage() {
                       ) : (
                         <span className="text-slate-500">-</span>
                       )}
+                      {detail?.original_paid_at && (
+                        <div className="text-xs text-slate-400">
+                          paid <When at={detail.original_paid_at} />
+                          {detail.original_before_window && (
+                            <Pill variant="secondary" title="The original payment was received before this window">
+                              before window
+                            </Pill>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td className="whitespace-nowrap font-mono text-red-400">
                       -{formatCurrency(p.amount, p.currency)}
+                      {destination && <div className="font-sans text-xs text-slate-400">{destination}</div>}
                     </td>
                   </tr>
                 );

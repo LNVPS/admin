@@ -695,6 +695,39 @@ export interface ActivityReport {
   new_app_deployments: ActivitySection<AdminAppDeploymentInfo>;
   payments: ActivitySection<ActivityPayment>;
   payment_totals: ActivityPaymentTotal[];
+  /** Refund rows booked in the window; absent on API builds that predate #218. */
+  refunds?: ActivitySection<ActivityRefund>;
+  /** Revenue and refunds per currency; absent on API builds that predate #218. */
+  currency_summaries?: CurrencySummary[];
+}
+
+export interface ActivityRefund {
+  id: string;
+  subscription_id: number;
+  user_id: number;
+  currency: string;
+  amount: number;
+  tax: number;
+  gross: number;
+  refunded_at: string;
+  destination: "cash" | "credit";
+  credit_returned: Record<string, number>;
+  original_payment_id: string | null;
+  original_paid_at: string | null;
+  original_before_window: boolean;
+}
+
+export interface CurrencySummary {
+  currency: string;
+  revenue_count: number;
+  revenue: number;
+  cash_refund_count: number;
+  cash_refunds: number;
+  credit_refund_count: number;
+  credit_refunds: number;
+  refunds_of_earlier_payments: number;
+  net: number | null;
+  net_note: string | null;
 }
 
 /** One row of the fleet traffic report, ordered by `bytes_out` descending. */

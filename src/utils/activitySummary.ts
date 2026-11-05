@@ -4,7 +4,7 @@ export const CREDIT_REFUND_LABEL = "refunded to credit";
 export const CASH_REFUND_LABEL = "refunded in cash";
 
 const FALLBACK_NOTE =
-  "Refunds may reverse payments from before this window, so they are shown separately and not netted.";
+  "Refunds may reverse payments from before this window, so they are shown separately and not netted. The cash versus credit split needs the newer API.";
 
 function fallbackSummaries(totals: ActivityPaymentTotal[]): CurrencySummary[] {
   const byCurrency = new Map<string, CurrencySummary>();
@@ -22,8 +22,8 @@ function fallbackSummaries(totals: ActivityPaymentTotal[]): CurrencySummary[] {
       net_note: null,
     };
     if (t.payment_type === "refund") {
-      entry.cash_refund_count += t.count;
-      entry.cash_refunds += t.amount;
+      entry.unclassified_refund_count = (entry.unclassified_refund_count ?? 0) + t.count;
+      entry.unclassified_refunds = (entry.unclassified_refunds ?? 0) + t.amount;
     } else {
       entry.revenue_count += t.count;
       entry.revenue += t.amount;
@@ -31,7 +31,7 @@ function fallbackSummaries(totals: ActivityPaymentTotal[]): CurrencySummary[] {
     byCurrency.set(t.currency, entry);
   }
   for (const entry of byCurrency.values()) {
-    if (entry.cash_refund_count > 0) {
+    if ((entry.unclassified_refund_count ?? 0) > 0) {
       entry.net_note = FALLBACK_NOTE;
     } else {
       entry.net = entry.revenue;
@@ -52,6 +52,10 @@ export function currencySummaries(
 export function refundDestinationLabel(refund: Pick<ActivityRefund, "destination"> | undefined): string | null {
   if (!refund) return null;
   return refund.destination === "credit" ? CREDIT_REFUND_LABEL : CASH_REFUND_LABEL;
+}
+
+export function refundCount(s: CurrencySummary): number {
+  return s.cash_refund_count + s.credit_refund_count + (s.unclassified_refund_count ?? 0);
 }
 
 export function refundsById(refunds: ActivityRefund[] | undefined): Map<string, ActivityRefund> {

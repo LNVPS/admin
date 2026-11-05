@@ -725,6 +725,9 @@ export interface CurrencySummary {
   cash_refunds: number;
   credit_refund_count: number;
   credit_refunds: number;
+  /** Set only by the client fallback when the API cannot say cash or credit. */
+  unclassified_refund_count?: number;
+  unclassified_refunds?: number;
   refunds_of_earlier_payments: number;
   net: number | null;
   net_note: string | null;

@@ -29,7 +29,7 @@ import {
   AdminPaymentMethod,
   SubscriptionPaymentType,
 } from "../lib/api";
-import { currencySummaries, refundDestinationLabel, refundsById } from "../utils/activitySummary";
+import { currencySummaries, refundCount, refundDestinationLabel, refundsById } from "../utils/activitySummary";
 import { formatCurrency } from "../utils/currency";
 import {
   REFUND_TRIGGER_LABEL,
@@ -329,12 +329,12 @@ export function ActivityPage() {
               href="#activity-refunds"
               tone={refundTotalList.length > 0 ? "text-red-400" : "text-white"}
               value={
-                summaries.every((s) => s.cash_refund_count + s.credit_refund_count === 0) ? (
+                summaries.every((s) => refundCount(s) === 0) ? (
                   0
                 ) : (
                   <div className="space-y-1">
                     {summaries
-                      .filter((s) => s.cash_refund_count + s.credit_refund_count > 0)
+                      .filter((s) => refundCount(s) > 0)
                       .map((s) => (
                         <button
                           type="button"
@@ -346,6 +346,12 @@ export function ActivityPage() {
                             document.getElementById("activity-refunds")?.scrollIntoView({ behavior: "smooth" });
                           }}
                         >
+                          {(s.unclassified_refund_count ?? 0) > 0 && (
+                            <div>
+                              {formatCurrency(s.unclassified_refunds ?? 0, s.currency)} refunded (
+                              {s.unclassified_refund_count})
+                            </div>
+                          )}
                           {s.cash_refund_count > 0 && (
                             <div>
                               {formatCurrency(s.cash_refunds, s.currency)} refunded in cash ({s.cash_refund_count})

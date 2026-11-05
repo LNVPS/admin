@@ -4,6 +4,7 @@ import {
   CASH_REFUND_LABEL,
   CREDIT_REFUND_LABEL,
   currencySummaries,
+  refundCount,
   refundDestinationLabel,
   refundsById,
 } from "./activitySummary";
@@ -54,9 +55,44 @@ describe("currencySummaries", () => {
     });
     expect(out).toHaveLength(1);
     expect(out[0].revenue).toBe(10795);
-    expect(out[0].cash_refunds).toBe(16150);
+    expect(out[0].unclassified_refunds).toBe(16150);
+    expect(out[0].unclassified_refund_count).toBe(8);
+    expect(out[0].cash_refunds).toBe(0);
+    expect(out[0].credit_refunds).toBe(0);
     expect(out[0].net).toBeNull();
     expect(out[0].net_note).toMatch(/before this window/);
+    expect(out[0].net_note).toMatch(/newer API/);
+  });
+
+  it("fallback never classifies a refund total as cash", () => {
+    const out = currencySummaries({
+      payment_totals: [total("EUR", "refund", 8, 16150), total("BTC", "refund", 5, 75386859)],
+    });
+    for (const s of out) {
+      expect(s.cash_refund_count).toBe(0);
+      expect(s.cash_refunds).toBe(0);
+      expect(refundCount(s)).toBeGreaterThan(0);
+    }
+  });
+
+  it("new API path keeps cash and credit counts", () => {
+    const s: CurrencySummary = {
+      currency: "EUR",
+      revenue_count: 1,
+      revenue: 100,
+      cash_refund_count: 2,
+      cash_refunds: 50,
+      credit_refund_count: 8,
+      credit_refunds: 16150,
+      refunds_of_earlier_payments: 0,
+      net: 50,
+      net_note: null,
+    };
+    const [out] = currencySummaries({ payment_totals: [], currency_summaries: [s] });
+    expect(out.cash_refunds).toBe(50);
+    expect(out.credit_refunds).toBe(16150);
+    expect(out.unclassified_refund_count).toBeUndefined();
+    expect(refundCount(out)).toBe(10);
   });
 
   it("fallback shows net when there are no refunds", () => {
@@ -70,7 +106,7 @@ describe("currencySummaries", () => {
       payment_totals: [total("EUR", "purchase", 3, 10795), total("BTC", "refund", 5, 75386859)],
     });
     expect(out.find((s) => s.currency === "EUR")?.net).toBe(10795);
-    expect(out.find((s) => s.currency === "BTC")?.cash_refunds).toBe(75386859);
+    expect(out.find((s) => s.currency === "BTC")?.unclassified_refunds).toBe(75386859);
     expect(out.find((s) => s.currency === "BTC")?.net).toBeNull();
   });
 });

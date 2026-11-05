@@ -402,7 +402,11 @@ export function ActivityPage() {
                   ))}
                 </div>
               }
-              empty={`No refunds in the last ${windowLabel}`}
+              empty={
+                (refunds?.total ?? 0) > 0
+                  ? `${refunds?.total} refunds are older than the ${LIST_LIMIT} newest payments loaded, so their rows are not available yet`
+                  : `No refunds in the last ${windowLabel}`
+              }
               headers={["Refunded", "User", "VM", "Subscription", "Trigger", "Original payment", "Amount"]}
               renderRow={(p) => {
                 const original = refundedPaymentId(p);

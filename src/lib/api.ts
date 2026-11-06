@@ -1417,6 +1417,8 @@ export interface AdminDnsZone {
   name: string;
 }
 
+import { probeMigratePlanSupport } from "../utils/migratePlan";
+
 export type AdminMigrateIpPolicy = "keep" | "reassign";
 
 export interface AdminMigrateVmRequest {
@@ -3399,6 +3401,10 @@ export class AdminApi {
       await this.req(`/api/admin/v1/vms/${id}/migrate`, "POST", data),
     );
     return result.data;
+  }
+
+  async supportsMigratePlan(vmId: number): Promise<boolean> {
+    return probeMigratePlanSupport((body) => this.req(`/api/admin/v1/vms/${vmId}/migrate`, "POST", body));
   }
 
   async transferVM(id: number, userId: number, reason?: string) {

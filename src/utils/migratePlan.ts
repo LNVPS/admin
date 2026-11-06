@@ -25,7 +25,32 @@ export function migrationPhase(metadata: Record<string, unknown> | null | undefi
   return typeof phase === "string" && phase !== "" ? phase : null;
 }
 
+export type MigrateCapability = "checking" | "supported" | "unsupported";
+
+export function migratePlanSupportedByStatus(status: number): boolean {
+  return status === 422;
+}
+
+export const MIGRATE_CAPABILITY_PROBE_BODY = { target_host_id: 0, ip_policy: "capability_probe" } as const;
+
+export async function probeMigratePlanSupport(post: (body: object) => Promise<{ status: number }>): Promise<boolean> {
+  try {
+    const rsp = await post(MIGRATE_CAPABILITY_PROBE_BODY);
+    return migratePlanSupportedByStatus(rsp.status);
+  } catch {
+    return false;
+  }
+}
+
+export function shouldRequestPlan(capability: MigrateCapability, targetHostId: string): boolean {
+  return capability === "supported" && targetHostId !== "";
+}
+
+export const MIGRATE_UNSUPPORTED_MESSAGE =
+  "This server's admin API does not support migration planning yet. Migration is disabled until the API is updated.";
+
 export function canSubmitMigration(opts: {
+  capability: MigrateCapability;
   plan: AdminMigratePlan | null;
   planLoading: boolean;
   submitting: boolean;
@@ -33,8 +58,8 @@ export function canSubmitMigration(opts: {
   reassignConfirmed: boolean;
   ipPolicy: "keep" | "reassign";
 }): boolean {
-  const { plan, planLoading, submitting, targetHostId, reassignConfirmed, ipPolicy } = opts;
-  if (submitting || planLoading || targetHostId === "" || !plan) return false;
+  const { capability, plan, planLoading, submitting, targetHostId, reassignConfirmed, ipPolicy } = opts;
+  if (capability !== "supported" || submitting || planLoading || targetHostId === "" || !plan) return false;
   if (plan.refusals.length > 0) return false;
   if (ipPolicy === "reassign" && !reassignConfirmed) return false;
   return true;

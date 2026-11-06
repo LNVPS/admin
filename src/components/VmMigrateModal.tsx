@@ -3,7 +3,14 @@ import { useAdminApi } from "../hooks/useAdminApi";
 import type { AdminHostDisk, AdminHostInfo, AdminMigrateIpPolicy, AdminMigratePlan, AdminVmInfo } from "../lib/api";
 import { toastService } from "../services/toastService";
 import { formatBytes } from "../utils/formatBytes";
-import { canSubmitMigration, formatEstimate, migrationMethodLabel } from "../utils/migratePlan";
+import {
+  canSubmitMigration,
+  formatEstimate,
+  MIGRATE_UNSUPPORTED_MESSAGE,
+  type MigrateCapability,
+  migrationMethodLabel,
+  shouldRequestPlan,
+} from "../utils/migratePlan";
 import { Button } from "./Button";
 import { Modal } from "./Modal";
 
@@ -27,6 +34,7 @@ export function VmMigrateModal({ isOpen, onClose, vm, onMigrating }: VmMigrateMo
   const [keepSource, setKeepSource] = useState(true);
   const [reassignConfirmed, setReassignConfirmed] = useState(false);
   const [plan, setPlan] = useState<AdminMigratePlan | null>(null);
+  const [capability, setCapability] = useState<MigrateCapability>("checking");
   const [planLoading, setPlanLoading] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -56,6 +64,23 @@ export function VmMigrateModal({ isOpen, onClose, vm, onMigrating }: VmMigrateMo
   const vmId = vm?.id;
 
   useEffect(() => {
+    if (!isOpen || vmId === undefined) return;
+    let cancelled = false;
+    setCapability("checking");
+    adminApi
+      .supportsMigratePlan(vmId)
+      .then((ok) => {
+        if (!cancelled) setCapability(ok ? "supported" : "unsupported");
+      })
+      .catch(() => {
+        if (!cancelled) setCapability("unsupported");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, vmId, adminApi]);
+
+  useEffect(() => {
     setDisks([]);
     setTargetDiskId("");
     if (!isOpen || targetHostId === "") return;
@@ -77,7 +102,7 @@ export function VmMigrateModal({ isOpen, onClose, vm, onMigrating }: VmMigrateMo
     setPlan(null);
     setPlanError(null);
     setReassignConfirmed(false);
-    if (!isOpen || vmId === undefined || targetHostId === "") return;
+    if (!isOpen || vmId === undefined || !shouldRequestPlan(capability, targetHostId)) return;
     let cancelled = false;
     setPlanLoading(true);
     adminApi
@@ -100,7 +125,7 @@ export function VmMigrateModal({ isOpen, onClose, vm, onMigrating }: VmMigrateMo
     return () => {
       cancelled = true;
     };
-  }, [isOpen, vmId, targetHostId, targetDiskId, ipPolicy, keepSource, adminApi]);
+  }, [isOpen, vmId, targetHostId, targetDiskId, ipPolicy, keepSource, capability, adminApi]);
 
   if (!vm) return null;
 
@@ -109,6 +134,7 @@ export function VmMigrateModal({ isOpen, onClose, vm, onMigrating }: VmMigrateMo
 
   const canSubmit =
     canSubmitMigration({
+      capability,
       plan,
       planLoading,
       submitting,
@@ -151,6 +177,12 @@ export function VmMigrateModal({ isOpen, onClose, vm, onMigrating }: VmMigrateMo
           pool choice, the pool matching the source pool name is used, otherwise the one with the most free space.
         </p>
 
+        {capability === "unsupported" && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-100">
+            {MIGRATE_UNSUPPORTED_MESSAGE}
+          </div>
+        )}
+
         {error && (
           <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">{error}</div>
         )}
@@ -180,8 +212,8 @@ export function VmMigrateModal({ isOpen, onClose, vm, onMigrating }: VmMigrateMo
             <option value="">{loadingHosts ? "Loading hosts..." : "Select a host..."}</option>
             {candidates.map((host) => (
               <option key={host.id} value={host.id}>
-                {host.name} ({host.kind}, {host.region.name}) - {Math.round(host.load_cpu * 100)}% cpu /{" "}
-                {Math.round(host.load_memory * 100)}% mem / {Math.round(host.load_disk * 100)}% disk
+                {host.name} ({host.kind}, {host.region.name}) load {Math.round(host.load_cpu * 100)}/
+                {Math.round(host.load_memory * 100)}/{Math.round(host.load_disk * 100)}%
                 {host.sunset_date ? " (sunsetting)" : ""}
               </option>
             ))}

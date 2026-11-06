@@ -1,6 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { AdminMigratePlan } from "../lib/api";
-import { canSubmitMigration, formatEstimate, migrationMethodLabel, migrationPhase } from "./migratePlan";
+import {
+  canSubmitMigration,
+  formatEstimate,
+  migratePlanSupportedByStatus,
+  migrationMethodLabel,
+  migrationPhase,
+  probeMigratePlanSupport,
+  shouldRequestPlan,
+} from "./migratePlan";
 
 const plan = (over: Partial<AdminMigratePlan> = {}): AdminMigratePlan => ({
   vm_id: 1,
@@ -23,6 +31,7 @@ const plan = (over: Partial<AdminMigratePlan> = {}): AdminMigratePlan => ({
 });
 
 const base = {
+  capability: "supported" as const,
   plan: plan(),
   planLoading: false,
   submitting: false,
@@ -48,6 +57,25 @@ describe("canSubmitMigration", () => {
   });
 });
 
+describe("capability gate", () => {
+  it("never requests a dry run unless the API is known to support it", () => {
+    expect(shouldRequestPlan("checking", "2")).toBe(false);
+    expect(shouldRequestPlan("unsupported", "2")).toBe(false);
+    expect(shouldRequestPlan("supported", "")).toBe(false);
+    expect(shouldRequestPlan("supported", "2")).toBe(true);
+  });
+  it("disables submit on an unsupported or unchecked API", () => {
+    expect(canSubmitMigration({ ...base, capability: "unsupported" })).toBe(false);
+    expect(canSubmitMigration({ ...base, capability: "checking" })).toBe(false);
+  });
+  it("only a body validation error marks the new API", () => {
+    expect(migratePlanSupportedByStatus(422)).toBe(true);
+    expect(migratePlanSupportedByStatus(409)).toBe(false);
+    expect(migratePlanSupportedByStatus(200)).toBe(false);
+    expect(migratePlanSupportedByStatus(404)).toBe(false);
+  });
+});
+
 describe("formatters", () => {
   it("formats estimates", () => {
     expect(formatEstimate(30)).toBe("30s");
@@ -63,5 +91,26 @@ describe("formatters", () => {
     expect(migrationPhase({ phase: "copying" })).toBe("copying");
     expect(migrationPhase({ phase: 3 })).toBeNull();
     expect(migrationPhase(null)).toBeNull();
+  });
+});
+
+describe("probeMigratePlanSupport", () => {
+  it("sends a body that cannot start or dry-run a migration", async () => {
+    const post = vi.fn().mockResolvedValue({ status: 422 });
+    expect(await probeMigratePlanSupport(post)).toBe(true);
+    const body = post.mock.calls[0][0];
+    expect(body.target_host_id).toBe(0);
+    expect(body.ip_policy).toBe("capability_probe");
+    expect(body.dry_run).toBeUndefined();
+  });
+  it("an old API answering 404 for the unknown host is unsupported", async () => {
+    expect(await probeMigratePlanSupport(async () => ({ status: 404 }))).toBe(false);
+  });
+  it("a network failure is unsupported", async () => {
+    expect(
+      await probeMigratePlanSupport(async () => {
+        throw new Error("down");
+      }),
+    ).toBe(false);
   });
 });

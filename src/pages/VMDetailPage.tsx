@@ -55,6 +55,7 @@ import { confirmDialog, promptDialog } from "../services/confirmService";
 import { toastService } from "../services/toastService";
 import { CURRENCIES, formatCurrency } from "../utils/currency";
 import { formatBytes } from "../utils/formatBytes";
+import { migrationPhase } from "../utils/migratePlan";
 import { diffStates, formatDiffValue, metadataEntries } from "../utils/stateDiff";
 
 export function VMDetailPage() {
@@ -434,6 +435,9 @@ export function VMDetailPage() {
       </td>
       <td className="align-top text-gray-300 text-sm">
         <div className="min-w-0 max-w-[24rem] break-words">{history.description || "-"}</div>
+        {history.action_type === AdminVmHistoryActionType.MIGRATION_PROGRESS && migrationPhase(history.metadata) && (
+          <div className="text-xs text-gray-400">Phase: {migrationPhase(history.metadata)}</div>
+        )}
         {renderHistoryDetails(history)}
       </td>
       <td className="align-top">
@@ -639,6 +643,8 @@ export function VMDetailPage() {
         return "bg-yellow-900 text-yellow-300"; // Yellow for config changes
       case AdminVmHistoryActionType.TRANSFERRED:
         return "bg-teal-900 text-teal-300"; // Teal for transfers
+      case AdminVmHistoryActionType.MIGRATION_PROGRESS:
+        return "bg-slate-800 text-sky-300";
       case AdminVmHistoryActionType.MIGRATED:
         return "bg-sky-900 text-sky-300"; // Sky for host migrations
       case AdminVmHistoryActionType.STATE_CHANGED:

@@ -118,6 +118,8 @@ export enum AdminVmHistoryActionType {
    * `ReconcileVmHosts` job noticed (`metadata.detected === true`).
    */
   MIGRATED = "migrated",
+  /** One phase of a running migration; `metadata.phase` names it. */
+  MIGRATION_PROGRESS = "migration_progress",
 }
 
 export enum AdminPaymentMethod {
@@ -1413,6 +1415,50 @@ export interface AdminDnsZone {
   id: string;
   /** Human readable zone name (e.g. example.com) */
   name: string;
+}
+
+export type AdminMigrateIpPolicy = "keep" | "reassign";
+
+export interface AdminMigrateVmRequest {
+  target_host_id: number;
+  live?: boolean;
+  reason?: string;
+  ip_policy?: AdminMigrateIpPolicy;
+  keep_source?: boolean;
+  target_disk_id?: number;
+  timeout_secs_per_gb?: number;
+  dry_run?: boolean;
+}
+
+export interface AdminMigrateIpChange {
+  old_ip: string;
+  new_ip: string | null;
+  range_id: number | null;
+}
+
+export interface AdminMigratePlan {
+  vm_id: number;
+  source_host_id: number;
+  source_host_kind: string;
+  target_host_id: number;
+  target_host_kind: string;
+  method: "hypervisor" | "copy_and_adopt" | string;
+  ip_policy: AdminMigrateIpPolicy;
+  keep_source: boolean;
+  target_disk_id: number | null;
+  target_storage: string | null;
+  disk_bytes: number;
+  estimated_seconds: number;
+  transfer_timeout_seconds: number;
+  ip_changes: AdminMigrateIpChange[];
+  warnings: string[];
+  refusals: string[];
+}
+
+export interface AdminMigrateVmResult {
+  job_id?: string;
+  dry_run?: boolean;
+  plan: AdminMigratePlan;
 }
 
 export interface AdminVmHistoryInfo {
@@ -3348,8 +3394,8 @@ export class AdminApi {
    * `live` attempts an online migration; without it a running VM is stopped,
    * moved and started again on the destination. Proxmox hosts only.
    */
-  async migrateVM(id: number, data: { target_host_id: number; live?: boolean; reason?: string }) {
-    const result = await this.handleResponse<ApiResponse<{ job_id: string }>>(
+  async migrateVM(id: number, data: AdminMigrateVmRequest) {
+    const result = await this.handleResponse<ApiResponse<AdminMigrateVmResult>>(
       await this.req(`/api/admin/v1/vms/${id}/migrate`, "POST", data),
     );
     return result.data;

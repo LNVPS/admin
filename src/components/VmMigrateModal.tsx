@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useAdminApi } from "../hooks/useAdminApi";
-import type { AdminHostInfo, AdminVmInfo } from "../lib/api";
+import type { AdminHostDisk, AdminHostInfo, AdminMigrateIpPolicy, AdminMigratePlan, AdminVmInfo } from "../lib/api";
 import { toastService } from "../services/toastService";
+import { formatBytes } from "../utils/formatBytes";
+import { canSubmitMigration, formatEstimate, migrationMethodLabel } from "../utils/migratePlan";
 import { Button } from "./Button";
 import { Modal } from "./Modal";
 
@@ -12,17 +14,6 @@ interface VmMigrateModalProps {
   onMigrating: () => void;
 }
 
-/** Why a host cannot be picked, or null when it can. Mirrors the worker's pre-flight. */
-function ineligibleReason(host: AdminHostInfo, vm: AdminVmInfo, source: AdminHostInfo | undefined): string | null {
-  if (host.id === vm.host_id) return "current host";
-  if (!host.enabled) return "disabled";
-  if (host.sunset_date) return "sunsetting";
-  if (host.region.id !== vm.region_id) return "different region";
-  if (source && host.kind !== source.kind) return `different hypervisor (${host.kind})`;
-  if (source && host.cpu_arch !== source.cpu_arch) return `different CPU arch (${host.cpu_arch ?? "unknown"})`;
-  return null;
-}
-
 export function VmMigrateModal({ isOpen, onClose, vm, onMigrating }: VmMigrateModalProps) {
   const adminApi = useAdminApi();
   const [hosts, setHosts] = useState<AdminHostInfo[]>([]);
@@ -30,6 +21,14 @@ export function VmMigrateModal({ isOpen, onClose, vm, onMigrating }: VmMigrateMo
   const [targetHostId, setTargetHostId] = useState("");
   const [live, setLive] = useState(false);
   const [reason, setReason] = useState("");
+  const [disks, setDisks] = useState<AdminHostDisk[]>([]);
+  const [targetDiskId, setTargetDiskId] = useState("");
+  const [ipPolicy, setIpPolicy] = useState<AdminMigrateIpPolicy>("keep");
+  const [keepSource, setKeepSource] = useState(true);
+  const [reassignConfirmed, setReassignConfirmed] = useState(false);
+  const [plan, setPlan] = useState<AdminMigratePlan | null>(null);
+  const [planLoading, setPlanLoading] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,6 +37,12 @@ export function VmMigrateModal({ isOpen, onClose, vm, onMigrating }: VmMigrateMo
     setTargetHostId("");
     setLive(false);
     setReason("");
+    setTargetDiskId("");
+    setIpPolicy("keep");
+    setKeepSource(true);
+    setReassignConfirmed(false);
+    setPlan(null);
+    setPlanError(null);
     setError(null);
 
     setLoadingHosts(true);
@@ -48,15 +53,69 @@ export function VmMigrateModal({ isOpen, onClose, vm, onMigrating }: VmMigrateMo
       .finally(() => setLoadingHosts(false));
   }, [isOpen, adminApi]);
 
+  const vmId = vm?.id;
+
+  useEffect(() => {
+    setDisks([]);
+    setTargetDiskId("");
+    if (!isOpen || targetHostId === "") return;
+    let cancelled = false;
+    adminApi
+      .getHostDisks(Number.parseInt(targetHostId, 10))
+      .then((res) => {
+        if (!cancelled) setDisks(res.filter((d) => d.enabled));
+      })
+      .catch((err) => {
+        if (!cancelled) setPlanError(err instanceof Error ? err.message : "Failed to load storage pools");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, targetHostId, adminApi]);
+
+  useEffect(() => {
+    setPlan(null);
+    setPlanError(null);
+    setReassignConfirmed(false);
+    if (!isOpen || vmId === undefined || targetHostId === "") return;
+    let cancelled = false;
+    setPlanLoading(true);
+    adminApi
+      .migrateVM(vmId, {
+        target_host_id: Number.parseInt(targetHostId, 10),
+        ip_policy: ipPolicy,
+        keep_source: keepSource,
+        dry_run: true,
+        ...(targetDiskId && { target_disk_id: Number.parseInt(targetDiskId, 10) }),
+      })
+      .then((res) => {
+        if (!cancelled) setPlan(res.plan);
+      })
+      .catch((err) => {
+        if (!cancelled) setPlanError(err instanceof Error ? err.message : "Failed to plan migration");
+      })
+      .finally(() => {
+        if (!cancelled) setPlanLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, vmId, targetHostId, targetDiskId, ipPolicy, keepSource, adminApi]);
+
   if (!vm) return null;
 
   const sourceHost = hosts.find((h) => h.id === vm.host_id);
-  // Only same-region hosts are offered at all: a cross-region move would strand
-  // the VM's IP assignments, which are not rewritten by the migration.
-  const candidates = hosts.filter((h) => h.region.id === vm.region_id);
-  const eligibleCount = candidates.filter((h) => ineligibleReason(h, vm, sourceHost) === null).length;
+  const candidates = hosts.filter((h) => h.enabled && h.id !== vm.host_id);
 
-  const canSubmit = !submitting && !loadingHosts && targetHostId !== "";
+  const canSubmit =
+    canSubmitMigration({
+      plan,
+      planLoading,
+      submitting,
+      targetHostId,
+      reassignConfirmed,
+      ipPolicy,
+    }) && !loadingHosts;
 
   const handleMigrate = async () => {
     if (!canSubmit) return;
@@ -65,12 +124,15 @@ export function VmMigrateModal({ isOpen, onClose, vm, onMigrating }: VmMigrateMo
     try {
       const result = await adminApi.migrateVM(vm.id, {
         target_host_id: Number.parseInt(targetHostId, 10),
+        ip_policy: ipPolicy,
+        keep_source: keepSource,
+        ...(targetDiskId && { target_disk_id: Number.parseInt(targetDiskId, 10) }),
         ...(live && { live: true }),
         ...(reason.trim() && { reason: reason.trim() }),
       });
       toastService.info(
         "Migration queued",
-        `VM ${vm.id} is being migrated (job ${result.job_id.slice(0, 8)}...). Pre-flight checks run on the worker.`,
+        `VM ${vm.id} is being migrated (job ${(result.job_id ?? "").slice(0, 8)}...). Pre-flight checks run on the worker.`,
       );
       onClose();
       onMigrating();
@@ -85,9 +147,8 @@ export function VmMigrateModal({ isOpen, onClose, vm, onMigrating }: VmMigrateMo
     <Modal isOpen={isOpen} onClose={onClose} title={`Migrate VM #${vm.id}`} size="md">
       <div className="space-y-4">
         <p className="text-sm text-gray-400">
-          Move this VM to another host in <span className="text-white">{vm.region_name}</span>. The destination disk
-          pool is the one matching the source pool name where it exists (nothing is copied on shared storage), otherwise
-          the emptiest pool with room. Proxmox hosts only.
+          Move this VM from <span className="text-white">{vm.region_name}</span> to any enabled host. Without a storage
+          pool choice, the pool matching the source pool name is used, otherwise the one with the most free space.
         </p>
 
         {error && (
@@ -117,24 +178,121 @@ export function VmMigrateModal({ isOpen, onClose, vm, onMigrating }: VmMigrateMo
             disabled={loadingHosts}
           >
             <option value="">{loadingHosts ? "Loading hosts..." : "Select a host..."}</option>
-            {candidates.map((host) => {
-              const reasonText = ineligibleReason(host, vm, sourceHost);
-              return (
-                <option key={host.id} value={host.id} disabled={reasonText !== null}>
-                  {host.name} — {Math.round(host.load_cpu * 100)}% cpu / {Math.round(host.load_memory * 100)}% mem /{" "}
-                  {Math.round(host.load_disk * 100)}% disk
-                  {reasonText ? ` (${reasonText})` : ""}
-                </option>
-              );
-            })}
+            {candidates.map((host) => (
+              <option key={host.id} value={host.id}>
+                {host.name} ({host.kind}, {host.region.name}) - {Math.round(host.load_cpu * 100)}% cpu /{" "}
+                {Math.round(host.load_memory * 100)}% mem / {Math.round(host.load_disk * 100)}% disk
+                {host.sunset_date ? " (sunsetting)" : ""}
+              </option>
+            ))}
           </select>
-          {!loadingHosts && eligibleCount === 0 && (
-            <p className="mt-2 text-xs text-amber-300">
-              No eligible host in this region — a target must be enabled and match the source's hypervisor kind and CPU
-              architecture.
-            </p>
-          )}
         </div>
+
+        {targetHostId !== "" && (
+          <div>
+            <label htmlFor="migrate-target-disk" className="block text-xs font-medium text-white mb-2">
+              Storage pool
+            </label>
+            <select id="migrate-target-disk" value={targetDiskId} onChange={(e) => setTargetDiskId(e.target.value)}>
+              <option value="">Automatic</option>
+              {disks.map((disk) => (
+                <option key={disk.id} value={disk.id}>
+                  {disk.name} ({disk.kind}, {formatBytes(disk.size)})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <div>
+          <label htmlFor="migrate-ip-policy" className="block text-xs font-medium text-white mb-2">
+            IP addresses
+          </label>
+          <select
+            id="migrate-ip-policy"
+            value={ipPolicy}
+            onChange={(e) => setIpPolicy(e.target.value as AdminMigrateIpPolicy)}
+          >
+            <option value="keep">Keep current addresses</option>
+            <option value="reassign">Reassign addresses from the target network</option>
+          </select>
+        </div>
+
+        <div className="flex items-start space-x-2">
+          <input
+            id="migrate-keep-source"
+            type="checkbox"
+            checked={keepSource}
+            onChange={(e) => setKeepSource(e.target.checked)}
+            className="mt-1 h-4 w-4"
+          />
+          <label htmlFor="migrate-keep-source" className="text-sm text-gray-300">
+            Keep source copy
+            <span className="block text-xs text-gray-500">
+              The stopped VM stays on the source host so the move can be undone.
+            </span>
+          </label>
+        </div>
+
+        {targetHostId !== "" && (
+          <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-3 text-sm space-y-2">
+            <div className="text-xs font-medium text-white">Migration plan</div>
+            {planLoading && <div className="text-gray-400">Planning...</div>}
+            {planError && <div className="text-red-300">{planError}</div>}
+            {plan && (
+              <>
+                <div>
+                  <span className="text-gray-400">Method: </span>
+                  <span className="text-white">{migrationMethodLabel(plan.method)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Disk size: </span>
+                  <span className="text-white">{formatBytes(plan.disk_bytes)}</span>
+                  {plan.target_storage && <span className="text-gray-400"> to {plan.target_storage}</span>}
+                </div>
+                <div>
+                  <span className="text-gray-400">Estimated downtime: </span>
+                  <span className="text-white">{formatEstimate(plan.estimated_seconds)}</span>
+                </div>
+                {plan.warnings.map((w) => (
+                  <div key={w} className="text-amber-300">
+                    Warning: {w}
+                  </div>
+                ))}
+                {plan.refusals.map((r) => (
+                  <div key={r} className="text-red-300">
+                    Refused: {r}
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        )}
+
+        {ipPolicy === "reassign" && plan && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-100 space-y-2">
+            <div>The customer's IP addresses will change:</div>
+            <ul className="list-disc pl-5">
+              {plan.ip_changes.map((c) => (
+                <li key={c.old_ip}>
+                  {c.old_ip} to {c.new_ip ?? "a new address allocated on migration"}
+                </li>
+              ))}
+            </ul>
+            <div className="flex items-start space-x-2">
+              <input
+                id="migrate-reassign-confirm"
+                type="checkbox"
+                checked={reassignConfirmed}
+                onChange={(e) => setReassignConfirmed(e.target.checked)}
+                className="mt-1 h-4 w-4"
+              />
+              <label htmlFor="migrate-reassign-confirm">
+                I understand the customer's addresses change and they will be notified.
+              </label>
+            </div>
+          </div>
+        )}
 
         <div className="flex items-start space-x-2">
           <input

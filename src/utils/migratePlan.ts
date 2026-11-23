@@ -33,8 +33,27 @@ export function migratePlanSupportedByStatus(status: number): boolean {
 
 export const MIGRATE_CAPABILITY_PROBE_BODY = { target_host_id: 0, ip_policy: "capability_probe" } as const;
 
-export async function probeMigratePlanSupport(post: (body: object) => Promise<{ status: number }>): Promise<boolean> {
+export interface CapabilitiesResponse {
+  status: number;
+  json: () => Promise<unknown>;
+}
+
+function migrateOptionsOf(payload: unknown): unknown {
+  const root = (payload as { data?: unknown } | null)?.data ?? payload;
+  return (root as { vm_migrate?: { options?: unknown } } | null)?.vm_migrate?.options;
+}
+
+export async function probeMigratePlanSupport(
+  post: (body: object) => Promise<{ status: number }>,
+  getCapabilities: () => Promise<CapabilitiesResponse>,
+): Promise<boolean> {
   try {
+    const caps = await getCapabilities();
+    if (caps.status !== 404) {
+      if (caps.status < 200 || caps.status >= 300) return false;
+      const options = migrateOptionsOf(await caps.json());
+      return Array.isArray(options) && options.includes("dry_run");
+    }
     const rsp = await post(MIGRATE_CAPABILITY_PROBE_BODY);
     return migratePlanSupportedByStatus(rsp.status);
   } catch {

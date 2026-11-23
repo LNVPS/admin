@@ -94,23 +94,42 @@ describe("formatters", () => {
   });
 });
 
+const capsRsp = (options: string[]) => async () => ({
+  status: 200,
+  json: async () => ({ data: { vm_migrate: { options } } }),
+});
+const noCaps = async () => ({ status: 404, json: async () => ({}) });
+
 describe("probeMigratePlanSupport", () => {
+  it("marker with dry_run is supported without probing", async () => {
+    const post = vi.fn();
+    expect(await probeMigratePlanSupport(post, capsRsp(["dry_run", "ip_policy"]))).toBe(true);
+    expect(post).not.toHaveBeenCalled();
+  });
+  it("marker without dry_run is unsupported without probing", async () => {
+    const post = vi.fn();
+    expect(await probeMigratePlanSupport(post, capsRsp(["ip_policy"]))).toBe(false);
+    expect(post).not.toHaveBeenCalled();
+  });
   it("sends a body that cannot start or dry-run a migration", async () => {
     const post = vi.fn().mockResolvedValue({ status: 422 });
-    expect(await probeMigratePlanSupport(post)).toBe(true);
+    expect(await probeMigratePlanSupport(post, noCaps)).toBe(true);
     const body = post.mock.calls[0][0];
     expect(body.target_host_id).toBe(0);
     expect(body.ip_policy).toBe("capability_probe");
     expect(body.dry_run).toBeUndefined();
   });
   it("an old API answering 404 for the unknown host is unsupported", async () => {
-    expect(await probeMigratePlanSupport(async () => ({ status: 404 }))).toBe(false);
+    expect(await probeMigratePlanSupport(async () => ({ status: 404 }), noCaps)).toBe(false);
   });
   it("a network failure is unsupported", async () => {
     expect(
-      await probeMigratePlanSupport(async () => {
-        throw new Error("down");
-      }),
+      await probeMigratePlanSupport(
+        async () => ({ status: 422 }),
+        async () => {
+          throw new Error("down");
+        },
+      ),
     ).toBe(false);
   });
 });

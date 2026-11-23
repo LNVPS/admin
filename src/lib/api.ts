@@ -3404,7 +3404,10 @@ export class AdminApi {
   }
 
   async supportsMigratePlan(vmId: number): Promise<boolean> {
-    return probeMigratePlanSupport((body) => this.req(`/api/admin/v1/vms/${vmId}/migrate`, "POST", body));
+    return probeMigratePlanSupport(
+      (body) => this.req(`/api/admin/v1/vms/${vmId}/migrate`, "POST", body),
+      () => this.req("/api/admin/v1/capabilities", "GET"),
+    );
   }
 
   async transferVM(id: number, userId: number, reason?: string) {

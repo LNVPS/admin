@@ -34,6 +34,7 @@ import { Profile } from "../components/Profile";
 import { RecordPaymentRefundModal } from "../components/RecordPaymentRefundModal";
 import { StatusBadge } from "../components/StatusBadge";
 import { VmAbuseSection } from "../components/VmAbuseSection";
+import { VmExtraAllowedIps } from "../components/VmExtraAllowedIps";
 import { VmIpAssignmentModal } from "../components/VmIpAssignmentModal";
 import { VmMigrateModal } from "../components/VmMigrateModal";
 import { VmRefundModal } from "../components/VmRefundModal";
@@ -1110,6 +1111,8 @@ export function VMDetailPage() {
           <p className="text-sm text-gray-500">No notes.</p>
         )}
       </div>
+
+      <VmExtraAllowedIps vmId={vm.id} />
 
       {/* Real-time VM Metrics */}
       {vm.running_state && (

@@ -2973,6 +2973,14 @@ function nextAuthSeq(): string {
   return `${AUTH_SEQ_PREFIX}-${authSeqCounter++}`;
 }
 
+export interface AdminVmExtraAllowedIp {
+  id: number;
+  vm_id: number;
+  ip: string;
+  comment: string;
+  created: string;
+}
+
 export class AdminApi {
   readonly url: string;
   readonly timeout?: number;
@@ -3311,6 +3319,26 @@ export class AdminApi {
       await this.req(`/api/admin/v1/vms/${id}`, "GET"),
     );
     return result.data;
+  }
+
+  async listVmExtraAllowedIps(vmId: number) {
+    const result = await this.handleResponse<ApiResponse<AdminVmExtraAllowedIp[]>>(
+      await this.req(`/api/admin/v1/vms/${vmId}/extra_allowed_ips`, "GET"),
+    );
+    return result.data;
+  }
+
+  async addVmExtraAllowedIp(vmId: number, body: { ip: string; comment: string }) {
+    const result = await this.handleResponse<ApiResponse<AdminVmExtraAllowedIp>>(
+      await this.req(`/api/admin/v1/vms/${vmId}/extra_allowed_ips`, "POST", body),
+    );
+    return result.data;
+  }
+
+  async removeVmExtraAllowedIp(vmId: number, entryId: number) {
+    await this.handleResponse<ApiResponse<null>>(
+      await this.req(`/api/admin/v1/vms/${vmId}/extra_allowed_ips/${entryId}`, "DELETE"),
+    );
   }
 
   /**

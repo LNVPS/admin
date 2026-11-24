@@ -132,6 +132,7 @@ export enum AdminPaymentMethod {
   ONCHAIN = "onchain",
   CREDIT = "credit",
   FIXEDFLOAT = "fixedfloat",
+  GATEWAY = "gateway",
 }
 
 export enum PaymentProviderType {
@@ -141,6 +142,7 @@ export enum PaymentProviderType {
   STRIPE = "stripe",
   PAYPAL = "paypal",
   ONCHAIN = "onchain",
+  GATEWAY = "gateway",
 }
 
 export enum SubscriptionPaymentType {
@@ -2213,13 +2215,40 @@ export interface OnChainProviderConfig {
   min_confirmations?: number | null;
 }
 
+export type GatewayOffSessionMode = "off" | "dry-run" | "live";
+
+export type GatewayHandleableMethod = "lightning" | "onchain" | "fixedfloat" | "revolut" | "stripe";
+
+export interface GatewayProviderConfig {
+  type: "gateway";
+  url: string;
+  api_key?: string;
+  webhook_secret?: string;
+  tolerance_seconds?: number | null;
+  off_session_renewals?: GatewayOffSessionMode;
+  handles?: GatewayHandleableMethod[];
+}
+
+export interface GatewayTestResult {
+  ok: boolean;
+  message: string;
+}
+
+export interface GatewayStatus {
+  enabled: boolean;
+  handles: GatewayHandleableMethod[];
+  last_paid_webhook_at: string | null;
+  payments_last_24h: number;
+}
+
 export type ProviderConfig =
   | LndProviderConfig
   | BitvoraProviderConfig
   | RevolutProviderConfig
   | StripeProviderConfig
   | PaypalProviderConfig
-  | OnChainProviderConfig;
+  | OnChainProviderConfig
+  | GatewayProviderConfig;
 
 // Sanitized Provider Config Types (what API returns - secrets replaced with boolean indicators)
 export interface SanitizedLndProviderConfig {
@@ -2269,13 +2298,24 @@ export interface SanitizedOnChainProviderConfig {
   min_confirmations: number;
 }
 
+export interface SanitizedGatewayProviderConfig {
+  type: "gateway";
+  url: string;
+  tolerance_seconds: number;
+  off_session_renewals: GatewayOffSessionMode;
+  handles: GatewayHandleableMethod[];
+  has_api_key: boolean;
+  has_webhook_secret: boolean;
+}
+
 export type SanitizedProviderConfig =
   | SanitizedLndProviderConfig
   | SanitizedBitvoraProviderConfig
   | SanitizedRevolutProviderConfig
   | SanitizedStripeProviderConfig
   | SanitizedPaypalProviderConfig
-  | SanitizedOnChainProviderConfig;
+  | SanitizedOnChainProviderConfig
+  | SanitizedGatewayProviderConfig;
 
 export interface AdminPaymentMethodConfigInfo {
   id: number;
@@ -5471,6 +5511,20 @@ export class AdminApi {
 
   async deletePaymentMethodConfig(id: number) {
     await this.handleResponse<ApiResponse<void>>(await this.req(`/api/admin/v1/payment_methods/${id}`, "DELETE"));
+  }
+
+  async testPaymentGateway(id: number) {
+    const result = await this.handleResponse<ApiResponse<GatewayTestResult>>(
+      await this.req(`/api/admin/v1/payment_methods/${id}/gateway/test`, "POST"),
+    );
+    return result.data;
+  }
+
+  async getPaymentGatewayStatus(id: number) {
+    const result = await this.handleResponse<ApiResponse<GatewayStatus>>(
+      await this.req(`/api/admin/v1/payment_methods/${id}/gateway/status`, "GET"),
+    );
+    return result.data;
   }
 
   // User Payment Methods (users' saved payment methods for auto-renewal)

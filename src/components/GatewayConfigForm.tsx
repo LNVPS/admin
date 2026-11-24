@@ -1,5 +1,10 @@
 import { useState } from "react";
-import type { GatewayHandleableMethod, GatewayOffSessionMode, GatewayProviderConfig, SanitizedGatewayProviderConfig } from "../lib/api";
+import type {
+  GatewayHandleableMethod,
+  GatewayOffSessionMode,
+  GatewayProviderConfig,
+  SanitizedGatewayProviderConfig,
+} from "../lib/api";
 import {
   GATEWAY_DEFAULT_TOLERANCE_SECONDS,
   GATEWAY_HANDLEABLE,
@@ -160,7 +165,10 @@ export function GatewayConfigForm({
         <span className="block text-xs font-medium text-white mb-2">Handled Methods</span>
         <div className="flex flex-wrap gap-2">
           {GATEWAY_HANDLEABLE.map((method) => (
-            <label key={method.value} className="flex items-center gap-1.5 px-2 py-1 bg-slate-700 rounded cursor-pointer">
+            <label
+              key={method.value}
+              className="flex items-center gap-1.5 px-2 py-1 bg-slate-700 rounded cursor-pointer"
+            >
               <input
                 type="checkbox"
                 aria-label={method.label}

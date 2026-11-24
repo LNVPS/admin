@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import type { GatewayStatus, GatewayTestResult } from "../lib/api";
 import { useAdminApi } from "../hooks/useAdminApi";
+import type { GatewayStatus, GatewayTestResult } from "../lib/api";
 import { gatewayHandleLabel } from "../utils/gateway";
 import { Button } from "./Button";
 
@@ -54,17 +54,16 @@ export function GatewayPanel({ configId }: GatewayPanelProps) {
           <span className="text-xs text-gray-400">Uses the saved URL and API key</span>
         </div>
         {testResult && (
-          <div
-            role="status"
+          <output
             data-testid="gateway-test-result"
             className={
               testResult.ok
-                ? "mt-2 rounded border border-green-500/30 bg-green-900/20 px-3 py-2 text-sm text-green-400"
-                : "mt-2 rounded border border-red-500/30 bg-red-900/20 px-3 py-2 text-sm text-red-400"
+                ? "mt-2 block rounded border border-green-500/30 bg-green-900/20 px-3 py-2 text-sm text-green-400"
+                : "mt-2 block rounded border border-red-500/30 bg-red-900/20 px-3 py-2 text-sm text-red-400"
             }
           >
             {testResult.message}
-          </div>
+          </output>
         )}
       </div>
 

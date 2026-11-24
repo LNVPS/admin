@@ -434,7 +434,7 @@ export function DashboardLayout() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col md:ml-0">
+      <div className="flex-1 min-w-0 flex flex-col md:ml-0">
         {/* Mobile menu button */}
         <div className="md:hidden flex items-center justify-between bg-slate-800 p-4">
           <span className="text-xl font-bold text-white">LNVPS Admin</span>

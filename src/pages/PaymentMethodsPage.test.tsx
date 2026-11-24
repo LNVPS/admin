@@ -197,8 +197,7 @@ describe("PaymentMethodsPage gateway", () => {
 
   it("asks before enabling and shows the one enabled gateway error next to the form", async () => {
     const message = "This company already has an enabled gateway payment method, disable it first";
-    extra = (call) =>
-      call.method === "PATCH" ? { status: 500, body: { error: message } } : undefined;
+    extra = (call) => (call.method === "PATCH" ? { status: 500, body: { error: message } } : undefined);
     await openEdit();
     fireEvent.click(screen.getByLabelText("Enabled"));
     fireEvent.click(submitButton("Update Payment Method"));

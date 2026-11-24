@@ -17,6 +17,7 @@ import type {
   AdminCompanyInfo,
   AdminPaymentMethodConfigInfo,
   BitvoraProviderConfig,
+  GatewayProviderConfig,
   LndProviderConfig,
   OnChainAddressType,
   OnChainProviderConfig,
@@ -27,8 +28,20 @@ import type {
   StripeProviderConfig,
 } from "../lib/api";
 import { AdminPaymentMethod, PaymentProviderType } from "../lib/api";
+import { GatewayConfigForm } from "../components/GatewayConfigForm";
+import { GatewayPanel } from "../components/GatewayPanel";
 import { confirmDialog } from "../services/confirmService";
+import { toastService } from "../services/toastService";
 import { CURRENCIES, formatCurrency, fromSmallestUnits, parseRate, toSmallestUnits } from "../utils/currency";
+import {
+  confirmGatewayEnable,
+  emptyGatewayConfig,
+  GATEWAY_ENABLE_GUARD,
+  GATEWAY_SECRET_FIELDS,
+  gatewayConfigForSubmit,
+  gatewayConfigFromSanitized,
+  gatewayHandleLabel,
+} from "../utils/gateway";
 
 // Helper to get display name for payment method
 function getPaymentMethodName(method: AdminPaymentMethod): string {
@@ -40,6 +53,7 @@ function getPaymentMethodName(method: AdminPaymentMethod): string {
     [AdminPaymentMethod.ONCHAIN]: "On-chain (Bitcoin)",
     [AdminPaymentMethod.CREDIT]: "Account credit",
     [AdminPaymentMethod.FIXEDFLOAT]: "FixedFloat",
+    [AdminPaymentMethod.GATEWAY]: "Payment gateway",
   };
   return names[method] || method;
 }
@@ -53,6 +67,7 @@ function getProviderTypeName(type: PaymentProviderType): string {
     [PaymentProviderType.STRIPE]: "Stripe",
     [PaymentProviderType.PAYPAL]: "PayPal",
     [PaymentProviderType.ONCHAIN]: "On-chain (LND)",
+    [PaymentProviderType.GATEWAY]: "Payment gateway",
   };
   return names[type] || type;
 }
@@ -70,6 +85,8 @@ function getProviderTypesForMethod(method: AdminPaymentMethod): PaymentProviderT
       return [PaymentProviderType.PAYPAL];
     case AdminPaymentMethod.ONCHAIN:
       return [PaymentProviderType.ONCHAIN];
+    case AdminPaymentMethod.GATEWAY:
+      return [PaymentProviderType.GATEWAY];
     default:
       return [];
   }
@@ -88,6 +105,8 @@ function getPaymentMethodColor(method: AdminPaymentMethod): string {
       return "text-blue-500";
     case AdminPaymentMethod.ONCHAIN:
       return "text-orange-400";
+    case AdminPaymentMethod.GATEWAY:
+      return "text-emerald-400";
     default:
       return "text-gray-400";
   }
@@ -124,6 +143,22 @@ export function PaymentMethodsPage() {
   const handleEdit = (config: AdminPaymentMethodConfigInfo) => {
     setSelectedConfig(config);
     setShowEditModal(true);
+  };
+
+  const handleToggleEnabled = async (config: AdminPaymentMethodConfigInfo) => {
+    const enabling = !config.enabled;
+    if (enabling && config.provider_type === PaymentProviderType.GATEWAY && !(await confirmGatewayEnable())) {
+      return;
+    }
+    try {
+      await adminApi.updatePaymentMethodConfig(config.id, { enabled: enabling });
+      refreshData();
+    } catch (err) {
+      toastService.error(
+        enabling ? "Could not enable payment method" : "Could not disable payment method",
+        err instanceof Error ? err.message : undefined,
+      );
+    }
   };
 
   const handleDelete = async (config: AdminPaymentMethodConfigInfo) => {
@@ -190,6 +225,19 @@ export function PaymentMethodsPage() {
                 </span>
               )}
             </div>
+            {config.config?.type === "gateway" && (
+              <div className="mt-1 flex flex-wrap gap-1" data-testid="gateway-handles">
+                {config.config.handles.length > 0 ? (
+                  config.config.handles.map((h) => (
+                    <span key={h} className="rounded bg-emerald-900/40 px-1.5 py-0.5 text-xs text-emerald-300">
+                      {gatewayHandleLabel(h)}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-xs text-slate-400">Handles nothing yet</span>
+                )}
+              </div>
+            )}
             {config.supported_currencies && config.supported_currencies.length > 0 && (
               <div className="mt-1 truncate text-xs text-slate-400" title={config.supported_currencies.join(", ")}>
                 {config.supported_currencies.join(", ")}
@@ -223,17 +271,37 @@ export function PaymentMethodsPage() {
         </td>
         {/* Status + created */}
         <td className="align-top">
-          {config.enabled ? (
-            <div className="flex items-center text-green-400">
-              <CheckCircleIcon className="mr-1 h-5 w-5" />
-              <span>Enabled</span>
-            </div>
-          ) : (
-            <div className="flex items-center text-red-400">
-              <XCircleIcon className="mr-1 h-5 w-5" />
-              <span>Disabled</span>
-            </div>
-          )}
+          <button
+            type="button"
+            role="switch"
+            aria-checked={config.enabled}
+            aria-label={`${config.enabled ? "Disable" : "Enable"} ${config.name}`}
+            onClick={() => handleToggleEnabled(config)}
+            className="flex items-center gap-2 cursor-pointer"
+          >
+            <span
+              className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${
+                config.enabled ? "bg-green-600" : "bg-slate-600"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                  config.enabled ? "translate-x-4" : "translate-x-0.5"
+                }`}
+              />
+            </span>
+            {config.enabled ? (
+              <span className="flex items-center text-green-400">
+                <CheckCircleIcon className="mr-1 h-5 w-5" />
+                Enabled
+              </span>
+            ) : (
+              <span className="flex items-center text-red-400">
+                <XCircleIcon className="mr-1 h-5 w-5" />
+                Disabled
+              </span>
+            )}
+          </button>
           <div className="mt-0.5 text-xs text-slate-400">{formatDate(config.created)}</div>
         </td>
         <td className="text-right align-top">
@@ -339,6 +407,7 @@ const SECRET_FIELDS: Record<PaymentProviderType, string[]> = {
   [PaymentProviderType.STRIPE]: ["secret_key", "webhook_secret"],
   [PaymentProviderType.PAYPAL]: ["client_secret"],
   [PaymentProviderType.ONCHAIN]: [],
+  [PaymentProviderType.GATEWAY]: GATEWAY_SECRET_FIELDS,
 };
 
 // Maps secret field names to their "has_*" boolean indicator in sanitized config
@@ -348,6 +417,7 @@ const SECRET_FIELD_INDICATORS: Record<string, string> = {
   webhook_secret: "has_webhook_secret",
   secret_key: "has_secret_key",
   client_secret: "has_client_secret",
+  api_key: "has_api_key",
 };
 
 // Provider Config Form Component
@@ -368,8 +438,11 @@ function ProviderConfigForm({
   modifiedFields?: Set<string>;
   onFieldModified?: (field: string) => void;
 }) {
+  const adminApi = useAdminApi();
   const getInitialConfig = (): ProviderConfig => {
     switch (providerType) {
+      case PaymentProviderType.GATEWAY:
+        return emptyGatewayConfig();
       case PaymentProviderType.LND:
         return { type: "lnd", url: "", cert_path: null };
       case PaymentProviderType.BITVORA:
@@ -442,6 +515,19 @@ function ProviderConfigForm({
   };
 
   switch (providerType) {
+    case PaymentProviderType.GATEWAY:
+      return (
+        <GatewayConfigForm
+          config={currentConfig as GatewayProviderConfig}
+          onChange={onChange}
+          apiBase={adminApi.url}
+          isEditing={isEditing}
+          sanitizedConfig={sanitizedConfig?.type === "gateway" ? sanitizedConfig : null}
+          modifiedFields={modifiedFields}
+          onFieldModified={onFieldModified}
+        />
+      );
+
     case PaymentProviderType.LND: {
       const lndConfig = currentConfig as LndProviderConfig;
       return (
@@ -805,6 +891,13 @@ function CreatePaymentMethodModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (
+      formData.provider_type === PaymentProviderType.GATEWAY &&
+      formData.enabled &&
+      !(await confirmGatewayEnable())
+    ) {
+      return;
+    }
     setLoading(true);
     setError(null);
 
@@ -829,7 +922,10 @@ function CreatePaymentMethodModal({
         payment_method: formData.payment_method,
         provider_type: formData.provider_type,
         enabled: formData.enabled,
-        config: providerConfig,
+        config:
+          formData.provider_type === PaymentProviderType.GATEWAY
+            ? gatewayConfigForSubmit((providerConfig as GatewayProviderConfig | null) ?? emptyGatewayConfig(), null)
+            : providerConfig,
         processing_fee_rate: parseRate(formData.processing_fee_rate),
         processing_fee_base: baseFeeInSmallestUnits,
         processing_fee_currency: formData.processing_fee_currency || null,
@@ -954,6 +1050,9 @@ function CreatePaymentMethodModal({
             Enabled
           </label>
         </div>
+        {formData.provider_type === PaymentProviderType.GATEWAY && (
+          <p className="text-xs text-amber-300">{GATEWAY_ENABLE_GUARD}</p>
+        )}
 
         {/* Provider-specific config */}
         <div className="border-t border-slate-700 pt-4">
@@ -1089,6 +1188,14 @@ function CreatePaymentMethodModal({
           </div>
         </div>
 
+        {error && (
+          <div
+            role="alert"
+            className="bg-red-900/20 border border-red-500/30 text-red-400 px-3 py-2 rounded text-sm"
+          >
+            {error}
+          </div>
+        )}
         <div className="flex justify-end space-x-3 pt-4">
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
@@ -1152,6 +1259,8 @@ function EditPaymentMethodModal({
     const sanitized = config.config;
 
     switch (sanitized.type) {
+      case "gateway":
+        return gatewayConfigFromSanitized(sanitized);
       case "lnd":
         return { type: "lnd", url: sanitized.url, cert_path: sanitized.cert_path };
       case "bitvora":
@@ -1229,6 +1338,9 @@ function EditPaymentMethodModal({
   // Strip unmodified secret fields from config before submitting
   const getConfigForSubmit = (): ProviderConfig | null => {
     if (!providerConfig) return null;
+    if (providerConfig.type === "gateway") {
+      return gatewayConfigForSubmit(providerConfig, modifiedSecretFields);
+    }
 
     const secretFields = SECRET_FIELDS[formData.provider_type] || [];
     const result = { ...providerConfig };
@@ -1245,6 +1357,14 @@ function EditPaymentMethodModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (
+      formData.provider_type === PaymentProviderType.GATEWAY &&
+      formData.enabled &&
+      !config.enabled &&
+      !(await confirmGatewayEnable())
+    ) {
+      return;
+    }
     setLoading(true);
     setError(null);
 
@@ -1378,6 +1498,9 @@ function EditPaymentMethodModal({
             Enabled
           </label>
         </div>
+        {formData.provider_type === PaymentProviderType.GATEWAY && (
+          <p className="text-xs text-amber-300">{GATEWAY_ENABLE_GUARD}</p>
+        )}
 
         {/* Provider-specific config */}
         <div className="border-t border-slate-700 pt-4">
@@ -1392,6 +1515,13 @@ function EditPaymentMethodModal({
             onFieldModified={handleSecretFieldModified}
           />
         </div>
+
+        {config.provider_type === PaymentProviderType.GATEWAY && (
+          <div className="border-t border-slate-700 pt-4">
+            <h3 className="text-sm font-medium text-white mb-4">Gateway Test and Status</h3>
+            <GatewayPanel configId={config.id} />
+          </div>
+        )}
 
         {/* Processing Fee */}
         <div className="border-t border-slate-700 pt-4">
@@ -1517,6 +1647,14 @@ function EditPaymentMethodModal({
           </div>
         </div>
 
+        {error && (
+          <div
+            role="alert"
+            className="bg-red-900/20 border border-red-500/30 text-red-400 px-3 py-2 rounded text-sm"
+          >
+            {error}
+          </div>
+        )}
         <div className="flex justify-end space-x-3 pt-4">
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancel

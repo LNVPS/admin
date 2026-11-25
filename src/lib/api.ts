@@ -496,6 +496,89 @@ export interface DecideAbuseChallengeRequest {
   response: string;
 }
 
+export type SanctionsSubject = "user" | "payment";
+
+export type SanctionsField = "name" | "email" | "entity" | "address";
+
+export type SanctionsMatchStatus = "review" | "held" | "cleared" | "confirmed";
+
+export type ScreeningMode = "screened" | "delegated" | "unscreened";
+
+export interface AdminSanctionsList {
+  id: number;
+  source: string;
+  version: string;
+  sha256: string;
+  entry_count: number;
+  fetched: string;
+  checked: string;
+}
+
+export interface AdminPaymentScreening {
+  id: number;
+  payment_ref: string;
+  payment_id: string | null;
+  user_id: number | null;
+  payment_method: string;
+  mode: ScreeningMode;
+  provider: string;
+  result: unknown;
+  held: boolean;
+  source_addresses: string[];
+  amount_msat: number | null;
+  created: string;
+  released_at: string | null;
+}
+
+export interface AdminSanctionsMatch {
+  id: number;
+  created: string;
+  subject: SanctionsSubject;
+  user_id: number | null;
+  payment_ref: string | null;
+  field: SanctionsField;
+  subject_value: string;
+  list_source: string;
+  list_version: string;
+  list_fetched: string | null;
+  entry_id: string;
+  entry_name: string;
+  score: number;
+  status: SanctionsMatchStatus;
+  resolved_by: number | null;
+  resolved_at: string | null;
+  resolution_reason: string | null;
+}
+
+export interface AdminSanctionsMatchDetail extends AdminSanctionsMatch {
+  screening: AdminPaymentScreening | null;
+  orders_held: boolean | null;
+}
+
+export interface AdminScreenUserResult {
+  held: boolean;
+  review: boolean;
+  new_matches: number[];
+}
+
+export interface SanctionsMatchParams {
+  limit?: number;
+  offset?: number;
+  open?: boolean;
+  status?: SanctionsMatchStatus;
+  subject?: SanctionsSubject;
+  user_id?: number;
+  payment_ref?: string;
+}
+
+export interface SanctionsScreeningParams {
+  limit?: number;
+  offset?: number;
+  held?: boolean;
+  user_id?: number;
+  payment_id?: string;
+}
+
 export type AccountCreditEventKind = "topup" | "spend" | "refund" | "admin" | "settlement";
 
 export interface AdminAccountCreditEvent {
@@ -1993,6 +2076,8 @@ export interface AdminSubscriptionPaymentInfo {
   discount?: AdminPaymentDiscountInfo;
   /** The swap order behind a `fixedfloat` payment; omitted for every other method. */
   swap?: AdminSwapInfo;
+  /** Sanctions screening rows for this payment; omitted when there are none. */
+  screening?: AdminPaymentScreening[];
   company_id: number | null;
   company_name: string | null;
   company_base_currency: string | null;
@@ -3248,6 +3333,58 @@ export class AdminApi {
     return await this.handleResponse<PaginatedApiResponse<AdminSwapOrderClient>>(
       await this.req("/api/admin/v1/swap_orders", "GET", undefined, params),
     );
+  }
+
+  // Sanctions screening
+  async getSanctionsLists() {
+    const result = await this.handleResponse<ApiResponse<AdminSanctionsList[]>>(
+      await this.req("/api/admin/v1/sanctions/lists", "GET"),
+    );
+    return result.data;
+  }
+
+  async refreshSanctionsLists() {
+    await this.handleResponse<ApiResponse<null>>(await this.req("/api/admin/v1/sanctions/lists/refresh", "POST"));
+  }
+
+  async getSanctionsMatches(params?: SanctionsMatchParams) {
+    return await this.handleResponse<PaginatedApiResponse<AdminSanctionsMatch>>(
+      await this.req("/api/admin/v1/sanctions/matches", "GET", undefined, params as Record<string, string | number>),
+    );
+  }
+
+  async getSanctionsMatch(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminSanctionsMatchDetail>>(
+      await this.req(`/api/admin/v1/sanctions/matches/${id}`, "GET"),
+    );
+    return result.data;
+  }
+
+  async clearSanctionsMatch(id: number, reason: string) {
+    const result = await this.handleResponse<ApiResponse<AdminSanctionsMatchDetail>>(
+      await this.req(`/api/admin/v1/sanctions/matches/${id}/clear`, "POST", { reason }),
+    );
+    return result.data;
+  }
+
+  async confirmSanctionsMatch(id: number, reason: string) {
+    const result = await this.handleResponse<ApiResponse<AdminSanctionsMatchDetail>>(
+      await this.req(`/api/admin/v1/sanctions/matches/${id}/confirm`, "POST", { reason }),
+    );
+    return result.data;
+  }
+
+  async getSanctionsScreenings(params?: SanctionsScreeningParams) {
+    return await this.handleResponse<PaginatedApiResponse<AdminPaymentScreening>>(
+      await this.req("/api/admin/v1/sanctions/screenings", "GET", undefined, params as Record<string, string | number>),
+    );
+  }
+
+  async screenUser(id: number) {
+    const result = await this.handleResponse<ApiResponse<AdminScreenUserResult>>(
+      await this.req(`/api/admin/v1/sanctions/users/${id}/screen`, "POST"),
+    );
+    return result.data;
   }
 
   // Abuse cases

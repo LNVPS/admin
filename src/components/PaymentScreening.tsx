@@ -23,7 +23,10 @@ export function PaymentScreening({ rows }: { rows?: AdminPaymentScreening[] }) {
             </div>
           ))}
           {s.held && (
-            <Link to={`/sanctions?payment_ref=${encodeURIComponent(s.payment_ref)}`} className="text-blue-400 hover:underline">
+            <Link
+              to={`/sanctions?payment_ref=${encodeURIComponent(s.payment_ref)}`}
+              className="text-blue-400 hover:underline"
+            >
               Review matches
             </Link>
           )}

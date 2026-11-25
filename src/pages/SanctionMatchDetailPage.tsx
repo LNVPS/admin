@@ -24,7 +24,7 @@ type Resolution = "clear" | "confirm";
 
 export function SanctionMatchDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const matchId = parseInt(id!, 10);
+  const matchId = parseInt(id ?? "", 10);
   const adminApi = useAdminApi();
   const { hasPermission } = useUserRoles();
   const canUpdate = hasPermission("sanctions::update");
@@ -50,7 +50,8 @@ export function SanctionMatchDetailPage() {
   }
 
   const open = isOpenStatus(match.status);
-  const heldDeposit = match.subject === "payment" && match.screening?.held === true && match.screening.released_at == null;
+  const heldDeposit =
+    match.subject === "payment" && match.screening?.held === true && match.screening.released_at == null;
 
   const resolve = async (kind: Resolution) => {
     const clearing = kind === "clear";
@@ -127,7 +128,10 @@ export function SanctionMatchDetailPage() {
       {match.subject === "payment" && match.screening && (
         <Card title="Held deposit">
           <DetailList>
-            <DetailRow label="Payment reference" value={<span className="break-all font-mono">{match.screening.payment_ref}</span>} />
+            <DetailRow
+              label="Payment reference"
+              value={<span className="break-all font-mono">{match.screening.payment_ref}</span>}
+            />
             <DetailRow label="Amount" value={formatMsatAsSats(match.screening.amount_msat)} />
             <DetailRow
               label="Paying addresses"

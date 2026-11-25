@@ -71,7 +71,10 @@ export const screeningSample: AdminPaymentScreening = {
 };
 
 export const matchesSample = {
-  data: [matchSample(), matchSample({ id: 6, subject: "user", payment_ref: null, field: "name", status: "review", score: 0.93 })],
+  data: [
+    matchSample(),
+    matchSample({ id: 6, subject: "user", payment_ref: null, field: "name", status: "review", score: 0.93 }),
+  ],
   total: 2,
   limit: 20,
   offset: 0,

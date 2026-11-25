@@ -26,7 +26,13 @@ export function ScreenUserButton({ userId }: { userId: number }) {
   };
 
   return (
-    <Button size="sm" variant="secondary" onClick={handleScreen} disabled={screening} className="flex items-center gap-1.5">
+    <Button
+      size="sm"
+      variant="secondary"
+      onClick={handleScreen}
+      disabled={screening}
+      className="flex items-center gap-1.5"
+    >
       <ShieldExclamationIcon className="h-3.5 w-3.5" />
       <span>{screening ? "Screening..." : "Screen now"}</span>
     </Button>

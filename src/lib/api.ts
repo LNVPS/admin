@@ -2076,7 +2076,6 @@ export interface AdminSubscriptionPaymentInfo {
   discount?: AdminPaymentDiscountInfo;
   /** The swap order behind a `fixedfloat` payment; omitted for every other method. */
   swap?: AdminSwapInfo;
-  /** Sanctions screening rows for this payment; omitted when there are none. */
   screening?: AdminPaymentScreening[];
   company_id: number | null;
   company_name: string | null;
@@ -3335,7 +3334,6 @@ export class AdminApi {
     );
   }
 
-  // Sanctions screening
   async getSanctionsLists() {
     const result = await this.handleResponse<ApiResponse<AdminSanctionsList[]>>(
       await this.req("/api/admin/v1/sanctions/lists", "GET"),

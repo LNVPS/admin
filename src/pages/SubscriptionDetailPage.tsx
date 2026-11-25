@@ -25,6 +25,7 @@ import { ErrorState } from "../components/ErrorState";
 import { Modal } from "../components/Modal";
 import { PaginatedTable } from "../components/PaginatedTable";
 import { PaymentDiscount } from "../components/PaymentDiscount";
+import { PaymentScreening } from "../components/PaymentScreening";
 import { PaymentSwapLog } from "../components/PaymentSwapLog";
 import { Profile } from "../components/Profile";
 import { StatusBadge } from "../components/StatusBadge";
@@ -637,6 +638,7 @@ function SubscriptionPaymentsTable({ subscriptionId, refreshKey }: { subscriptio
         {payment.payment_method === AdminPaymentMethod.FIXEDFLOAT && (
           <PaymentSwapLog paymentId={payment.id} swap={payment.swap} userId={payment.user_id} />
         )}
+        <PaymentScreening rows={payment.screening} />
         {!payment.is_paid && canCompletePayments && (
           <Button
             size="sm"

@@ -7,6 +7,8 @@ import { SmartRedirect } from "./components/SmartRedirect";
 import { ProtectedLayout } from "./layouts/ProtectedLayout";
 import { AbuseCaseDetailPage } from "./pages/AbuseCaseDetailPage";
 import { AbuseCasesPage } from "./pages/AbuseCasesPage";
+import { SanctionMatchDetailPage } from "./pages/SanctionMatchDetailPage";
+import { SanctionsPage } from "./pages/SanctionsPage";
 import { AccessPoliciesPage } from "./pages/AccessPoliciesPage";
 import { ActivityPage } from "./pages/ActivityPage";
 import { AgentConversationDetailPage } from "./pages/AgentConversationDetailPage";
@@ -109,6 +111,22 @@ function AppContent() {
               element={
                 <PermissionGuard requiredPermissions={["analytics::view"]}>
                   <ActivityPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="sanctions"
+              element={
+                <PermissionGuard requiredPermissions={["sanctions::view"]}>
+                  <SanctionsPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="sanctions/matches/:id"
+              element={
+                <PermissionGuard requiredPermissions={["sanctions::view"]}>
+                  <SanctionMatchDetailPage />
                 </PermissionGuard>
               }
             />

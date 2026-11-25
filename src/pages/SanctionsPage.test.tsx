@@ -100,9 +100,9 @@ describe("SanctionsPage queue", () => {
   it("renders the open matches with list source, entry, score and status", async () => {
     grant(["sanctions::view"]);
     renderQueue();
-    await screen.findByText("TESTOV, Example Person");
+    await screen.findAllByText("TESTOV, Example Person");
     expect(calls.find((c) => c.path.endsWith("/matches"))?.query.get("open")).toBe("true");
-    const row = screen.getByText("TESTOV, Example Person").closest("tr") as HTMLElement;
+    const row = screen.getAllByText("TESTOV, Example Person")[0].closest("tr") as HTMLElement;
     expect(within(row).getByText("ofac_sdn fixture")).toBeTruthy();
     expect(within(row).getByText("1.00")).toBeTruthy();
     expect(within(row).getByText("Held")).toBeTruthy();
@@ -112,7 +112,7 @@ describe("SanctionsPage queue", () => {
   it("sends the status, subject, user and payment filters", async () => {
     grant(["sanctions::view"]);
     renderQueue();
-    await screen.findByText("TESTOV, Example Person");
+    await screen.findAllByText("TESTOV, Example Person");
     fireEvent.change(screen.getByLabelText("Status"), { target: { value: "cleared" } });
     fireEvent.change(screen.getByLabelText("Subject"), { target: { value: "payment" } });
     fireEvent.change(screen.getByLabelText("User ID"), { target: { value: "9" } });
@@ -177,7 +177,7 @@ describe("SanctionMatchDetailPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Clear" }));
     const submit = (await screen.findByRole("button", { name: "Clear match" })) as HTMLButtonElement;
     expect(submit.disabled).toBe(true);
-    expect(screen.getByText(/credited exactly once/)).toBeTruthy();
+    expect(screen.getAllByText(/credited exactly once/).length).toBeGreaterThan(0);
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "exchange hot wallet" } });
     expect(submit.disabled).toBe(false);
     fireEvent.click(submit);

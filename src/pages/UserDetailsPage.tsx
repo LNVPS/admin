@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { AccountTypeBadge } from "../components/AccountTypeBadge";
 import { Button } from "../components/Button";
+import { ScreenUserButton } from "../components/ScreenUserButton";
 import { EditUserModal } from "../components/EditUserModal";
 import { Fact, FactGroup, NotSet, SectionHeading } from "../components/Facts";
 import { Modal } from "../components/Modal";
@@ -377,6 +378,9 @@ export function UserDetailsPage() {
             {user.pubkey}
           </span>
           <div className="ml-auto flex items-center gap-2">
+            <PermissionGuard requiredPermissions={["sanctions::update"]}>
+              <ScreenUserButton userId={user.id} />
+            </PermissionGuard>
             <PermissionGuard requiredPermissions={["users::update"]}>
               <Button size="sm" onClick={() => setShowEditUserModal(true)} className="flex items-center gap-1.5">
                 <PencilIcon className="h-3.5 w-3.5" />

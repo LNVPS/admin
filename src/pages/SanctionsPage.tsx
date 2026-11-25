@@ -1,7 +1,7 @@
 import { ShieldExclamationIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { ErrorState } from "../components/ErrorState";
@@ -81,10 +81,11 @@ function FilterField({ id, label, children }: { id: string; label: string; child
 function MatchesTab() {
   const adminApi = useAdminApi();
   const navigate = useNavigate();
-  const [status, setStatus] = useState<StatusFilter>("open");
+  const [params] = useSearchParams();
+  const [status, setStatus] = useState<StatusFilter>(params.has("payment_ref") ? "all" : "open");
   const [subject, setSubject] = useState<"" | SanctionsSubject>("");
-  const [userId, setUserId] = useState("");
-  const [paymentRef, setPaymentRef] = useState("");
+  const [userId, setUserId] = useState(params.get("user") ?? "");
+  const [paymentRef, setPaymentRef] = useState(params.get("payment_ref") ?? "");
 
   const parsedUser = userId.trim() === "" ? undefined : Number(userId);
   const parsedRef = paymentRef.trim() === "" ? undefined : paymentRef.trim();

@@ -230,6 +230,12 @@ const navigation: NavSection[] = [
         requiredPermissions: ["abuse::view"],
       },
       {
+        name: "Sanctions",
+        to: "/sanctions",
+        icon: ShieldExclamationIcon,
+        requiredPermissions: ["sanctions::view"],
+      },
+      {
         name: "Support Chats",
         to: "/agent/conversations",
         icon: ChatBubbleLeftRightIcon,
